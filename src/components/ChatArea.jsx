@@ -997,8 +997,20 @@ export const ChatArea = ({
                     </button>
                   )}
 
-              {/* Friend Avatar */}
-              <div className="relative flex-shrink-0">
+              {/* Friend Avatar (Tıklandığında büyük ekranda açar) */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const avatarUrl = activeDmFriend?.avatar || activeDmFriend?.avatar_url || activeDmFriend?.avatarUrl || null;
+                  setActiveMediaModal({
+                    url: avatarUrl,
+                    name: `${activeDmFriend?.name || 'Kullanıcı'} - Profil Fotoğrafı`,
+                    fallbackUser: activeDmFriend,
+                  });
+                }}
+                className="relative flex-shrink-0 cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 transition"
+                title="Profil fotoğrafını büyüt"
+              >
                 <UserAvatar
                   user={activeDmFriend}
                   size="md"
@@ -1007,10 +1019,14 @@ export const ChatArea = ({
                 />
               </div>
 
-              {/* Friend Name & Realtime Presence Status */}
-              <div className="min-w-0 flex flex-col">
+              {/* Friend Name & Realtime Presence Status (Tıklandığında Kişi Bilgisini açar) */}
+              <div
+                onClick={() => setChatInnerView('userInfo')}
+                className="min-w-0 flex flex-col cursor-pointer group px-1 -mx-1 py-0.5 rounded-lg hover:bg-white/[0.04] transition"
+                title="Kişi bilgisini görüntüle"
+              >
                 <div className="flex items-center space-x-1.5">
-                  <span className={`text-[13px] font-bold truncate ${activeDmFriend.game ? 'text-emerald-400' : (activeDmFriend.isOnline ? 'text-white' : 'text-gray-400')
+                  <span className={`text-[13px] font-bold truncate group-hover:text-indigo-300 transition ${activeDmFriend.game ? 'text-emerald-400' : (activeDmFriend.isOnline ? 'text-white' : 'text-gray-400')
                     }`}>
                     {activeDmFriend.name}
                   </span>
@@ -1061,8 +1077,19 @@ export const ChatArea = ({
                 </button>
               )}
 
-              {/* Group Avatar (w-9 h-9 rounded-full, sol kenardaki grup tasarımı ile birebir aynı) */}
-              <div className="relative flex-shrink-0">
+              {/* Group Avatar (Tıklandığında büyük ekranda açar) */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMediaModal({
+                    url: currentGroupAvatar || null,
+                    name: `${channelData?.name || (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Grup')} - Grup Fotoğrafı`,
+                    isGroup: true,
+                  });
+                }}
+                className="relative flex-shrink-0 cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 transition"
+                title="Grup fotoğrafını büyüt"
+              >
                 {currentGroupAvatar ? (
                   <img
                     src={currentGroupAvatar}
@@ -1076,10 +1103,14 @@ export const ChatArea = ({
                 )}
               </div>
 
-              {/* Group Name & Realtime Member Count Subtitle (Identical 2-line layout to DM) */}
-              <div className="min-w-0 flex flex-col">
+              {/* Group Name & Realtime Member Count Subtitle (Tıklandığında Grup Bilgisini açar) */}
+              <div
+                onClick={() => setChatInnerView('userInfo')}
+                className="min-w-0 flex flex-col cursor-pointer group px-1 -mx-1 py-0.5 rounded-lg hover:bg-white/[0.04] transition"
+                title="Grup bilgisini görüntüle"
+              >
                 <div className="flex items-center space-x-1.5">
-                  <span className="text-[13px] font-bold text-white truncate">
+                  <span className="text-[13px] font-bold text-white group-hover:text-indigo-300 transition truncate">
                     {activeChannel === 'home'
                       ? 'Home'
                       : (channelData?.name || (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Grup'))}
@@ -2396,7 +2427,7 @@ export const ChatArea = ({
       </div>
       )}
 
-      {/* Fullscreen Lightbox Modal for Image Previews */}
+      {/* Fullscreen Lightbox Modal for Image Previews & Profile Pictures */}
       {activeMediaModal && (
         <div
           onClick={() => setActiveMediaModal(null)}
@@ -2409,51 +2440,67 @@ export const ChatArea = ({
           >
             <div className="flex items-center space-x-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                <ImageIcon size={16} />
+                {activeMediaModal.isGroup ? <Users size={16} /> : <ImageIcon size={16} />}
               </div>
               <span className="text-sm font-semibold truncate text-white">{activeMediaModal.name}</span>
-              <span className="text-xs text-gray-400 font-mono">({formatFileSize(activeMediaModal.size)})</span>
+              {activeMediaModal.size && (
+                <span className="text-xs text-gray-400 font-mono">({formatFileSize(activeMediaModal.size)})</span>
+              )}
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => dbService.downloadFile(activeMediaModal.url, activeMediaModal.name)}
-                className="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-xs text-indigo-300 hover:text-white rounded-xl border border-indigo-500/30 transition flex items-center space-x-1.5 font-medium cursor-pointer"
-                title="Görseli İndir"
-              >
-                <Download size={13} />
-                <span>İndir</span>
-              </button>
-              <a
-                href={activeMediaModal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/5"
-                title="Yeni Sekmede Aç"
-              >
-                <ExternalLink size={15} />
-              </a>
+              {activeMediaModal.url && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => dbService.downloadFile(activeMediaModal.url, activeMediaModal.name)}
+                    className="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-xs text-indigo-300 hover:text-white rounded-xl border border-indigo-500/30 transition flex items-center space-x-1.5 font-medium cursor-pointer"
+                    title="Görseli İndir"
+                  >
+                    <Download size={13} />
+                    <span>İndir</span>
+                  </button>
+                  <a
+                    href={activeMediaModal.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/5 cursor-pointer"
+                    title="Yeni Sekmede Aç"
+                  >
+                    <ExternalLink size={15} />
+                  </a>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setActiveMediaModal(null)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center transition border border-white/5"
-                title="Kapat"
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center transition border border-white/5 cursor-pointer"
+                title="Kapat (ESC)"
               >
                 <X size={16} />
               </button>
             </div>
           </div>
 
-          {/* Centered Image */}
+          {/* Centered Image or Fallback Avatar */}
           <div
             onClick={(e) => e.stopPropagation()}
             className="max-w-4xl max-h-[80vh] flex items-center justify-center"
           >
-            <img
-              src={activeMediaModal.url}
-              alt={activeMediaModal.name}
-              className="max-h-[78vh] max-w-full rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_rgba(79,70,229,0.15)] object-contain border border-white/10"
-            />
+            {activeMediaModal.url ? (
+              <img
+                src={activeMediaModal.url}
+                alt={activeMediaModal.name}
+                className="max-h-[78vh] max-w-full rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_rgba(79,70,229,0.15)] object-contain border border-white/10"
+              />
+            ) : activeMediaModal.fallbackUser ? (
+              <div className="w-56 h-56 rounded-full bg-[#18181b] border-4 border-indigo-500/30 flex items-center justify-center shadow-2xl text-white font-bold select-none p-2">
+                <UserAvatar user={activeMediaModal.fallbackUser} size="xl" showStatus={false} className="!w-48 !h-48 !text-6xl" />
+              </div>
+            ) : (
+              <div className="w-56 h-56 rounded-full bg-gradient-to-br from-indigo-500/30 to-purple-600/40 border-4 border-indigo-500/40 flex items-center justify-center text-indigo-300 shadow-2xl">
+                <Users size={80} />
+              </div>
+            )}
           </div>
         </div>
       )}
