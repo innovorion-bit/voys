@@ -853,6 +853,41 @@ export const dbService = {
     return result || localResult;
   },
 
+  // Delete Channel (Permanently removes channel, members, and messages)
+  async deleteChannel(channelId) {
+    if (!channelId) return;
+
+    // 1. Delete from local cache
+    try {
+      const saved = localStorage.getItem('standupp_text_channels') || localStorage.getItem('standupp_db_channels');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((c) => c && c.id !== channelId);
+          localStorage.setItem('standupp_text_channels', JSON.stringify(filtered));
+          localStorage.setItem('standupp_db_channels', JSON.stringify(filtered));
+        }
+      }
+      localDb.deleteChannelMessages(channelId);
+    } catch {}
+
+    // 2. Delete from Supabase cloud database
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('channel_members').delete().eq('channel_id', channelId);
+        await supabase.from('channel_messages').delete().eq('channel_id', channelId);
+        await supabase.from('messages').delete().eq('channel_id', channelId);
+        const { error } = await supabase.from('channels').delete().eq('id', channelId);
+        if (error) {
+          console.warn('Supabase deleteChannel error:', error);
+        }
+      } catch (err) {
+        console.warn('deleteChannel exception:', err);
+      }
+    }
+    return true;
+  },
+
   // Channel Members Operations
   async fetchChannelMembers(channelId) {
     if (isSupabaseConfigured) {

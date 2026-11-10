@@ -858,6 +858,32 @@ function StanduppApp() {
     }
   }, []);
 
+  const handleDeleteChannel = useCallback(async (channelId) => {
+    if (!channelId) return;
+    try {
+      setTextChannels((prev) => {
+        const next = prev.filter((c) => c.id !== channelId);
+        try {
+          localStorage.setItem('standupp_text_channels', JSON.stringify(next));
+          localStorage.setItem('standupp_db_channels', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      await dbService.deleteChannel(channelId);
+
+      if (activeCallChannelId === channelId) {
+        disconnectVoice();
+        setActiveCallChannelId(null);
+      }
+
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('Delete channel error:', err);
+      throw err;
+    }
+  }, [activeCallChannelId, disconnectVoice, navigate]);
+
   const handleSelectChannel = (channelId) => {
     navigate(`/channel/${channelId}`);
   };
@@ -964,6 +990,7 @@ function StanduppApp() {
             activeChannel={activeChannel}
             channelData={matchedChannel}
             onUpdateChannel={handleUpdateChannel}
+            onDeleteChannel={handleDeleteChannel}
             channelExists={channelExists}
             onOpenCreateChannel={() => setModalOpen(true)}
             onOpenAddMember={null}

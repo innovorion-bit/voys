@@ -180,6 +180,7 @@ export const ChatArea = ({
   activeChannel = 'home',
   channelData = null,
   onUpdateChannel = null,
+  onDeleteChannel = null,
   channelExists = true,
   onOpenCreateChannel = null,
   onOpenAddMember = null,
@@ -268,6 +269,8 @@ export const ChatArea = ({
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
+  const [isConfirmDeleteGroupOpen, setIsConfirmDeleteGroupOpen] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const optionsMenuRef = useRef(null);
 
   useEffect(() => {
@@ -306,6 +309,27 @@ export const ChatArea = ({
       toast.error('Sohbet geçmişi silinemedi');
     } finally {
       setIsDeletingChat(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!activeChannel || isDmMode) return;
+    try {
+      setIsDeletingGroup(true);
+      if (onDeleteChannel) {
+        await onDeleteChannel(activeChannel);
+      } else {
+        await dbService.deleteChannel(activeChannel);
+        if (onBackToChannels) onBackToChannels();
+      }
+      setIsConfirmDeleteGroupOpen(false);
+      setChatInnerView('messages');
+      toast.success('Grup başarıyla silindi');
+    } catch (err) {
+      console.error('Grup silinirken hata:', err);
+      toast.error('Grup silinemedi', { description: err?.message });
+    } finally {
+      setIsDeletingGroup(false);
     }
   };
 
@@ -1229,8 +1253,22 @@ export const ChatArea = ({
                     className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition text-left cursor-pointer"
                   >
                     <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
-                    <span>Sohbeti sil</span>
+                    <span>Sohbeti temizle</span>
                   </button>
+
+                  {!isDmMode && activeChannel !== 'home' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOptionsMenuOpen(false);
+                        setIsConfirmDeleteGroupOpen(true);
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/15 rounded-xl transition text-left cursor-pointer"
+                    >
+                      <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
+                      <span>Grubu sil</span>
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -1445,6 +1483,32 @@ export const ChatArea = ({
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Grup Ayarları & Tehlikeli Bölge (Grubu Sil) */}
+              {!isDmMode && activeChannel !== 'home' && (
+                <div className="pt-5 border-t border-white/10 space-y-3">
+                  <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center space-x-2">
+                    <Trash2 size={14} className="text-rose-400" />
+                    <span>Tehlikeli Bölge</span>
+                  </h3>
+                  <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-white">Grubu Kalıcı Olarak Sil</div>
+                      <div className="text-[11px] text-gray-400">
+                        Bu grup, tüm mesaj geçmişi ve katılımcı listesiyle birlikte kalıcı olarak silinecektir.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmDeleteGroupOpen(true)}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-rose-600/30 transition active:scale-95 cursor-pointer flex items-center space-x-1.5 flex-shrink-0"
+                    >
+                      <Trash2 size={13} />
+                      <span>Grubu Sil</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -2552,6 +2616,60 @@ export const ChatArea = ({
                   </>
                 ) : (
                   <span>Sohbeti Sil</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Grubu Sil Onay Modalı */}
+      {isConfirmDeleteGroupOpen && (
+        <div 
+          onClick={() => setIsConfirmDeleteGroupOpen(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+              <Trash2 size={24} />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-bold text-white">Grubu Sil</h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                <span className="font-semibold text-white">"{channelData?.name || 'Grup'}"</span> adlı grubu silmek istediğinize emin misiniz?
+                <br />
+                Tüm mesajlar, dosyalar ve grup üyeliği kalıcı olarak kaldırılacaktır.
+                <br />
+                <span className="text-rose-400 font-semibold">Bu işlem geri alınamaz.</span>
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingGroup}
+                onClick={() => setIsConfirmDeleteGroupOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-xs transition border border-white/10 cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingGroup}
+                onClick={handleDeleteGroup}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow-lg shadow-rose-600/30 flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                {isDeletingGroup ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Siliniyor...</span>
+                  </>
+                ) : (
+                  <span>Grubu Sil</span>
                 )}
               </button>
             </div>
