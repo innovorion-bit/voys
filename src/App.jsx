@@ -553,7 +553,13 @@ function StanduppApp() {
         const dbChans = await dbService.fetchChannels();
         if (!cancelled && Array.isArray(dbChans)) {
           // Keep only user-created channels (no home / no voice-sesli-sohbet)
-          const texts = dbChans.filter((c) => c && c.type !== 'voice' && c.id !== 'home' && !c.is_home);
+          const texts = dbChans
+            .filter((c) => c && c.type !== 'voice' && c.id !== 'home' && !c.is_home)
+            .map((c) => ({
+              ...c,
+              avatar: c.avatar_url || c.avatar || '',
+              avatar_url: c.avatar_url || c.avatar || '',
+            }));
           setTextChannels(texts);
           try {
             localStorage.setItem('standupp_text_channels', JSON.stringify(texts));
@@ -584,12 +590,17 @@ function StanduppApp() {
       if (payload?.new) {
         const newChan = payload.new;
         if (newChan && newChan.type !== 'voice' && newChan.id !== 'home' && !newChan.is_home) {
+          const normalizedChan = {
+            ...newChan,
+            avatar: newChan.avatar_url || newChan.avatar || '',
+            avatar_url: newChan.avatar_url || newChan.avatar || '',
+          };
           setTextChannels((prev) => {
-            const exists = prev.some((c) => c.id === newChan.id);
+            const exists = prev.some((c) => c.id === normalizedChan.id);
             if (exists) {
-              return prev.map((c) => (c.id === newChan.id ? { ...c, ...newChan } : c));
+              return prev.map((c) => (c.id === normalizedChan.id ? { ...c, ...normalizedChan } : c));
             }
-            return [...prev, newChan];
+            return [...prev, normalizedChan];
           });
         }
       }
@@ -866,8 +877,16 @@ function StanduppApp() {
 
   const handleUpdateChannel = useCallback(async (channelId, updates) => {
     try {
+      const normalizedAvatar = updates.avatar_url !== undefined ? updates.avatar_url : updates.avatar;
       setTextChannels((prev) => {
-        const next = prev.map((c) => (c.id === channelId ? { ...c, ...updates } : c));
+        const next = prev.map((c) => {
+          if (c.id !== channelId) return c;
+          return {
+            ...c,
+            ...updates,
+            ...(normalizedAvatar !== undefined ? { avatar: normalizedAvatar, avatar_url: normalizedAvatar } : {}),
+          };
+        });
         try {
           localStorage.setItem('standupp_text_channels', JSON.stringify(next));
           localStorage.setItem('standupp_db_channels', JSON.stringify(next));

@@ -59,7 +59,9 @@ export const SettingsProvider = ({ children }) => {
   const { user, updateUser } = useAuth();
 
   // User Profile State - strictly scoped to active authenticated user
-  const userKey = user && user.id ? `${user.id}_${user.avatar_url || ''}_${user.status || ''}_${user.display_name || ''}` : 'guest';
+  const userKey = user && user.id
+    ? `${user.id}_${user.avatar_url || ''}_${user.status || ''}_${user.display_name || ''}_${user.username || ''}_${user.substatus || ''}`
+    : 'guest';
   const [prevUserKey, setPrevUserKey] = useState(userKey);
   const [profile, setProfile] = useState(() => computeUserProfile(user));
 
@@ -266,11 +268,12 @@ export const SettingsProvider = ({ children }) => {
     const targetId = targetUserId || newProfile.id || user?.id || profile.id;
     if (!targetId || targetId === 'you') return;
 
-    const normalizedProfile = {
-      ...newProfile,
-      avatar: newProfile.avatar !== undefined ? newProfile.avatar : newProfile.avatar_url,
-      avatar_url: newProfile.avatar_url !== undefined ? newProfile.avatar_url : newProfile.avatar,
-    };
+    const normalizedProfile = { ...newProfile };
+    if (newProfile.avatar !== undefined || newProfile.avatar_url !== undefined) {
+      const resolvedAvatar = newProfile.avatar_url !== undefined ? newProfile.avatar_url : newProfile.avatar;
+      normalizedProfile.avatar = resolvedAvatar;
+      normalizedProfile.avatar_url = resolvedAvatar;
+    }
 
     setProfile((prev) => {
       const updated = { ...prev, ...normalizedProfile, id: targetId };

@@ -386,12 +386,13 @@ export const SettingsModal = ({ onLogout = null }) => {
       }
 
       // 2. Update profile in database & local state
+      const effectiveAvatar = avatarInput.trim() || authUserAvatar || profile?.avatar_url || profile?.avatar || '';
       await updateProfile({
         name: cleanDisplayName,
         display_name: cleanDisplayName,
         username: cleanUsername,
-        avatar: avatarInput.trim(),
-        avatar_url: avatarInput.trim(),
+        avatar: effectiveAvatar,
+        avatar_url: effectiveAvatar,
       }, targetUserId);
 
       if (toastId) toast.dismiss(toastId);

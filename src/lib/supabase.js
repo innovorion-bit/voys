@@ -759,7 +759,13 @@ export const dbService = {
           .neq('is_home', true)
           .order('created_at', { ascending: true });
         if (!error && Array.isArray(data)) {
-          return data.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home);
+          return data
+            .filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home)
+            .map((c) => ({
+              ...c,
+              avatar: c.avatar_url || c.avatar || '',
+              avatar_url: c.avatar_url || c.avatar || '',
+            }));
         }
       } catch (err) {
         console.warn('Supabase fetchChannels error:', err);
@@ -833,18 +839,32 @@ export const dbService = {
     let result = null;
     if (isSupabaseConfigured) {
       try {
+        const dbUpdates = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.type !== undefined) dbUpdates.type = updates.type;
+        if (updates.is_home !== undefined) dbUpdates.is_home = updates.is_home;
+        if (updates.avatar_url !== undefined || updates.avatar !== undefined) {
+          dbUpdates.avatar_url = updates.avatar_url !== undefined ? updates.avatar_url : updates.avatar;
+        }
+
         const { data, error } = await withTimeout(
           supabase
             .from('channels')
-            .update(updates)
+            .update(dbUpdates)
             .eq('id', channelId)
             .select()
             .single(),
-          3500,
+          10000,
           'updateChannel zaman aşımı'
         );
         if (!error && data) {
-          result = data;
+          result = {
+            ...data,
+            avatar: data.avatar_url || '',
+            avatar_url: data.avatar_url || '',
+          };
+        } else if (error) {
+          console.warn('Supabase updateChannel error:', error);
         }
       } catch (err) {
         console.warn('Supabase updateChannel error:', err);
@@ -1416,7 +1436,7 @@ export const dbService = {
         const fileName = `${userId || 'anon'}_${Date.now()}.${fileExt}`;
         const filePath = `${userId || 'general'}/${fileName}`;
 
-        // Attempt upload to 'avatars' bucket with 3.5s timeout
+        // Attempt upload to 'avatars' bucket with 15s timeout
         const uploadPromise = supabase.storage
           .from('avatars')
           .upload(filePath, processedFile, {
@@ -1427,7 +1447,7 @@ export const dbService = {
 
         const { data, error: uploadError } = await withTimeout(
           uploadPromise,
-          3500,
+          15000,
           'Storage yüklemesi zaman aşımına uğradı.'
         );
 
