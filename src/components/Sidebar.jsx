@@ -362,6 +362,9 @@ export const Sidebar = ({
   // Sidebar view state: 'chats' | 'addFriend'
   const [sidebarView, setSidebarView] = useState('chats');
 
+  // Friends panel internal states
+  const [friendsSearchQuery, setFriendsSearchQuery] = useState('');
+
   // Add friend panel internal states
   const [addFriendTab, setAddFriendTab] = useState('search'); // 'search' | 'incoming' | 'outgoing'
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
@@ -582,12 +585,173 @@ export const Sidebar = ({
     });
   }, [textChannels, searchQuery, filterTab, channelCalls]);
 
+  // All Friends List (Filtered & Sorted: Game / Online first, then Alphabetical)
+  const filteredAllFriends = useMemo(() => {
+    let list = Array.isArray(friends) ? [...friends] : [];
+    if (friendsSearchQuery.trim()) {
+      const q = friendsSearchQuery.toLowerCase();
+      list = list.filter((f) =>
+        f.name?.toLowerCase().includes(q) ||
+        f.username?.toLowerCase().includes(q) ||
+        f.game?.toLowerCase().includes(q) ||
+        f.substatus?.toLowerCase().includes(q) ||
+        (f.tag && String(f.tag).includes(q))
+      );
+    }
+    return list.sort((a, b) => {
+      const aScore = a.game ? 3 : (a.isOnline || a.status === 'online' ? 2 : 1);
+      const bScore = b.game ? 3 : (b.isOnline || b.status === 'online' ? 2 : 1);
+      if (aScore !== bScore) return bScore - aScore;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [friends, friendsSearchQuery]);
+
   const totalResultsCount = filteredFriends.length + filteredChannels.length;
   const activeCallsCount = Object.values(channelCalls).filter(c => c.active).length;
 
   return (
     <aside className="w-[320px] flex-shrink-0 h-full bg-[#0c0c0e] voys-glass-sidebar border-r border-white/[0.06] flex flex-col select-none overflow-hidden z-10 font-sans">
-      {sidebarView === 'addFriend' ? (
+      {sidebarView === 'friends' ? (
+        /* Tüm Arkadaşlar Paneli (Sol kenar penceresinde açılan sayfa) */
+        <div className="flex-1 flex flex-col min-h-0 bg-[#0c0c0e] sidebar-transparent-on-glass">
+          {/* Top Header: Back Arrow & Title */}
+          <div className="h-14 px-3.5 bg-[#0a0a0c] sidebar-transparent-on-glass border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center space-x-2.5">
+              <button
+                type="button"
+                onClick={() => setSidebarView('chats')}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                title="Geri (Sohbetlere Dön)"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div className="flex items-center space-x-2">
+                <Users size={16} className="text-[#00a884]" />
+                <h2 className="text-sm font-bold text-white tracking-wide">
+                  Arkadaşlar ({friends?.length || 0})
+                </h2>
+              </div>
+            </div>
+
+            {/* Quick Add Friend Button */}
+            <button
+              type="button"
+              onClick={() => setSidebarView('addFriend')}
+              className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-emerald-400 text-xs font-semibold rounded-lg border border-emerald-500/30 flex items-center space-x-1 transition cursor-pointer"
+              title="Yeni Arkadaş Ekle"
+            >
+              <UserPlus size={13} />
+              <span>Ekle</span>
+            </button>
+          </div>
+
+          {/* Search Box inside Friends */}
+          <div className="p-3 border-b border-white/[0.06] bg-[#0c0c0e]">
+            <div className="h-9 px-3 bg-[#141418] rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#00a884]/60 transition">
+              <Search size={14} className="text-gray-400 mr-2 flex-shrink-0" />
+              <input
+                type="text"
+                value={friendsSearchQuery}
+                onChange={(e) => setFriendsSearchQuery(e.target.value)}
+                placeholder="Arkadaşlarında ara..."
+                className="w-full bg-transparent border-none outline-none text-xs text-gray-200 placeholder-gray-500"
+              />
+              {friendsSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setFriendsSearchQuery('')}
+                  className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Friends List Body */}
+          <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04] custom-scrollbar min-h-0">
+            {filteredAllFriends.length === 0 ? (
+              <div className="p-8 text-center text-xs text-gray-400 flex flex-col items-center justify-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-[#141418] flex items-center justify-center text-gray-500">
+                  <Users size={22} />
+                </div>
+                <p className="text-gray-300 font-medium">
+                  {friendsSearchQuery ? 'Aradığınız arkadaş bulunamadı' : 'Henüz ekli arkadaşınız yok'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSidebarView('addFriend')}
+                  className="px-3 py-1.5 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-lg text-xs transition shadow-md cursor-pointer"
+                >
+                  + Arkadaş Ekle
+                </button>
+              </div>
+            ) : (
+              filteredAllFriends.map((friend) => (
+                <div
+                  key={`all-friends-${friend.id}`}
+                  onClick={() => {
+                    onSelectDm?.(friend.id);
+                    setSidebarView('chats');
+                  }}
+                  className="px-3.5 py-2.5 flex items-center justify-between hover:bg-[#141418] cursor-pointer transition select-none group"
+                >
+                  <div className="flex items-center space-x-3 min-w-0 flex-1 pr-2">
+                    <UserAvatar
+                      user={friend}
+                      size="md"
+                      showStatus={true}
+                      status={friend.status}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-xs font-semibold text-white truncate">
+                          {friend.name}
+                        </span>
+                        {friend.tag && (
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            #{friend.tag}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] truncate mt-0.5">
+                        {friend.game ? (
+                          <span className="text-emerald-400 font-medium flex items-center space-x-1">
+                            <Gamepad2 size={11} className="flex-shrink-0 mr-1 inline" />
+                            <span>{friend.game}</span>
+                          </span>
+                        ) : friend.substatus ? (
+                          <span className="text-gray-400">{friend.substatus}</span>
+                        ) : friend.isOnline ? (
+                          <span className="text-emerald-400">Çevrimiçi</span>
+                        ) : (
+                          <span className="text-gray-500">Çevrimdışı</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action: Mesaj Gönder */}
+                  <div className="flex items-center space-x-1 flex-shrink-0 opacity-80 group-hover:opacity-100 transition">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectDm?.(friend.id);
+                        setSidebarView('chats');
+                      }}
+                      className="px-2.5 py-1 bg-white/5 hover:bg-[#00a884]/20 hover:text-[#25d366] text-gray-300 rounded-lg text-xs font-semibold border border-white/5 hover:border-[#00a884]/30 transition cursor-pointer"
+                      title="Sohbeti Aç"
+                    >
+                      Mesaj
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : sidebarView === 'addFriend' ? (
         /* Arkadaş Ekle Paneli (Sadece sol kenar penceresinde açılan sayfa) */
         <div className="flex-1 flex flex-col min-h-0 bg-[#0c0c0e] sidebar-transparent-on-glass">
           {/* Top Header: Back Arrow & Title */}
@@ -1043,38 +1207,52 @@ export const Sidebar = ({
           <div className="px-3 pt-3 pb-2 bg-[#0c0c0e] sidebar-transparent-on-glass">
         <div className="flex items-center space-x-2">
           <div className="flex-1 h-9 px-3 bg-[#141418] sidebar-search-box rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#00a884]/60 focus-within:ring-1 focus-within:ring-[#00a884]/40 transition">
-            <Search size={15} className="text-gray-400 flex-shrink-0 mr-2.5" />
+            <Search size={15} className="text-gray-400 flex-shrink-0 mr-2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Aratın veya yeni sohbet başlatın"
+              placeholder="Ara veya sohbet başlat..."
               className="w-full bg-transparent border-none outline-none text-xs text-gray-200 placeholder-gray-500"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition"
+                className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition cursor-pointer"
               >
                 <X size={14} />
               </button>
             )}
           </div>
 
+          {/* Tüm Ekli Arkadaşlar Butonu (Artı ikonunun hemen solunda) */}
+          <button
+            type="button"
+            onClick={() => setSidebarView((prev) => (prev === 'friends' ? 'chats' : 'friends'))}
+            className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${
+              sidebarView === 'friends'
+                ? 'bg-[#00a884] text-white border-[#00a884]'
+                : 'bg-[#141418] hover:bg-[#00a884] hover:text-white text-gray-300 border-white/[0.08]'
+            }`}
+            title={`Tüm Arkadaşlar (${friends?.length || 0})`}
+          >
+            <Users size={17} className={`${sidebarView === 'friends' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
+          </button>
+
           {/* Add / Plus Button (+) with Dropdown Menu */}
           <div className="relative" ref={plusMenuRef}>
             <button
               type="button"
               onClick={() => setIsPlusMenuOpen((prev) => !prev)}
-              className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border ${
-                isPlusMenuOpen || sidebarView !== 'chats'
+              className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${
+                isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup'
                   ? 'bg-[#00a884] text-white border-[#00a884]'
                   : 'bg-[#141418] hover:bg-[#00a884] hover:text-white text-gray-300 border-white/[0.08]'
               }`}
               title={`Ekle ${incomingRequestsCount > 0 ? `(${incomingRequestsCount} İstek)` : ''}`}
             >
-              <Plus size={18} className={`${isPlusMenuOpen || sidebarView !== 'chats' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
+              <Plus size={18} className={`${isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
               {incomingRequestsCount > 0 && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#141418]" />
               )}
