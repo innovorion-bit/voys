@@ -1141,38 +1141,6 @@ export const Sidebar = ({
           >
             Kişiler
           </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterTab('channels')}
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1 ${
-              filterTab === 'channels'
-                ? 'bg-[#00a884]/20 text-[#25d366] border border-[#00a884]/40 shadow-sm'
-                : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
-            }`}
-          >
-            <span>Gruplar</span>
-            {activeCallsCount > 0 && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-            )}
-          </button>
-
-          {(incomingRequestsCount > 0 || activeCallsCount > 0) && (
-            <button
-              type="button"
-              onClick={() => setFilterTab('unread')}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1 ${
-                filterTab === 'unread'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
-              }`}
-            >
-              <span>Canlı/İstek</span>
-              <span className="px-1 bg-[#25d366] text-black text-[9px] font-black rounded-full">
-                {incomingRequestsCount + activeCallsCount}
-              </span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1379,11 +1347,6 @@ export const Sidebar = ({
 
                       {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
                       <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                        {isCallActive && (
-                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30 flex-shrink-0">
-                            Canlı
-                          </span>
-                        )}
                         {lastMessageDate && (
                           <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
                             {lastMessageDate}

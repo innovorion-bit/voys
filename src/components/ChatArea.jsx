@@ -2126,7 +2126,6 @@ export const ChatArea = ({
                       SESLİ SOHBET — {callMembers?.length || 1}
                     </span>
                   </div>
-                  <Volume2 size={13} className="text-emerald-400 animate-pulse" />
                 </div>
 
                 <div className="space-y-1">
@@ -2152,7 +2151,6 @@ export const ChatArea = ({
                           </div>
                           <span className="text-[10px] text-emerald-400/80 font-medium">Seste</span>
                         </div>
-                        <Volume2 size={13} className="text-emerald-400/90 animate-pulse flex-shrink-0" />
                       </div>
                     );
                   })}
