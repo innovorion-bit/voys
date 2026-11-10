@@ -559,6 +559,15 @@ function StanduppApp() {
     loadDbChannels();
 
     const unsubChannels = dbService.subscribeToTable('channels', (payload) => {
+      if (payload?.eventType === 'DELETE' || (!payload?.new && payload?.old)) {
+        const deletedId = payload?.old?.id || payload?.id;
+        if (deletedId) {
+          const cleanId = String(deletedId).replace(/^text-/, '');
+          const targetIds = [deletedId, cleanId, `text-${cleanId}`];
+          setTextChannels((prev) => prev.filter((c) => c && !targetIds.includes(c.id)));
+        }
+        return;
+      }
       if (payload?.new) {
         const newChan = payload.new;
         if (newChan && newChan.type !== 'voice' && newChan.id !== 'home' && !newChan.is_home) {
@@ -861,8 +870,11 @@ function StanduppApp() {
   const handleDeleteChannel = useCallback(async (channelId) => {
     if (!channelId) return;
     try {
+      const cleanId = String(channelId).replace(/^text-/, '');
+      const targetIds = [channelId, cleanId, `text-${cleanId}`];
+
       setTextChannels((prev) => {
-        const next = prev.filter((c) => c.id !== channelId);
+        const next = prev.filter((c) => c && !targetIds.includes(c.id));
         try {
           localStorage.setItem('standupp_text_channels', JSON.stringify(next));
           localStorage.setItem('standupp_db_channels', JSON.stringify(next));
@@ -872,7 +884,7 @@ function StanduppApp() {
 
       await dbService.deleteChannel(channelId);
 
-      if (activeCallChannelId === channelId) {
+      if (activeCallChannelId && targetIds.includes(activeCallChannelId)) {
         disconnectVoice();
         setActiveCallChannelId(null);
       }

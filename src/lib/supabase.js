@@ -856,6 +856,8 @@ export const dbService = {
   // Delete Channel (Permanently removes channel, members, and messages)
   async deleteChannel(channelId) {
     if (!channelId) return;
+    const cleanId = String(channelId || '').replace(/^text-/, '');
+    const targetIds = Array.from(new Set([channelId, cleanId, `text-${cleanId}`]));
 
     // 1. Delete from local cache
     try {
@@ -863,26 +865,28 @@ export const dbService = {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const filtered = parsed.filter((c) => c && c.id !== channelId);
+          const filtered = parsed.filter((c) => c && !targetIds.includes(c.id));
           localStorage.setItem('standupp_text_channels', JSON.stringify(filtered));
           localStorage.setItem('standupp_db_channels', JSON.stringify(filtered));
         }
       }
-      localDb.deleteChannelMessages(channelId);
+      targetIds.forEach((id) => localDb.deleteChannelMessages(id));
+      localDb.notifyTable('channels', { eventType: 'DELETE', old: { id: channelId } });
     } catch {}
 
     // 2. Delete from Supabase cloud database
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('channel_members').delete().eq('channel_id', channelId);
-        await supabase.from('channel_messages').delete().eq('channel_id', channelId);
-        await supabase.from('messages').delete().eq('channel_id', channelId);
-        const { error } = await supabase.from('channels').delete().eq('id', channelId);
+        await supabase.from('channel_members').delete().in('channel_id', targetIds);
+        await supabase.from('channel_messages').delete().in('channel_id', targetIds);
+        const { error } = await supabase.from('channels').delete().in('id', targetIds);
         if (error) {
-          console.warn('Supabase deleteChannel error:', error);
+          console.error('Supabase deleteChannel error:', error);
+          throw error;
         }
       } catch (err) {
-        console.warn('deleteChannel exception:', err);
+        console.error('deleteChannel exception:', err);
+        throw err;
       }
     }
     return true;

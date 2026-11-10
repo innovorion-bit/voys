@@ -313,13 +313,14 @@ export const ChatArea = ({
   };
 
   const handleDeleteGroup = async () => {
-    if (!activeChannel || isDmMode) return;
+    const targetChannelId = channelData?.id || activeChannel;
+    if (!targetChannelId || isDmMode) return;
     try {
       setIsDeletingGroup(true);
       if (onDeleteChannel) {
-        await onDeleteChannel(activeChannel);
+        await onDeleteChannel(targetChannelId);
       } else {
-        await dbService.deleteChannel(activeChannel);
+        await dbService.deleteChannel(targetChannelId);
         if (onBackToChannels) onBackToChannels();
       }
       setIsConfirmDeleteGroupOpen(false);
