@@ -1,0 +1,821 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --voys-opacity: 1;
+  --voys-blur: 0px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: transparent !important;
+  color: #f3f4f6;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background-color: transparent !important;
+}
+
+/* ============================================================
+   GLASSMORPHISM & THEME STYLING
+   ============================================================ */
+
+/* Normal (100% Opacity) Mode Fallbacks */
+.voys-glass-app {
+  background-color: #101214;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voys-glass-header {
+  background-color: #08080a;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voys-glass-sidebar {
+  background-color: #0c0c0e;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-bottom-bar {
+  background-color: #0a0a0c;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-search-box {
+  background-color: #141418;
+}
+
+.voys-glass-chat {
+  background-color: #08080a;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voys-chat-header {
+  background-color: rgba(12, 12, 14, 0.95);
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voys-glass-right-panel {
+  background-color: rgba(12, 12, 14, 0.95);
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voys-chat-input-bar {
+  background-color: #08080a;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voys-chat-input-wrapper {
+  background-color: #141418;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   A'DAN Z'YE AÇIK TEMA (LIGHT THEME) STYLING
+   ============================================================ */
+html.theme-light,
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html.theme-light body,
+html.theme-light #root {
+  color: #2e3338;
+}
+
+/* Light Mode Custom Scrollbar */
+html.theme-light ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 9999px;
+}
+
+html.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Base App Shell & Frame */
+html.theme-light .voys-glass-app {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #2e3338 !important;
+}
+
+/* Top Window Header Bar */
+html.theme-light .voys-glass-header {
+  background-color: #f2f3f5 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-header span {
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-header button {
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-glass-header button:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #1e1f22 !important;
+}
+
+/* Left Sidebar */
+html.theme-light .voys-glass-sidebar {
+  background-color: #f2f3f5 !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-sidebar div[class*="bg-[#0c0c0e]"],
+html.theme-light .voys-glass-sidebar div[class*="bg-[#0a0a0c]"] {
+  background-color: transparent !important;
+}
+
+html.theme-light .sidebar-search-box {
+  background-color: #e3e5e8 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .sidebar-search-box input {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .sidebar-search-box input::placeholder {
+  color: #747f8d !important;
+}
+
+html.theme-light .sidebar-bottom-bar {
+  background-color: #ebedef !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .sidebar-bottom-bar button {
+  color: #4f545c !important;
+}
+
+html.theme-light .sidebar-bottom-bar button:hover {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+  color: #1e1f22 !important;
+}
+
+/* Sidebar texts & items */
+html.theme-light .voys-glass-sidebar .text-white,
+html.theme-light .voys-glass-sidebar .text-gray-100,
+html.theme-light .voys-glass-sidebar .text-gray-200 {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-sidebar .text-gray-300 {
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-sidebar .text-gray-400,
+html.theme-light .voys-glass-sidebar .text-gray-500 {
+  color: #5c6370 !important;
+}
+
+html.theme-light .voys-glass-sidebar .border-white\/5,
+html.theme-light .voys-glass-sidebar .border-white\/10,
+html.theme-light .voys-glass-sidebar .border-white\/\[0\.06\],
+html.theme-light .voys-glass-sidebar .border-white\/\[0\.08\] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-sidebar .hover\:bg-white\/5:hover,
+html.theme-light .voys-glass-sidebar [class*="hover:bg-[#121215]"]:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.theme-light .voys-glass-sidebar .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-glass-sidebar .bg-white\/10,
+html.theme-light .voys-glass-sidebar [class*="bg-[#18181f]"] {
+  background-color: rgba(88, 101, 242, 0.12) !important;
+  color: #5865F2 !important;
+}
+
+/* Main Chat Area */
+html.theme-light .voys-glass-chat {
+  background-color: #ffffff !important;
+}
+
+html.theme-light .voys-chat-header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-chat-header .text-white,
+html.theme-light .voys-chat-header .text-gray-200,
+html.theme-light .voys-chat-header .text-gray-300 {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-chat-header .text-gray-400,
+html.theme-light .voys-chat-header .text-gray-500 {
+  color: #5c6370 !important;
+}
+
+html.theme-light .voys-chat-header button {
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-chat-header button:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #1e1f22 !important;
+}
+
+/* Chat Messages */
+html.theme-light .voys-glass-chat .text-white,
+html.theme-light .voys-glass-chat .text-gray-100,
+html.theme-light .voys-glass-chat .text-gray-200 {
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-chat .font-semibold.text-gray-200,
+html.theme-light .voys-glass-chat .font-bold.text-white {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-chat .text-gray-400,
+html.theme-light .voys-glass-chat .text-gray-500 {
+  color: #747f8d !important;
+}
+
+html.theme-light .voys-glass-chat .hover\:bg-white\/\[0\.02\]:hover {
+  background-color: rgba(0, 0, 0, 0.025) !important;
+}
+
+html.theme-light .voys-glass-chat .border-white\/5,
+html.theme-light .voys-glass-chat .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-chat .bg-\[\#0e0e12\],
+html.theme-light .voys-glass-chat .bg-\[\#08080a\] {
+  background-color: #ffffff !important;
+}
+
+html.theme-light .voys-glass-chat .bg-\[\#121216\] {
+  background-color: #f2f3f5 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-chat .bg-white\/\[0\.03\],
+html.theme-light .voys-glass-chat .bg-white\/5 {
+  background-color: #f8f9fa !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Message Hover Actions Toolbar */
+html.theme-light .voys-glass-chat .bg-\[\#141418\] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-chat .bg-\[\#141418\] button {
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-glass-chat .bg-\[\#141418\] button:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #1e1f22 !important;
+}
+
+/* Chat Input Bar & Wrapper */
+html.theme-light .voys-chat-input-bar {
+  background-color: #ffffff !important;
+}
+
+html.theme-light .voys-chat-input-wrapper {
+  background-color: #ebedef !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: none !important;
+}
+
+html.theme-light .voys-chat-input-wrapper input,
+html.theme-light .voys-chat-input-wrapper textarea {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-chat-input-wrapper input::placeholder,
+html.theme-light .voys-chat-input-wrapper textarea::placeholder {
+  color: #747f8d !important;
+}
+
+html.theme-light .voys-chat-input-wrapper button {
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-chat-input-wrapper button:hover {
+  color: #1e1f22 !important;
+}
+
+/* Right Member Panel & Kişi Ekle View */
+html.theme-light .voys-glass-right-panel {
+  background-color: #f2f3f5 !important;
+  border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-right-panel .text-white,
+html.theme-light .voys-glass-right-panel .text-gray-200 {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-right-panel .text-gray-400,
+html.theme-light .voys-glass-right-panel .text-gray-500 {
+  color: #5c6370 !important;
+}
+
+html.theme-light .voys-glass-right-panel input {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-right-panel input::placeholder {
+  color: #747f8d !important;
+}
+
+html.theme-light .voys-glass-right-panel .bg-white\/\[0\.02\] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-right-panel .bg-white\/\[0\.02\]:hover {
+  background-color: #f8f9fa !important;
+}
+
+html.theme-light .voys-glass-right-panel .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.theme-light .voys-glass-right-panel .bg-white\/5 {
+  background-color: #e3e5e8 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-right-panel .bg-white\/5:hover {
+  background-color: #d8dadf !important;
+}
+
+/* Settings Modal */
+html.theme-light .voys-glass-settings {
+  background-color: #ffffff !important;
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-settings-sidebar {
+  background-color: #f2f3f5 !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings div[class*="bg-[#08080a]"] {
+  background-color: #ffffff !important;
+}
+
+html.theme-light .voys-glass-settings .text-white,
+html.theme-light .voys-glass-settings h2,
+html.theme-light .voys-glass-settings h3 {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-settings .text-gray-200,
+html.theme-light .voys-glass-settings .text-gray-300 {
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-settings .text-gray-400,
+html.theme-light .voys-glass-settings .text-gray-500 {
+  color: #5c6370 !important;
+}
+
+html.theme-light .voys-glass-settings .border-white\/5,
+html.theme-light .voys-glass-settings .border-white\/10,
+html.theme-light .voys-glass-settings .border-white\/\[0\.08\] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings .bg-\[\#111214\],
+html.theme-light .voys-glass-settings .bg-\[\#0e0e12\],
+html.theme-light .voys-glass-settings .bg-\[\#141418\],
+html.theme-light .voys-glass-settings .bg-\[\#121318\],
+html.theme-light .voys-glass-settings .bg-\[\#16171b\],
+html.theme-light .voys-glass-settings .bg-\[\#16171c\] {
+  background-color: #f8f9fa !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings input[type="text"],
+html.theme-light .voys-glass-settings input[type="password"],
+html.theme-light .voys-glass-settings select {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-settings input[type="text"]::placeholder,
+html.theme-light .voys-glass-settings input[type="password"]::placeholder {
+  color: #747f8d !important;
+}
+
+html.theme-light .voys-glass-settings-sidebar button {
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-glass-settings-sidebar button:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-settings-sidebar button.bg-indigo-600\/25,
+html.theme-light .voys-glass-settings-sidebar button.bg-indigo-600\/20 {
+  background-color: rgba(88, 101, 242, 0.12) !important;
+  color: #5865F2 !important;
+  border-color: rgba(88, 101, 242, 0.25) !important;
+}
+
+html.theme-light .voys-glass-settings .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-glass-settings .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-settings input[type="range"].voice-slider {
+  background: #e3e5e8 !important;
+}
+
+html.theme-light .voys-glass-settings input[type="range"].voice-slider::-webkit-slider-thumb {
+  background: #5865f2 !important;
+}
+
+/* Modals & Dialogs (Create Channel, Add Friend, Logout Confirm, Peer Connect, Delete Chat) */
+html.theme-light .bg-black\/75,
+html.theme-light .bg-black\/80,
+html.theme-light .bg-black\/85 {
+  background-color: rgba(0, 0, 0, 0.45) !important;
+}
+
+html.theme-light .bg-\[\#121216\],
+html.theme-light .bg-\[\#101214\],
+html.theme-light .bg-\[\#141418\] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #1e1f22 !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.theme-light .bg-\[\#121216\] h2,
+html.theme-light .bg-\[\#121216\] h3,
+html.theme-light .bg-\[\#101214\] h2,
+html.theme-light .bg-\[\#101214\] h3 {
+  color: #1e1f22 !important;
+}
+
+html.theme-light .bg-\[\#121216\] p,
+html.theme-light .bg-\[\#101214\] p {
+  color: #5c6370 !important;
+}
+
+html.theme-light .bg-\[\#121216\] input,
+html.theme-light .bg-\[\#101214\] input,
+html.theme-light .bg-\[\#121216\] textarea,
+html.theme-light .bg-\[\#101214\] textarea {
+  background-color: #f2f3f5 !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .bg-\[\#121216\] input::placeholder,
+html.theme-light .bg-\[\#101214\] input::placeholder {
+  color: #747f8d !important;
+}
+
+html.theme-light .bg-\[\#121216\] .bg-white\/5,
+html.theme-light .bg-\[\#101214\] .bg-white\/5 {
+  background-color: #e3e5e8 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #2e3338 !important;
+}
+
+/* Popovers, Dropdowns & Menus */
+html.theme-light .bg-\[\#16171b\],
+html.theme-light .bg-\[\#16171b\]\/95,
+html.theme-light .bg-\[\#1a1b24\] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.theme-light .bg-\[\#16171b\] button:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .bg-\[\#16171b\] button span {
+  color: #2e3338 !important;
+}
+
+/* Emoji Picker Container in Light Mode */
+html.theme-light .emoji-picker-container {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Light Theme Frosted Glass (When Opacity < 100%) */
+html.glass-mode.theme-light .voys-glass-app {
+  background-color: rgba(255, 255, 255, var(--voys-opacity, 0.8)) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(var(--voys-blur, 16px)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--voys-blur, 16px)) saturate(180%);
+}
+
+html.glass-mode.theme-light .voys-glass-header {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.glass-mode.theme-light .voys-glass-sidebar {
+  background-color: rgba(242, 243, 245, 0.65) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.glass-mode.theme-light .sidebar-bottom-bar {
+  background-color: rgba(235, 237, 239, 0.75) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.glass-mode.theme-light .voys-glass-chat {
+  background-color: transparent !important;
+}
+
+html.glass-mode.theme-light .voys-chat-header {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.glass-mode.theme-light .voys-glass-right-panel {
+  background-color: rgba(242, 243, 245, 0.65) !important;
+  border-left: 1px solid rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.glass-mode.theme-light .voys-chat-input-bar {
+  background-color: transparent !important;
+}
+
+html.glass-mode.theme-light .voys-chat-input-wrapper {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.glass-mode.theme-light .voys-glass-settings {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+html.glass-mode.theme-light .voys-glass-settings-sidebar {
+  background-color: rgba(242, 243, 245, 0.7) !important;
+}
+
+/* ============================================================
+   GLASS MODE (Active when Opacity < 100%)
+   ============================================================ */
+html.glass-mode body,
+html.glass-mode #root {
+  background-color: transparent !important;
+}
+
+html.glass-mode .voys-glass-app {
+  background-color: rgba(12, 13, 16, var(--voys-opacity, 0.75)) !important;
+  backdrop-filter: blur(var(--voys-blur, 16px)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--voys-blur, 16px)) saturate(180%);
+}
+
+html.glass-mode .voys-glass-header {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.glass-mode .voys-glass-sidebar {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Ensure inner sidebar containers and headers don't paint opaque backgrounds over the glass */
+html.glass-mode .voys-glass-sidebar div[class*="bg-[#0c0c0e]"],
+html.glass-mode .voys-glass-sidebar div[class*="bg-[#0a0a0c]"],
+html.glass-mode .sidebar-transparent-on-glass {
+  background-color: transparent !important;
+}
+
+html.glass-mode .voys-glass-sidebar [class*="bg-[#18181f]"] {
+  background-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+html.glass-mode .voys-glass-sidebar [class*="hover:bg-[#121215]"]:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.glass-mode .sidebar-bottom-bar {
+  background-color: rgba(0, 0, 0, 0.28) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.glass-mode .sidebar-search-box {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html.glass-mode .voys-glass-chat {
+  background-color: transparent !important;
+}
+
+html.glass-mode .voys-chat-header {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.glass-mode .voys-glass-right-panel {
+  background-color: rgba(0, 0, 0, 0.22) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.glass-mode .voys-chat-input-bar {
+  background-color: transparent !important;
+}
+
+html.glass-mode .voys-chat-input-wrapper {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+html.glass-mode .voys-glass-settings {
+  background-color: rgba(14, 15, 20, 0.85) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+html.glass-mode .voys-glass-settings-sidebar {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Custom Voys dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Custom animations & glow */
+@keyframes voicePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes speakingBorder {
+  0%, 100% {
+    border-color: rgba(34, 197, 94, 0.9);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.35);
+  }
+  50% {
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+  }
+}
+
+.speaking-ring {
+  animation: voicePulse 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+.speaking-card-glow {
+  animation: speakingBorder 2s infinite ease-in-out;
+}
+
+/* Glass panel background */
+.glass-panel {
+  background: rgba(16, 16, 20, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Floating Capsule Bar */
+.floating-capsule {
+  background: rgba(18, 18, 22, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Voice & Audio Slider in Settings */
+input[type="range"].voice-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+  background: #232428;
+}
+
+input[type="range"].voice-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"].voice-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"].voice-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"].voice-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}

@@ -1,0 +1,1150 @@
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { WindowHeader } from './components/WindowHeader';
+import { Sidebar } from './components/Sidebar';
+import { ChatArea } from './components/ChatArea';
+import { CreateChannelModal } from './components/CreateChannelModal';
+import { AddFriendModal } from './components/AddFriendModal';
+import { AddMemberModal } from './components/AddMemberModal';
+import { PeerConnectModal } from './components/PeerConnectModal';
+import { SettingsModal } from './components/SettingsModal';
+import { LogoutConfirmModal } from './components/LogoutConfirmModal';
+import { RemoteAudioPlayers } from './components/RemoteAudioPlayers';
+import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
+import { AuthPage } from './components/AuthPage';
+import { useVoiceWebRTC } from './hooks/useVoiceWebRTC';
+import { useRealtimeChat } from './hooks/useRealtimeChat';
+import { useGameDetection } from './hooks/useGameDetection';
+import { SettingsProvider } from './context/SettingsContext';
+import { useSettings } from './context/useSettings';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/useAuth';
+import { chatService } from './services/chatService';
+import { dbService, getDmRoomId } from './lib/supabase';
+import { sounds } from './utils/audio';
+
+function StanduppApp() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Authentication Context
+  const { user, logout } = useAuth();
+
+  // Settings & Profile Context
+  const {
+    profile,
+    updateProfile,
+    selectedAudioOutput,
+    outputVolume,
+    openSettings,
+    inputMode,
+    isPttActive,
+  } = useSettings();
+
+  // Automatic Game Detection (Rich Presence via Tauri)
+  useGameDetection({
+    currentGame: profile?.game,
+    updateProfile,
+    enabled: Boolean(user),
+  });
+
+  const handleUpdateStatus = useCallback(async (newStatus) => {
+    try {
+      await updateProfile({
+        status: newStatus,
+        isAway: newStatus === 'idle',
+      });
+      const labels = {
+        online: 'Çevrimiçi',
+        idle: 'Boşta',
+        dnd: 'Rahatsız Etmeyin',
+        invisible: 'Görünmez',
+      };
+      toast.success(`Durum güncellendi: ${labels[newStatus] || newStatus}`);
+    } catch (err) {
+      console.warn('Status update error:', err);
+    }
+  }, [updateProfile]);
+
+  // Merged authenticated user profile
+  const activeUserProfile = useMemo(() => {
+    if (!user) return profile;
+    const rawUsername = user.username || user.user_metadata?.username || profile.username || (user.email ? user.email.split('@')[0] : 'user');
+    const rawDisplayName = user.display_name || user.user_metadata?.display_name || profile.name || rawUsername;
+    const rawTag = user.tag || user.user_metadata?.tag || profile.tag || '1001';
+
+    // Strictly own avatar from user profile; prioritize newest avatar from profile, then user
+    const resolvedAvatar = (user.id === profile.id)
+      ? (profile.avatar_url || profile.avatar || user.avatar_url || user.avatar || '')
+      : (user.avatar_url || user.avatar || profile.avatar_url || profile.avatar || '');
+
+    return {
+      ...profile,
+      id: user.id,
+      name: rawDisplayName,
+      display_name: rawDisplayName,
+      username: rawUsername,
+      tag: rawTag,
+      avatar: resolvedAvatar || '',
+      avatar_url: resolvedAvatar || '',
+      email: user.email,
+    };
+  }, [profile, user]);
+
+  // Determine if on Direct Messages (DM) route: /dm/:userId or /channel/:channelId
+  const isDm = location.pathname.startsWith('/dm/');
+  const pathParts = useMemo(() => location.pathname.split('/'), [location.pathname]);
+  const activeDmUserId = isDm ? pathParts[2] : null;
+
+  // Channels state with database fetch & localStorage persistence (only user-created channels)
+  const [textChannels, setTextChannels] = useState(() => {
+    try {
+      const saved = localStorage.getItem('standupp_db_channels') || localStorage.getItem('standupp_text_channels');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) 
+        ? parsed.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home) 
+        : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isChannelsLoading, setIsChannelsLoading] = useState(() => textChannels.length === 0);
+
+  // Resiliently match active channel from textChannels
+  const matchedChannel = useMemo(() => {
+    if (isDm || !pathParts[2] || pathParts[2] === 'home') return null;
+    const target = pathParts[2];
+    const cleanTarget = String(target).toLowerCase().trim();
+    const strippedTarget = cleanTarget.replace(/^(text-|voice-)/, '');
+
+    return (
+      textChannels.find((c) => {
+        if (!c) return false;
+        const cleanId = String(c.id || '').toLowerCase().trim();
+        const strippedId = cleanId.replace(/^(text-|voice-)/, '');
+        const cleanName = String(c.name || '').toLowerCase().trim();
+
+        return (
+          cleanId === cleanTarget ||
+          strippedId === strippedTarget ||
+          cleanId === `text-${strippedTarget}` ||
+          `text-${cleanId}` === cleanTarget ||
+          cleanName === cleanTarget ||
+          cleanName === strippedTarget
+        );
+      }) || null
+    );
+  }, [isDm, pathParts, textChannels]);
+
+  const activeChannel = useMemo(() => {
+    if (isDm && activeDmUserId) {
+      return getDmRoomId(activeUserProfile?.id, activeDmUserId);
+    }
+    if (pathParts[1] === 'channel' && pathParts[2] && pathParts[2] !== 'home') {
+      return matchedChannel ? matchedChannel.id : pathParts[2];
+    }
+    return null;
+  }, [isDm, activeDmUserId, activeUserProfile?.id, pathParts, matchedChannel]);
+
+  const activeChannelRef = useRef(activeChannel);
+  useEffect(() => {
+    activeChannelRef.current = activeChannel;
+  }, [activeChannel]);
+
+  const activeDmUserIdRef = useRef(activeDmUserId);
+  useEffect(() => {
+    activeDmUserIdRef.current = activeDmUserId;
+  }, [activeDmUserId]);
+
+  // Real-time Presences Map (userId -> presenceData)
+  const [presences, setPresences] = useState({});
+
+  // Listen to realtime presence updates via Socket.IO & BroadcastChannel
+  useEffect(() => {
+    const handlePresence = (data) => {
+      if (!data) return;
+      const key = data.userId || data.id;
+      if (!key) return;
+      setPresences((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          ...data,
+          timestamp: data.timestamp || Date.now(),
+        },
+      }));
+    };
+
+    const handleAllPresences = (list) => {
+      if (!Array.isArray(list)) return;
+      setPresences((prev) => {
+        const next = { ...prev };
+        list.forEach((item) => {
+          const key = item.userId || item.id;
+          if (key) {
+            next[key] = { ...next[key], ...item, timestamp: item.timestamp || Date.now() };
+          }
+        });
+        return next;
+      });
+    };
+
+    chatService.on('presence', handlePresence);
+    chatService.on('all_presences', handleAllPresences);
+    chatService.requestPresences?.();
+
+    return () => {
+      chatService.off('presence', handlePresence);
+      chatService.off('all_presences', handleAllPresences);
+    };
+  }, []);
+
+  // Periodic presence heartbeat so other clients know we are active
+  useEffect(() => {
+    if (!activeUserProfile?.id || activeUserProfile.id === 'you') return;
+    const interval = setInterval(() => {
+      chatService.updatePresence(activeUserProfile);
+    }, 25000);
+    return () => clearInterval(interval);
+  }, [activeUserProfile]);
+
+  // Friendships state: accepted friends, incoming requests, outgoing requests
+  const [friendshipsData, setFriendshipsData] = useState({
+    friends: [],
+    incoming: [],
+    outgoing: [],
+  });
+
+  // Active Channel Members state
+  const [channelMembers, setChannelMembers] = useState([]);
+
+  // Friend & Member Modal Open States
+  const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  const currentUserId = activeUserProfile?.id;
+
+  // Load friendships callback for modals
+  const loadFriendships = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const data = await dbService.fetchFriendships(currentUserId);
+      if (data && Array.isArray(data.friends)) {
+        setFriendshipsData(data);
+      }
+    } catch (err) {
+      console.warn('Friendships fetch warning:', err);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchAsync = async () => {
+      if (!currentUserId) return;
+      try {
+        const data = await dbService.fetchFriendships(currentUserId);
+        if (!cancelled && data && Array.isArray(data.friends)) {
+          setFriendshipsData(data);
+        }
+      } catch (err) {
+        console.warn('Friendships fetch warning:', err);
+      }
+    };
+
+    fetchAsync();
+
+    const unsubFriendships = dbService.subscribeToTable('friendships', () => {
+      fetchAsync();
+    });
+    const unsubProfiles = dbService.subscribeToTable('profiles', () => {
+      fetchAsync();
+    });
+    const unsubDms = dbService.subscribeToTable('direct_messages', (payload) => {
+      if (
+        payload?.new?.room_id === 'dm-friendship-requests' ||
+        payload?.old?.room_id === 'dm-friendship-requests'
+      ) {
+        fetchAsync();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubFriendships?.();
+      unsubProfiles?.();
+      unsubDms?.();
+    };
+  }, [currentUserId, navigate]);
+
+  // Load Channel Members callback for modals
+  const loadChannelMembers = useCallback(async () => {
+    if (!activeChannel || isDm) {
+      setChannelMembers([]);
+      return;
+    }
+    try {
+      const members = await dbService.fetchChannelMembers(activeChannel);
+      if (Array.isArray(members)) {
+        setChannelMembers(members);
+      }
+    } catch (err) {
+      console.warn('Channel members fetch warning:', err);
+    }
+  }, [activeChannel, isDm]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchMembers = async () => {
+      if (!activeChannel || isDm) {
+        if (!cancelled) setChannelMembers([]);
+        return;
+      }
+      try {
+        const members = await dbService.fetchChannelMembers(activeChannel);
+        if (!cancelled && Array.isArray(members)) {
+          setChannelMembers(members);
+        }
+      } catch (err) {
+        console.warn('Channel members fetch warning:', err);
+      }
+    };
+
+    fetchMembers();
+
+    const unsubChannelMembers = dbService.subscribeToTable('channel_members', () => {
+      fetchMembers();
+    });
+    const unsubProfilesChannel = dbService.subscribeToTable('profiles', () => {
+      fetchMembers();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubChannelMembers?.();
+      unsubProfilesChannel?.();
+    };
+  }, [activeChannel, isDm]);
+
+  // Compute live channel members with real-time presences merged
+  const liveChannelMembers = useMemo(() => {
+    return (channelMembers || []).map((m) => {
+      const memberId = m.user_id || m.id;
+      const isSelf = memberId === activeUserProfile?.id;
+      const p = presences[memberId];
+      const profile = m.profiles || {};
+      const isOnline = isSelf
+        ? true
+        : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
+      const status = isSelf
+        ? (activeUserProfile?.status || 'online')
+        : (isOnline ? (p?.status || 'online') : 'offline');
+
+      return {
+        id: memberId,
+        user_id: memberId,
+        name: isSelf
+          ? activeUserProfile?.name
+          : (p?.name || profile.display_name || profile.username || m.name || 'Kullanıcı'),
+        avatar: isSelf
+          ? (activeUserProfile?.avatar || activeUserProfile?.avatar_url)
+          : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
+        game: isOnline ? (p?.game !== undefined ? p.game : (profile.game || m.game)) : null,
+        substatus: isOnline ? (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus)) : '',
+        status,
+        isOnline,
+        role: m.role || 'member',
+      };
+    });
+  }, [channelMembers, presences, activeUserProfile]);
+
+  // Fetch recipient profile for DM if not in friends list yet
+  const [dmUserProfile, setDmUserProfile] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isDm || !activeDmUserId) return;
+
+    dbService.fetchUserProfile(activeDmUserId).then((prof) => {
+      if (!cancelled && prof) {
+        setDmUserProfile(prof);
+      }
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDm, activeDmUserId]);
+
+  // Compute dynamic friends list with real-time presences merged
+  const friends = (friendshipsData.friends || []).map((f) => {
+    const p = presences[f.id];
+    const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
+    const fallbackAv = (dmUserProfile?.id === f.id && (dmUserProfile.avatar_url || dmUserProfile.avatar)) || null;
+    const fAvatar = (f.avatar || f.avatar_url || '').trim?.() || (f.avatar || f.avatar_url || '');
+    const resolvedAv = pAvatar || fallbackAv || fAvatar || '';
+
+    // A friend is strictly online ONLY if active presence is confirmed and not offline/invisible
+    const isFriendOnline = Boolean(
+      p &&
+      p.status &&
+      p.status !== 'offline' &&
+      p.status !== 'invisible' &&
+      p.isOnline !== false
+    );
+
+    if (!isFriendOnline) {
+      return {
+        ...f,
+        avatar: resolvedAv,
+        avatar_url: resolvedAv,
+        status: 'offline',
+        isOnline: false,
+        isAway: false,
+        game: null,
+        substatus: '',
+      };
+    }
+
+    return {
+      ...f,
+      name: p.name || f.name,
+      avatar: resolvedAv,
+      avatar_url: resolvedAv,
+      game: p.game || null,
+      substatus: p.substatus || f.substatus || '',
+      status: p.status || 'online',
+      isAway: p.status === 'idle' || !!p.isAway,
+      isOnline: true,
+    };
+  });
+
+  const activeDmFriend = useMemo(() => {
+    if (!isDm || !activeDmUserId) return null;
+    const found = friends.find((f) => f.id === activeDmUserId);
+    const fallbackProfile = dmUserProfile?.id === activeDmUserId ? dmUserProfile : null;
+    const p = presences[activeDmUserId];
+    const isTargetOnline = Boolean(
+      p &&
+      p.status &&
+      p.status !== 'offline' &&
+      p.status !== 'invisible' &&
+      p.isOnline !== false
+    );
+
+    const base = found || fallbackProfile || {
+      id: activeDmUserId,
+      name: activeDmUserId,
+      game: null,
+      substatus: '',
+      status: 'offline',
+      isOnline: false,
+    };
+
+    const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
+    const finalAvatar = pAvatar || base.avatar || base.avatar_url || fallbackProfile?.avatar || fallbackProfile?.avatar_url || '';
+
+    return {
+      ...base,
+      avatar: finalAvatar,
+      avatar_url: finalAvatar,
+      status: isTargetOnline ? (p?.status || 'online') : 'offline',
+      isOnline: isTargetOnline,
+      isAway: isTargetOnline && (p?.status === 'idle' || !!p?.isAway),
+      game: isTargetOnline ? (p?.game || null) : null,
+      substatus: isTargetOnline ? (p?.substatus || base.substatus || '') : '',
+    };
+  }, [isDm, activeDmUserId, friends, presences, dmUserProfile]);
+
+  // WebRTC Mesh Voice Hook
+  const {
+    isConnected,
+    isMuted,
+    isDeafened,
+    isSpeaking,
+    isScreenSharing,
+    activeScreenShare,
+    myPeerId,
+    remotePeers,
+    peerLatencies,
+    myPing,
+    audioError,
+    connectVoice,
+    disconnectVoice,
+    toggleMute,
+    setMuted,
+    toggleDeafen,
+    callPeer,
+    switchVoiceRoom,
+    stopScreenShare,
+    toggleScreenShare,
+  } = useVoiceWebRTC();
+
+  // Active In-Chat Voice Calls State across all channels & DMs (Steam-style joinable session)
+  // Format: { [channelId]: { active: boolean, stage: 'active', count: number, initiator: any, members: any[] } }
+  const [channelCalls, setChannelCalls] = useState({});
+  const [activeCallChannelId, setActiveCallChannelId] = useState(null);
+
+  // Sync real-time in-chat voice calls (Steam-style joinable voice sessions)
+  useEffect(() => {
+    const handleCallStatus = (data) => {
+      if (!data?.channelId) return;
+
+      // Voice chat session ended or all participants left
+      if (!data.active || (data.count === 0 && (!data.members || data.members.length === 0))) {
+        setChannelCalls((prev) => {
+          const next = { ...prev };
+          delete next[data.channelId];
+          return next;
+        });
+
+        if (activeCallChannelId === data.channelId) {
+          disconnectVoice();
+          setActiveCallChannelId(null);
+        }
+        return;
+      }
+
+      // Voice chat is actively joinable
+      setChannelCalls((prev) => ({
+        ...prev,
+        [data.channelId]: {
+          active: true,
+          stage: 'active',
+          channelId: data.channelId,
+          initiator: data.initiator,
+          targetUserId: data.targetUserId,
+          targetUser: data.targetUser,
+          count: data.count || (data.members?.length) || 1,
+          members: data.members || (data.initiator ? [data.initiator] : []),
+        },
+      }));
+    };
+
+    chatService.on('call_status', handleCallStatus);
+    return () => {
+      chatService.off('call_status', handleCallStatus);
+    };
+  }, [activeUserProfile?.id, activeCallChannelId, disconnectVoice]);
+
+  // Fetch channels from database and subscribe to realtime changes
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDbChannels() {
+      try {
+        const dbChans = await dbService.fetchChannels();
+        if (!cancelled && Array.isArray(dbChans)) {
+          // Keep only user-created channels (no home / no voice-sesli-sohbet)
+          const texts = dbChans.filter((c) => c && c.type !== 'voice' && c.id !== 'home' && !c.is_home);
+          setTextChannels(texts);
+          try {
+            localStorage.setItem('standupp_text_channels', JSON.stringify(texts));
+            localStorage.setItem('standupp_db_channels', JSON.stringify(texts));
+          } catch {}
+        }
+      } catch (err) {
+        console.warn('Channel fetch warning:', err);
+      } finally {
+        if (!cancelled) {
+          setIsChannelsLoading(false);
+        }
+      }
+    }
+
+    loadDbChannels();
+
+    const unsubChannels = dbService.subscribeToTable('channels', (payload) => {
+      if (payload?.new) {
+        const newChan = payload.new;
+        if (newChan && newChan.type !== 'voice' && newChan.id !== 'home' && !newChan.is_home) {
+          setTextChannels((prev) => {
+            const exists = prev.some((c) => c.id === newChan.id);
+            if (exists) {
+              return prev.map((c) => (c.id === newChan.id ? { ...c, ...newChan } : c));
+            }
+            return [...prev, newChan];
+          });
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubChannels?.();
+    };
+  }, []);
+
+  // Save channels to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('standupp_text_channels', JSON.stringify(textChannels));
+    } catch {}
+  }, [textChannels]);
+
+  // Monitor network connection (online / offline)
+  useEffect(() => {
+    const handleOnline = () => {
+      toast.success('Ağ Bağlantısı Kuruldu', {
+        description: 'Tekrar çevrimiçi oldunuz.',
+      });
+    };
+    const handleOffline = () => {
+      toast.error('Bağlantı Kesildi!', {
+        description: 'İnternet veya yerel ağ bağlantınız koptu.',
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Push-to-Talk (PTT) Synchronization with WebRTC Audio Stream
+  useEffect(() => {
+    if (inputMode === 'ptt' && isConnected) {
+      if (isPttActive) {
+        if (isMuted && !isDeafened) {
+          setMuted(false, true);
+        }
+      } else {
+        if (!isMuted) {
+          setMuted(true, true);
+        }
+      }
+    }
+  }, [inputMode, isConnected, isPttActive, isMuted, isDeafened, setMuted]);
+
+  // Initial mute state when toggling between PTT and Open Mic
+  useEffect(() => {
+    if (isConnected) {
+      if (inputMode === 'ptt') {
+        setMuted(true);
+      } else {
+        setMuted(false);
+      }
+    }
+  }, [inputMode, isConnected, setMuted]);
+
+  // Isolated Realtime Chat Hook for the active channel or DM room
+  const {
+    messages,
+    sendMessage,
+    toggleReaction,
+    setTyping,
+    typingUsers,
+    clearMessages,
+  } = useRealtimeChat(activeChannel, activeUserProfile);
+
+  // Automatically send read receipt when viewing a DM
+  useEffect(() => {
+    if (isDm && activeChannel && activeDmFriend?.id && activeUserProfile?.id) {
+      chatService.sendReadReceipt(activeChannel, activeUserProfile.id);
+    }
+  }, [isDm, activeChannel, activeDmFriend?.id, activeUserProfile?.id, messages?.length]);
+
+  const handleClearActiveChat = useCallback(async () => {
+    try {
+      if (isDm && activeDmFriend?.id && activeUserProfile?.id) {
+        const roomId = getDmRoomId(activeUserProfile.id, activeDmFriend.id);
+        await dbService.deleteChatMessages(roomId, null);
+      } else if (activeChannel) {
+        await dbService.deleteChatMessages(null, activeChannel);
+      }
+      clearMessages?.(activeChannel);
+      try {
+        localStorage.removeItem('standupp_cached_messages');
+      } catch {}
+    } catch (err) {
+      console.error('handleClearActiveChat error:', err);
+      throw err;
+    }
+  }, [isDm, activeDmFriend, activeUserProfile, activeChannel, clearMessages]);
+
+  // UI State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [_isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+
+
+  // Modals State
+  const [modalOpen, setModalOpen] = useState(false);
+  const [peerModalOpen, setPeerModalOpen] = useState(false);
+
+  // Steam-style in-chat voice call start / join (instantly connected, no ringing)
+  const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
+    try {
+      sounds.playJoin();
+      const callRoom = `standupp-call-${targetChannelId}`;
+      switchVoiceRoom(callRoom);
+      await connectVoice(null, activeUserProfile.name);
+      setActiveCallChannelId(targetChannelId);
+
+      const targetFriend = isDm ? activeDmFriend : null;
+
+      setChannelCalls((prev) => {
+        const currentCall = prev[targetChannelId];
+        const updatedMembers = [
+          ...(currentCall?.members || []).filter((m) => m.id !== activeUserProfile.id),
+          activeUserProfile,
+        ];
+        const updated = {
+          ...prev,
+          [targetChannelId]: {
+            channelId: targetChannelId,
+            active: true,
+            stage: 'active',
+            initiator: currentCall?.initiator || activeUserProfile,
+            targetUserId: isDm ? activeDmUserId : null,
+            targetUser: targetFriend,
+            count: updatedMembers.length,
+            members: updatedMembers,
+          },
+        };
+        chatService.sendCallUpdate(updated[targetChannelId]);
+        return updated;
+      });
+    } catch (err) {
+      console.warn('Call start error:', err);
+    }
+  }, [activeChannel, switchVoiceRoom, connectVoice, activeUserProfile, isDm, activeDmUserId, activeDmFriend]);
+
+  // Handle in-chat voice call leave / disconnect
+  const handleLeaveCall = useCallback(() => {
+    sounds.playLeave();
+    const leavingChan = activeCallChannelId || activeChannel;
+    disconnectVoice();
+    setActiveCallChannelId(null);
+
+    setChannelCalls((prev) => {
+      const currentCall = prev[leavingChan];
+      const remainingMembers = (currentCall?.members || []).filter(
+        (m) => m.id !== activeUserProfile.id
+      );
+      if (remainingMembers.length === 0) {
+        const next = { ...prev };
+        delete next[leavingChan];
+        chatService.sendCallUpdate({
+          channelId: leavingChan,
+          active: false,
+          stage: 'ended',
+          count: 0,
+          members: [],
+        });
+        return next;
+      } else {
+        const updated = {
+          ...currentCall,
+          active: true,
+          stage: 'active',
+          count: remainingMembers.length,
+          members: remainingMembers,
+        };
+        chatService.sendCallUpdate(updated);
+        return {
+          ...prev,
+          [leavingChan]: updated,
+        };
+      }
+    });
+  }, [activeCallChannelId, activeChannel, disconnectVoice, activeUserProfile]);
+
+  // Logout handler from within the application
+  const handleLogout = useCallback(async () => {
+    setIsLogoutModalOpen(false);
+    if (activeCallChannelId && isConnected) {
+      handleLeaveCall();
+    }
+    await logout();
+  }, [activeCallChannelId, isConnected, handleLeaveCall, logout]);
+
+  // Voice Members State with Current Authenticated User & Mesh Peers
+  const voiceMembers = [
+    ...(isConnected
+      ? [
+          {
+            id: activeUserProfile.id,
+            name: activeUserProfile.name,
+            avatar: activeUserProfile.avatar || null,
+            avatarBg: '#3d9921',
+            isSpeaking: isSpeaking,
+            status: activeUserProfile.status || 'online',
+            game: activeUserProfile.game || '',
+            substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
+            statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
+            isAway: activeUserProfile.status === 'idle',
+            ping: myPing || 24,
+          },
+        ]
+      : []),
+    ...remotePeers.map(({ peerId, isSpeaking: peerSpeaking }) => ({
+      id: peerId,
+      peerId: peerId,
+      name: `Peer-${peerId.slice(0, 5)}`,
+      avatar: null,
+      avatarBg: '#1e3a5f',
+      isSpeaking: Boolean(peerSpeaking),
+      status: 'online',
+      game: '',
+      substatus: 'P2P Mesh Voice',
+      statusColor: 'text-[#57cbde]',
+      isAway: false,
+      ping: peerLatencies[peerId] || myPing || 28,
+    })),
+  ];
+
+  // Channel Creation Handler with database persistence
+  const handleCreateChannel = async ({ name, members = [] }) => {
+    const slug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9ığüşöçİĞÜŞÖÇ]/gi, '-')
+      .replace(/-+/g, '-');
+    
+    const channelId = `text-${slug || Date.now().toString(36)}`;
+    const newChan = { 
+      id: channelId, 
+      name, 
+      type: 'text', 
+      is_home: false,
+      created_by: user?.id || null 
+    };
+
+    setTextChannels((prev) => [...prev, newChan]);
+
+    // Persist to database
+    try {
+      await dbService.createChannel(newChan);
+      if (user?.id) {
+        await dbService.addChannelMember(channelId, user.id, 'admin').catch(() => {});
+      }
+      if (Array.isArray(members) && members.length > 0) {
+        for (const memberId of members) {
+          await dbService.addChannelMember(channelId, memberId, 'member').catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('DB channel create error:', err);
+    }
+
+    toast.success('Grup Oluşturuldu', {
+      description: `"${name}" grubu aktif edildi.`,
+    });
+
+    navigate(`/channel/${channelId}`);
+  };
+
+  const handleUpdateChannel = useCallback(async (channelId, updates) => {
+    try {
+      setTextChannels((prev) => {
+        const next = prev.map((c) => (c.id === channelId ? { ...c, ...updates } : c));
+        try {
+          localStorage.setItem('standupp_text_channels', JSON.stringify(next));
+          localStorage.setItem('standupp_db_channels', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      await dbService.updateChannel(channelId, updates);
+    } catch (err) {
+      console.warn('Update channel error:', err);
+    }
+  }, []);
+
+  const handleSelectChannel = (channelId) => {
+    navigate(`/channel/${channelId}`);
+  };
+
+  const handleSelectDm = (friendId) => {
+    navigate(`/dm/${friendId}`);
+  };
+
+  const handleBackToChannels = () => {
+    navigate('/');
+  };
+
+  // Auto-redirect from root or /channel/home to first available channel if any
+  useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/channel/home') {
+      if (textChannels.length > 0) {
+        navigate(`/channel/${textChannels[0].id}`, { replace: true });
+      }
+    }
+  }, [location.pathname, textChannels, navigate]);
+
+  // Check if active channel or DM actually exists
+  const channelExists = isDm
+    ? Boolean(activeDmFriend || activeDmUserId)
+    : isChannelsLoading
+      ? true
+      : Boolean(matchedChannel || activeChannel === 'home');
+
+  // Current page title shown at the center of top WindowHeader
+  const currentPageTitle = useMemo(() => {
+    if (isDm) {
+      return 'Mesajlar';
+    }
+    if (pathParts[1] === 'channel') {
+      if (!pathParts[2] || pathParts[2] === 'home') {
+        return 'Ana Sayfa';
+      }
+      if (matchedChannel?.name) {
+        return matchedChannel.name;
+      }
+      return pathParts[2].replace(/^text-/, '');
+    }
+    return 'Ana Sayfa';
+  }, [isDm, pathParts, matchedChannel]);
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-[#101214] voys-glass-app rounded-2xl border border-white/10 overflow-hidden select-none">
+      {/* Hidden remote <audio autoPlay> tags managed within React component */}
+      <RemoteAudioPlayers 
+        remotePeers={remotePeers} 
+        isDeafened={isDeafened} 
+        volume={outputVolume / 100}
+        sinkId={selectedAudioOutput}
+      />
+
+      {/* Top Window Bar & Header */}
+      <WindowHeader 
+        pageTitle={currentPageTitle}
+      />
+
+      {/* Audio permission notice if mic access requires interaction */}
+      {audioError && isConnected && (
+        <div className="bg-amber-950/40 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-300 flex items-center justify-between select-none backdrop-blur-md">
+          <span>{audioError}</span>
+          <button 
+            type="button" 
+            onClick={() => connectVoice()} 
+            className="underline font-bold hover:text-white transition"
+          >
+            İzin Ver / Yeniden Dene
+          </button>
+        </div>
+      )}
+
+      {/* Main App Workspace: Sidebar + Voice Stage/Chat */}
+      <div className="flex flex-1 min-h-0 relative bg-transparent overflow-hidden">
+        {/* Left Sidebar: Unified Direct Messages & Channels */}
+        <Sidebar
+          textChannels={textChannels}
+          channelCalls={channelCalls}
+          friends={friends}
+          incomingRequestsCount={friendshipsData.incoming?.length || 0}
+          incomingRequests={friendshipsData.incoming || []}
+          outgoingRequests={friendshipsData.outgoing || []}
+          onFriendshipUpdated={loadFriendships}
+          currentUserId={currentUserId}
+          onOpenAddFriend={() => setIsAddFriendModalOpen(true)}
+          onOpenCreateChannel={() => setModalOpen(true)}
+          onCreateChannel={handleCreateChannel}
+          activeChannel={activeChannel}
+          activeDmUserId={activeDmUserId}
+          onSelectChannel={handleSelectChannel}
+          onSelectDm={handleSelectDm}
+          currentUserProfile={activeUserProfile}
+          onOpenSettings={openSettings}
+          onLogout={() => setIsLogoutModalOpen(true)}
+          onUpdateStatus={handleUpdateStatus}
+          activeMessages={messages}
+        />
+
+        {/* Column 3: Main Chat & In-Chat Voice Call Area */}
+        <div className="flex-1 flex min-w-0 h-full relative overflow-hidden bg-transparent voys-glass-chat">
+          <ChatArea
+            activeChannel={activeChannel}
+            channelData={matchedChannel}
+            onUpdateChannel={handleUpdateChannel}
+            channelExists={channelExists}
+            onOpenCreateChannel={() => setModalOpen(true)}
+            onOpenAddMember={null}
+            friends={friends}
+            onMemberAdded={loadChannelMembers}
+            isDmMode={isDm}
+            activeDmFriend={activeDmFriend}
+            onBackToChannels={handleBackToChannels}
+            onOpenSettings={openSettings}
+            onClearChat={handleClearActiveChat}
+            // Universal In-Chat Voice Call Props (Steam-style joinable session)
+            isCallActive={Boolean(activeChannel && (channelCalls[activeChannel]?.active || (activeCallChannelId === activeChannel && isConnected)))}
+            isInCall={Boolean(activeChannel && activeCallChannelId === activeChannel && isConnected)}
+            callMembers={activeChannel && activeCallChannelId === activeChannel && isConnected ? voiceMembers : ((activeChannel && channelCalls[activeChannel]?.members) || [])}
+            callState="active"
+            isCaller={false}
+            callInitiator={activeChannel ? channelCalls[activeChannel]?.initiator : null}
+            targetUser={activeDmFriend}
+            ringCount={1}
+            maxRings={3}
+            onCancelCall={handleLeaveCall}
+            onAcceptCall={null}
+            onDeclineCall={null}
+            onStartCall={() => activeChannel && handleStartCall(activeChannel)}
+            onLeaveCall={handleLeaveCall}
+            onToggleDmCall={() => (activeChannel && activeCallChannelId === activeChannel && isConnected ? handleLeaveCall() : (activeChannel && handleStartCall(activeChannel)))}
+            messages={messages}
+            onSendMessage={sendMessage}
+            onToggleReaction={toggleReaction}
+            currentUser={activeUserProfile}
+            channelMembers={liveChannelMembers}
+            presences={presences}
+            onTyping={setTyping}
+            typingUsers={typingUsers}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+            // Screen Sharing
+            activeScreenShare={activeScreenShare}
+            onStopScreenShare={stopScreenShare}
+            isScreenSharing={isScreenSharing}
+            onToggleScreenShare={toggleScreenShare}
+            // Voice Controls
+            isConnected={isConnected}
+            isMuted={isMuted}
+            isDeafened={isDeafened}
+            isSpeaking={isSpeaking}
+            onToggleMute={toggleMute}
+            onToggleDeafen={toggleDeafen}
+            onDisconnect={handleLeaveCall}
+            onConnect={() => handleStartCall(activeChannel)}
+          />
+        </div>
+      </div>
+
+
+
+      {/* Create Channel Modal */}
+      <CreateChannelModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreateChannel={handleCreateChannel}
+      />
+
+      {/* WebRTC PeerJS Connection Modal */}
+      <PeerConnectModal
+        isOpen={peerModalOpen}
+        onClose={() => setPeerModalOpen(false)}
+        myPeerId={myPeerId}
+        connectedPeers={remotePeers.map((p) => p.peerId)}
+        onCallPeer={callPeer}
+      />
+
+      {/* Stand.upp Settings & Audio Devices Modal */}
+      <SettingsModal onLogout={() => setIsLogoutModalOpen(true)} />
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+        userName={activeUserProfile?.name || 'Kullanıcı'}
+      />
+
+      {/* Add Friend / Friend Requests Modal */}
+      <AddFriendModal
+        isOpen={isAddFriendModalOpen}
+        onClose={() => setIsAddFriendModalOpen(false)}
+        currentUser={activeUserProfile}
+        onFriendshipUpdated={loadFriendships}
+        incomingRequests={friendshipsData.incoming}
+        outgoingRequests={friendshipsData.outgoing}
+      />
+
+      {/* Add Member to Channel Modal */}
+      <AddMemberModal
+        isOpen={isAddMemberModalOpen}
+        onClose={() => setIsAddMemberModalOpen(false)}
+        activeChannel={activeChannel}
+        channelName={
+          activeChannel === 'home'
+            ? 'Home'
+            : (textChannels.find((c) => c.id === activeChannel)?.name ||
+               (typeof activeChannel === 'string' ? activeChannel.replace(/^text-/, '') : 'Sohbet'))
+        }
+        channelType="text"
+        friends={friends}
+        currentMembers={channelMembers}
+        onMemberAdded={loadChannelMembers}
+      />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <SettingsProvider>
+        <Routes>
+          {/* Public Auth Routes (Guest Only) */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <AuthPage initialMode="login" />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <AuthPage initialMode="register" />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <AuthPage initialMode="forgot" />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={<AuthPage initialMode="reset" />}
+          />
+
+          {/* Protected Application Routes */}
+          <Route 
+            path="/channel/:channelId" 
+            element={
+              <ProtectedRoute>
+                <StanduppApp />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dm/:userId" 
+            element={
+              <ProtectedRoute>
+                <StanduppApp />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <StanduppApp />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </SettingsProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;

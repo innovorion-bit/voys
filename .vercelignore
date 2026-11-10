@@ -1,0 +1,9 @@
+node_modules
+src-tauri
+dist
+.git
+*.exe
+*.msi
+*.ico
+*.icns
+
