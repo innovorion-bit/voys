@@ -35,6 +35,8 @@ import {
   User,
   Phone,
   PhoneOff,
+  Mic,
+  MicOff,
   Check,
   Copy,
   Camera,
@@ -1099,21 +1101,23 @@ export const ChatArea = ({
 
         {/* Right side of Top Bar: Universal Call Button + Search Filter */}
         <div className="flex items-center space-x-2 flex-shrink-0">
-          {/* Voice Controls: Call / Mute / Deafen / ScreenShare moved to Top Bar */}
-          <VoiceControls
-            isConnected={Boolean(isInCall || isConnected)}
-            isInCall={isInCall}
-            isCallActive={isCallActive}
-            callMembersCount={callMembers?.length || 0}
-            isMuted={isMuted}
-            isDeafened={isDeafened}
-            isScreenSharing={isScreenSharing}
-            onToggleMute={onToggleMute}
-            onToggleDeafen={onToggleDeafen}
-            onToggleScreenShare={onToggleScreenShare}
-            onDisconnect={isInCall ? (onLeaveCall || onToggleDmCall) : (onDisconnect || onLeaveCall)}
-            onConnect={isInCall ? (onLeaveCall || onToggleDmCall) : (onStartCall || onToggleDmCall || onConnect)}
-          />
+          {/* Voice Controls: Only show in DM mode; in group voice chat it's relocated under the members voice box */}
+          {isDmMode && (
+            <VoiceControls
+              isConnected={Boolean(isInCall || isConnected)}
+              isInCall={isInCall}
+              isCallActive={isCallActive}
+              callMembersCount={callMembers?.length || 0}
+              isMuted={isMuted}
+              isDeafened={isDeafened}
+              isScreenSharing={isScreenSharing}
+              onToggleMute={onToggleMute}
+              onToggleDeafen={onToggleDeafen}
+              onToggleScreenShare={onToggleScreenShare}
+              onDisconnect={isInCall ? (onLeaveCall || onToggleDmCall) : (onDisconnect || onLeaveCall)}
+              onConnect={isInCall ? (onLeaveCall || onToggleDmCall) : (onStartCall || onToggleDmCall || onConnect)}
+            />
+          )}
 
           {/* Chat Options Button (3 Nokta) */}
           <div className="relative" ref={optionsMenuRef}>
@@ -2129,6 +2133,46 @@ export const ChatArea = ({
                     );
                   })}
                 </div>
+
+                {/* Sesli Sohbet Kontrolleri (Ayrılma ve Mikrofon Kapatma) */}
+                {isInCall ? (
+                  <div className="flex items-center space-x-2 pt-1.5">
+                    {/* Mikrofon Kapat / Aç Butonu */}
+                    <button
+                      type="button"
+                      onClick={onToggleMute}
+                      className={`flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                        isMuted
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
+                          : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
+                      }`}
+                      title={isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
+                    >
+                      {isMuted ? <MicOff size={14} className="text-rose-400" /> : <Mic size={14} />}
+                      <span>{isMuted ? 'Susturuldu' : 'Sustur'}</span>
+                    </button>
+
+                    {/* Ayrıl Butonu */}
+                    <button
+                      type="button"
+                      onClick={onLeaveCall || onDisconnect}
+                      className="flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition active:scale-95 cursor-pointer"
+                      title="Sesli Sohbetten Ayrıl"
+                    >
+                      <PhoneOff size={14} />
+                      <span>Ayrıl</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onStartCall || onConnect}
+                    className="w-full mt-1.5 flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer"
+                  >
+                    <Phone size={13} />
+                    <span>Sese Katıl</span>
+                  </button>
+                )}
               </div>
             )}
 
