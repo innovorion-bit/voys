@@ -678,13 +678,6 @@ export const Sidebar = ({
                 <p className="text-gray-300 font-medium">
                   {friendsSearchQuery ? 'Aradığınız arkadaş bulunamadı' : 'Henüz ekli arkadaşınız yok'}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setSidebarView('addFriend')}
-                  className="px-3 py-1.5 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-lg text-xs transition shadow-md cursor-pointer"
-                >
-                  + Arkadaş Ekle
-                </button>
               </div>
             ) : (
               filteredAllFriends.map((friend) => (
