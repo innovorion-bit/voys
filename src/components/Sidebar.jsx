@@ -1542,7 +1542,7 @@ export const Sidebar = ({
       {/* 4. BOTTOM PROFILE & ACTIONS BAR */}
       <div className="h-14 px-3.5 bg-[#0a0a0c] sidebar-bottom-bar border-t border-white/[0.06] flex items-center justify-between flex-shrink-0 relative">
         {/* Left: User Avatar (Click to change status) & Profile (Click to open settings) */}
-        <div className="flex items-center space-x-2.5 min-w-0 relative" ref={statusPickerRef}>
+        <div className="flex items-center gap-2.5 min-w-0 relative" ref={statusPickerRef}>
           {/* Status Picker Popover Menu (opens upward) */}
           {isStatusPickerOpen && (
             <div className="absolute left-0 bottom-14 w-44 bg-[#121216] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
@@ -1563,7 +1563,7 @@ export const Sidebar = ({
                           : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
                       }`}
                     >
-                      <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.color}`} />
                         <span className="text-xs font-medium leading-none">{opt.label}</span>
                       </div>
@@ -1601,7 +1601,7 @@ export const Sidebar = ({
             className="min-w-0 cursor-pointer p-1 rounded-xl hover:bg-white/5 transition group flex-1"
             title="Profil ve Ayarları Aç"
           >
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center gap-1">
               <span className="text-xs font-bold text-white truncate group-hover:text-emerald-400 transition">
                 {currentUserProfile?.name || 'Sen'}
               </span>
