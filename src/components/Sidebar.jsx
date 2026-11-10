@@ -1373,16 +1373,9 @@ export const Sidebar = ({
                     </div>
 
                     <div className="flex items-center justify-between mt-0.5">
-                      {isCallActive ? (
-                        <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-semibold">
-                          <Phone size={11} className="animate-pulse flex-shrink-0" />
-                          <span className="truncate">Sesli arama sürüyor ({callInfo.count || 1} kişi)</span>
-                        </div>
-                      ) : (
-                        <p className={`text-[11px] truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                          {lastMessageText || 'Grup sohbeti'}
-                        </p>
-                      )}
+                      <p className={`text-[11px] truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
+                        {lastMessageText || 'Grup sohbeti'}
+                      </p>
 
                       {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
                       <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
