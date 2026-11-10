@@ -176,6 +176,24 @@ function formatMessageTimeOnly(timestamp, sentAt) {
   return timestamp;
 }
 
+const DEFAULT_STATUS_LABELS = ['Çevrimiçi', 'Boşta', 'Rahatsız Etmeyin', 'Görünmez', 'Çevrimdışı', 'P2P Bağlantısı'];
+
+function getMemberStatusDisplay(member) {
+  if (!member?.isOnline || member?.status === 'offline' || member?.status === 'invisible') {
+    return 'Çevrimdışı';
+  }
+  const statusMap = {
+    online: 'Çevrimiçi',
+    idle: 'Boşta',
+    dnd: 'Rahatsız Etmeyin',
+  };
+  const customSub = (member?.substatus || '').trim();
+  if (customSub && !DEFAULT_STATUS_LABELS.includes(customSub)) {
+    return customSub;
+  }
+  return statusMap[member?.status] || 'Çevrimiçi';
+}
+
 export const ChatArea = ({
   activeChannel = 'home',
   channelData = null,
@@ -395,19 +413,19 @@ export const ChatArea = ({
     const isSelf = memberId === currentUser?.id;
     const p = presences?.[memberId];
     const profile = m.profile || m.profiles || {};
-    const isOnline = isSelf
-      ? true
-      : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
     const status = isSelf
       ? (currentUser?.status || 'online')
-      : (isOnline ? (p?.status || 'online') : 'offline');
+      : (p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false ? (p?.status || 'online') : 'offline');
+    const isOnline = isSelf
+      ? (status !== 'offline' && status !== 'invisible')
+      : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
 
     return {
       id: memberId,
       name: isSelf ? (currentUser?.name || 'Sen (You)') : (p?.name || profile.display_name || profile.username || m.name || 'Üye'),
       avatar: isSelf ? (currentUser?.avatar || currentUser?.avatar_url) : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
-      game: isOnline ? (p?.game !== undefined ? p.game : (profile.game || m.game)) : null,
-      substatus: isOnline ? (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus)) : '',
+      game: isOnline ? (isSelf ? currentUser?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
+      substatus: isOnline ? (isSelf ? currentUser?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
       status,
       isOnline,
       role: m.role || 'member',
@@ -417,16 +435,20 @@ export const ChatArea = ({
   const effectiveMembers = liveMembers.length > 0
     ? liveMembers
     : currentUser
-      ? [{
-        id: currentUser.id,
-        name: currentUser.name || currentUser.display_name || 'Sen (You)',
-        avatar: currentUser.avatar || currentUser.avatar_url,
-        game: currentUser.game,
-        substatus: currentUser.substatus,
-        status: currentUser.status || 'online',
-        isOnline: true,
-        role: 'admin',
-      }]
+      ? (() => {
+        const selfStatus = currentUser.status || 'online';
+        const selfOnline = selfStatus !== 'offline' && selfStatus !== 'invisible';
+        return [{
+          id: currentUser.id,
+          name: currentUser.name || currentUser.display_name || 'Sen (You)',
+          avatar: currentUser.avatar || currentUser.avatar_url,
+          game: selfOnline ? currentUser.game : null,
+          substatus: selfOnline ? currentUser.substatus : '',
+          status: selfStatus,
+          isOnline: selfOnline,
+          role: 'admin',
+        }];
+      })()
       : [];
 
   const onlineMembers = effectiveMembers.filter((m) => m.isOnline);
@@ -1470,7 +1492,7 @@ export const ChatArea = ({
                   <div className="divide-y divide-white/5 max-h-60 overflow-y-auto custom-scrollbar">
                     {liveMembers.map((member) => (
                       <div key={member.id} className="py-2.5 flex items-center space-x-3">
-                        <UserAvatar user={member} size="sm" showStatus={true} status={member.status} />
+                        <UserAvatar user={member} size="sm" showStatus={true} status={member.isOnline ? member.status : 'offline'} />
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
                             <span>{member.name}</span>
@@ -1479,7 +1501,7 @@ export const ChatArea = ({
                             )}
                           </div>
                           <div className="text-[10px] text-gray-400 truncate">
-                            {member.game ? `Oynuyor: ${member.game}` : (member.substatus || (member.status === 'online' ? 'Çevrimiçi' : 'Çevrimdışı'))}
+                            {member.isOnline && member.game ? `Oynuyor: ${member.game}` : getMemberStatusDisplay(member)}
                           </div>
                         </div>
                       </div>
@@ -2378,7 +2400,7 @@ export const ChatArea = ({
                                 )}
                               </div>
                               <p className="text-[10px] text-gray-400 truncate">
-                                {friend.game ? `${friend.game} Oynuyor` : (friend.isOnline ? (friend.substatus || 'Çevrimiçi') : 'Çevrimdışı')}
+                                {friend.isOnline && friend.game ? `${friend.game} Oynuyor` : getMemberStatusDisplay(friend)}
                               </p>
                             </div>
                           </div>
@@ -2463,12 +2485,6 @@ export const ChatArea = ({
                           {member.role === 'admin' && (
                             <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
                           )}
-                          {member.isOnline && member.status === 'dnd' && (
-                            <span className="text-[8px] font-bold text-rose-300 bg-rose-500/10 border border-rose-500/20 px-1 rounded flex-shrink-0">DND</span>
-                          )}
-                          {member.isOnline && member.status === 'idle' && (
-                            <span className="text-[8px] font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1 rounded flex-shrink-0">zZz</span>
-                          )}
                         </div>
 
                         {member.isOnline && member.game ? (
@@ -2477,8 +2493,16 @@ export const ChatArea = ({
                             <span className="truncate">{member.game} Oynuyor</span>
                           </div>
                         ) : (
-                          <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                            {member.substatus || (member.isOnline ? (member.status === 'online' ? 'Çevrimiçi' : member.status) : 'Çevrimdışı')}
+                          <p className={`text-[10px] truncate mt-0.5 ${
+                            !member.isOnline || member.status === 'offline' || member.status === 'invisible'
+                              ? 'text-gray-500'
+                              : member.status === 'dnd'
+                                ? 'text-rose-400/90'
+                                : member.status === 'idle'
+                                  ? 'text-amber-400/90'
+                                  : 'text-gray-400'
+                          }`}>
+                            {getMemberStatusDisplay(member)}
                           </p>
                         )}
                       </div>

@@ -51,21 +51,34 @@ function StanduppApp() {
 
   const handleUpdateStatus = useCallback(async (newStatus) => {
     try {
-      await updateProfile({
-        status: newStatus,
-        isAway: newStatus === 'idle',
-      });
       const labels = {
         online: 'Çevrimiçi',
         idle: 'Boşta',
         dnd: 'Rahatsız Etmeyin',
-        invisible: 'Görünmez',
+        invisible: 'Çevrimdışı',
+        offline: 'Çevrimdışı',
       };
-      toast.success(`Durum güncellendi: ${labels[newStatus] || newStatus}`);
+      const defaultLabels = ['Çevrimiçi', 'Boşta', 'Rahatsız Etmeyin', 'Görünmez', 'Çevrimdışı', 'P2P Bağlantısı', ''];
+      const currentSub = (profile?.substatus || '').trim();
+      const shouldUpdateSub = !currentSub || defaultLabels.includes(currentSub);
+
+      await updateProfile({
+        status: newStatus,
+        isAway: newStatus === 'idle',
+        ...(shouldUpdateSub ? { substatus: labels[newStatus] || 'Çevrimiçi' } : {}),
+      });
+      const toastLabels = {
+        online: 'Çevrimiçi',
+        idle: 'Boşta',
+        dnd: 'Rahatsız Etmeyin',
+        invisible: 'Görünmez (Çevrimdışı)',
+        offline: 'Çevrimdışı',
+      };
+      toast.success(`Durum güncellendi: ${toastLabels[newStatus] || labels[newStatus] || newStatus}`);
     } catch (err) {
       console.warn('Status update error:', err);
     }
-  }, [updateProfile]);
+  }, [updateProfile, profile?.substatus]);
 
   // Merged authenticated user profile
   const activeUserProfile = useMemo(() => {
@@ -337,12 +350,12 @@ function StanduppApp() {
       const isSelf = memberId === activeUserProfile?.id;
       const p = presences[memberId];
       const profile = m.profiles || {};
-      const isOnline = isSelf
-        ? true
-        : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
       const status = isSelf
         ? (activeUserProfile?.status || 'online')
-        : (isOnline ? (p?.status || 'online') : 'offline');
+        : (p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false ? (p?.status || 'online') : 'offline');
+      const isOnline = isSelf
+        ? (status !== 'offline' && status !== 'invisible')
+        : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
 
       return {
         id: memberId,
@@ -353,8 +366,8 @@ function StanduppApp() {
         avatar: isSelf
           ? (activeUserProfile?.avatar || activeUserProfile?.avatar_url)
           : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
-        game: isOnline ? (p?.game !== undefined ? p.game : (profile.game || m.game)) : null,
-        substatus: isOnline ? (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus)) : '',
+        game: isOnline ? (isSelf ? activeUserProfile?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
+        substatus: isOnline ? (isSelf ? activeUserProfile?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
         status,
         isOnline,
         role: m.role || 'member',

@@ -713,12 +713,16 @@ export const Sidebar = ({
                             <Gamepad2 size={11} className="flex-shrink-0 mr-1 inline" />
                             <span>{friend.game}</span>
                           </span>
-                        ) : friend.substatus ? (
-                          <span className="text-gray-400">{friend.substatus}</span>
-                        ) : friend.isOnline ? (
-                          <span className="text-emerald-400">Çevrimiçi</span>
-                        ) : (
+                        ) : !friend.isOnline || friend.status === 'offline' || friend.status === 'invisible' ? (
                           <span className="text-gray-500">Çevrimdışı</span>
+                        ) : friend.status === 'dnd' ? (
+                          <span className="text-rose-400/90">Rahatsız Etmeyin</span>
+                        ) : friend.status === 'idle' ? (
+                          <span className="text-amber-400/90">Boşta</span>
+                        ) : friend.substatus && !['Çevrimiçi', 'Boşta', 'Rahatsız Etmeyin', 'Görünmez', 'Çevrimdışı', 'P2P Bağlantısı'].includes(friend.substatus) ? (
+                          <span className="text-gray-400">{friend.substatus}</span>
+                        ) : (
+                          <span className="text-emerald-400">Çevrimiçi</span>
                         )}
                       </div>
                     </div>
