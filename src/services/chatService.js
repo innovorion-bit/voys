@@ -9,6 +9,7 @@ class RealtimeChatService {
     this.supabaseCallChannel = null;
     this.supabasePresenceChannel = null;
     this.currentPresencePayload = null;
+    this.activeVoiceChannelId = null;
     this.room = 'home';
     this.listeners = {
       message: [],
@@ -186,13 +187,34 @@ class RealtimeChatService {
               newPresences.forEach((p) => this.emitLocal('presence', p));
             }
           })
-          .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+          .on('presence', { event: 'leave' }, ({ currentPresences, leftPresences }) => {
+            if (Array.isArray(currentPresences) && currentPresences.length > 0) {
+              const newest = currentPresences[currentPresences.length - 1];
+              if (newest) {
+                this.emitLocal('presence', newest);
+                return;
+              }
+            }
             if (Array.isArray(leftPresences)) {
+              const state = this.supabasePresenceChannel?.presenceState?.() || {};
+              const activeUserIds = new Set();
+              Object.values(state).forEach((items) => {
+                if (Array.isArray(items)) {
+                  items.forEach((item) => {
+                    const id = item?.userId || item?.id;
+                    if (id) activeUserIds.add(String(id));
+                  });
+                }
+              });
+
               leftPresences.forEach((p) => {
+                const uid = p?.userId || p?.id;
+                if (uid && activeUserIds.has(String(uid))) return;
                 this.emitLocal('presence', {
                   ...p,
                   status: 'offline',
                   isOnline: false,
+                  voiceChannelId: null,
                 });
               });
             }
@@ -296,6 +318,20 @@ class RealtimeChatService {
     }
   }
 
+  // Track active voice channel on global presence so non-joined group members see live participants
+  setVoiceChannel(channelId, fallbackProfile = null) {
+    const normalized = channelId ? String(channelId) : null;
+    this.activeVoiceChannelId = normalized;
+
+    const basePayload = this.currentPresencePayload || fallbackProfile;
+    if (basePayload) {
+      this.updatePresence({
+        ...basePayload,
+        voiceChannelId: normalized,
+      });
+    }
+  }
+
   // Update real-time presence & rich presence activity
   updatePresence(presenceData) {
     if (!presenceData) return;
@@ -304,6 +340,10 @@ class RealtimeChatService {
     if (!userId || userId === 'you') return;
 
     const isOnline = presenceData.status !== 'offline' && presenceData.status !== 'invisible';
+    const voiceChannelId =
+      presenceData.voiceChannelId !== undefined
+        ? (presenceData.voiceChannelId ? String(presenceData.voiceChannelId) : null)
+        : (this.activeVoiceChannelId || null);
 
     const payload = {
       userId,
@@ -315,6 +355,7 @@ class RealtimeChatService {
       substatus: presenceData.substatus || '',
       isAway: presenceData.status === 'idle' || !!presenceData.isAway,
       isOnline,
+      voiceChannelId: isOnline ? voiceChannelId : null,
       timestamp: Date.now(),
     };
 
@@ -344,11 +385,13 @@ class RealtimeChatService {
 
   // Gracefully leave / set presence offline
   leavePresence() {
+    this.activeVoiceChannelId = null;
     if (!this.currentPresencePayload) return;
     const payload = {
       ...this.currentPresencePayload,
       status: 'offline',
       isOnline: false,
+      voiceChannelId: null,
       timestamp: Date.now(),
     };
 
@@ -379,6 +422,22 @@ class RealtimeChatService {
         type: 'PRESENCE_REQUEST',
         senderId: this.currentPresencePayload?.userId || null,
       });
+    }
+    if (this.supabasePresenceChannel) {
+      try {
+        const state = this.supabasePresenceChannel.presenceState?.();
+        if (state && typeof state === 'object') {
+          const list = [];
+          Object.values(state).forEach((items) => {
+            if (Array.isArray(items)) {
+              items.forEach((item) => list.push(item));
+            }
+          });
+          if (list.length > 0) {
+            this.emitLocal('all_presences', list);
+          }
+        }
+      } catch {}
     }
   }
 
@@ -432,6 +491,8 @@ class RealtimeChatService {
   }
 
   disconnect() {
+    this.activeVoiceChannelId = null;
+    this.leavePresence();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;

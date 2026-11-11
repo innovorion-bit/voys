@@ -24,9 +24,47 @@ import { chatService } from './services/chatService';
 import { dbService, getDmRoomId, isSupabaseConfigured } from './lib/supabase';
 import { sounds } from './utils/audio';
 import { formatShortcutLabel } from './services/shortcutService';
-import { pickDisplayName, getCachedUserProfile, isUuidLike } from './utils/userDisplay';
+import {
+  pickDisplayName,
+  getCachedUserProfile,
+  isUuidLike,
+  mergeChannelCallsWithPresences,
+} from './utils/userDisplay';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
+
+/**
+ * Combines stored call members and online global presences currently in a voice channel.
+ */
+const collectVoiceMembersForChannel = (
+  presencesMap,
+  channelId,
+  seedMembers = [],
+  excludeUserId = null
+) => {
+  const memberMap = new Map();
+  (seedMembers || []).forEach((member) => {
+    if (!member?.id || member.id === excludeUserId) return;
+    memberMap.set(member.id, member);
+  });
+  Object.entries(presencesMap || {}).forEach(([uid, entry]) => {
+    if (!entry || entry.voiceChannelId !== channelId) return;
+    const resolvedId = entry.userId || entry.id || uid;
+    if (!resolvedId || resolvedId === excludeUserId) return;
+    const isOnline =
+      entry.isOnline !== false && entry.status !== 'offline' && entry.status !== 'invisible';
+    if (!isOnline || memberMap.has(resolvedId)) return;
+    memberMap.set(resolvedId, {
+      id: resolvedId,
+      name: pickDisplayName([entry.name, entry.username], 'Kullanıcı'),
+      username: entry.username || '',
+      avatar: entry.avatar || entry.avatar_url || null,
+      avatar_url: entry.avatar_url || entry.avatar || null,
+      role: entry.role || null,
+    });
+  });
+  return Array.from(memberMap.values());
+};
 
 function StanduppApp() {
   const navigate = useNavigate();
@@ -187,30 +225,39 @@ function StanduppApp() {
       if (!data) return;
       const key = data.userId || data.id;
       if (!key) return;
+      const now = Date.now();
       setPresences((prev) => ({
         ...prev,
         [key]: {
           ...prev[key],
           ...data,
-          timestamp: data.timestamp || Date.now(),
+          timestamp: data.timestamp || now,
+          receivedAt: now,
         },
       }));
     };
 
     const handleAllPresences = (list) => {
       if (!Array.isArray(list)) return;
+      const now = Date.now();
       setPresences((prev) => {
         const next = { ...prev };
         list.forEach((item) => {
           const key = item.userId || item.id;
           if (key) {
-            next[key] = { ...next[key], ...item, timestamp: item.timestamp || Date.now() };
+            next[key] = {
+              ...next[key],
+              ...item,
+              timestamp: item.timestamp || now,
+              receivedAt: now,
+            };
           }
         });
         return next;
       });
     };
 
+    chatService.setupPresenceBroadcastChannel?.();
     chatService.on('presence', handlePresence);
     chatService.on('all_presences', handleAllPresences);
     chatService.requestPresences?.();
@@ -224,6 +271,7 @@ function StanduppApp() {
   // Periodic presence heartbeat so other clients know we are active
   useEffect(() => {
     if (!activeUserProfile?.id || activeUserProfile.id === 'you') return;
+    chatService.updatePresence(activeUserProfile);
     const interval = setInterval(() => {
       chatService.updatePresence(activeUserProfile);
     }, 25000);
@@ -656,15 +704,11 @@ function StanduppApp() {
           delete next[data.channelId];
           return next;
         });
-
-        if (activeCallChannelId === data.channelId) {
-          disconnectVoice();
-          setActiveCallChannelId(null);
-        }
         return;
       }
 
       // Voice chat is actively joinable
+      const receivedAt = Date.now();
       setChannelCalls((prev) => ({
         ...prev,
         [data.channelId]: {
@@ -674,8 +718,9 @@ function StanduppApp() {
           initiator: data.initiator,
           targetUserId: data.targetUserId,
           targetUser: data.targetUser,
-          count: data.count || (data.members?.length) || 1,
+          count: data.count || data.members?.length || 1,
           members: data.members || (data.initiator ? [data.initiator] : []),
+          receivedAt,
         },
       }));
     };
@@ -684,7 +729,7 @@ function StanduppApp() {
     return () => {
       chatService.off('call_status', handleCallStatus);
     };
-  }, [activeUserProfile?.id, activeCallChannelId, disconnectVoice]);
+  }, []);
 
   // Fetch only channels where the active user is an explicit member and subscribe to realtime updates
   useEffect(() => {
@@ -906,6 +951,7 @@ function StanduppApp() {
   const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
     try {
       sounds.playJoin();
+      const previousCallChannelId = activeCallChannelId;
       const callRoom = `standupp-call-${targetChannelId}`;
       switchVoiceRoom(callRoom);
       await connectVoice(null, activeUserProfile.name, activeUserProfile);
@@ -913,35 +959,88 @@ function StanduppApp() {
         setMuted(true, false);
       }
       setActiveCallChannelId(targetChannelId);
+      chatService.setVoiceChannel?.(targetChannelId, activeUserProfile);
 
       const targetFriend = isDm ? activeDmFriend : null;
 
       setChannelCalls((prev) => {
-        const currentCall = prev[targetChannelId];
-        const updatedMembers = [
-          ...(currentCall?.members || []).filter((m) => m.id !== activeUserProfile.id),
-          activeUserProfile,
-        ];
-        const updated = {
-          ...prev,
-          [targetChannelId]: {
-            channelId: targetChannelId,
-            active: true,
-            stage: 'active',
-            initiator: currentCall?.initiator || activeUserProfile,
-            targetUserId: isDm ? activeDmUserId : null,
-            targetUser: targetFriend,
-            count: updatedMembers.length,
-            members: updatedMembers,
-          },
+        const next = { ...prev };
+        const now = Date.now();
+
+        if (
+          previousCallChannelId &&
+          previousCallChannelId !== targetChannelId
+        ) {
+          const prevCall = next[previousCallChannelId];
+          const prevRemaining = collectVoiceMembersForChannel(
+            presences,
+            previousCallChannelId,
+            prevCall?.members,
+            activeUserProfile.id
+          );
+          if (prevRemaining.length === 0) {
+            delete next[previousCallChannelId];
+            chatService.sendCallUpdate({
+              channelId: previousCallChannelId,
+              active: false,
+              stage: 'ended',
+              count: 0,
+              members: [],
+            });
+          } else {
+            const updatedPrev = {
+              ...prevCall,
+              channelId: previousCallChannelId,
+              active: true,
+              stage: 'active',
+              count: prevRemaining.length,
+              members: prevRemaining,
+              receivedAt: now,
+            };
+            next[previousCallChannelId] = updatedPrev;
+            chatService.sendCallUpdate(updatedPrev);
+          }
+        }
+
+        const currentCall = next[targetChannelId];
+        const existingOtherMembers = collectVoiceMembersForChannel(
+          presences,
+          targetChannelId,
+          currentCall?.members,
+          activeUserProfile.id
+        );
+        const updatedMembers = [...existingOtherMembers, activeUserProfile];
+        const callPayload = {
+          channelId: targetChannelId,
+          active: true,
+          stage: 'active',
+          initiator: currentCall?.initiator || activeUserProfile,
+          targetUserId: isDm ? activeDmUserId : null,
+          targetUser: targetFriend,
+          count: updatedMembers.length,
+          members: updatedMembers,
+          receivedAt: now,
         };
-        chatService.sendCallUpdate(updated[targetChannelId]);
-        return updated;
+        next[targetChannelId] = callPayload;
+        chatService.sendCallUpdate(callPayload);
+        return next;
       });
     } catch (err) {
       console.warn('Call start error:', err);
     }
-  }, [activeChannel, switchVoiceRoom, connectVoice, activeUserProfile, isDm, activeDmUserId, activeDmFriend, inputMode, setMuted]);
+  }, [
+    activeChannel,
+    activeCallChannelId,
+    switchVoiceRoom,
+    connectVoice,
+    activeUserProfile,
+    isDm,
+    activeDmUserId,
+    activeDmFriend,
+    inputMode,
+    setMuted,
+    presences,
+  ]);
 
   // Handle in-chat voice call leave / disconnect
   const handleLeaveCall = useCallback(() => {
@@ -949,11 +1048,15 @@ function StanduppApp() {
     const leavingChan = activeCallChannelId || activeChannel;
     disconnectVoice();
     setActiveCallChannelId(null);
+    chatService.setVoiceChannel?.(null, activeUserProfile);
 
     setChannelCalls((prev) => {
       const currentCall = prev[leavingChan];
-      const remainingMembers = (currentCall?.members || []).filter(
-        (m) => m.id !== activeUserProfile.id
+      const remainingMembers = collectVoiceMembersForChannel(
+        presences,
+        leavingChan,
+        currentCall?.members,
+        activeUserProfile.id
       );
       if (remainingMembers.length === 0) {
         const next = { ...prev };
@@ -969,10 +1072,12 @@ function StanduppApp() {
       } else {
         const updated = {
           ...currentCall,
+          channelId: leavingChan,
           active: true,
           stage: 'active',
           count: remainingMembers.length,
           members: remainingMembers,
+          receivedAt: Date.now(),
         };
         chatService.sendCallUpdate(updated);
         return {
@@ -981,7 +1086,7 @@ function StanduppApp() {
         };
       }
     });
-  }, [activeCallChannelId, activeChannel, disconnectVoice, activeUserProfile]);
+  }, [activeCallChannelId, activeChannel, disconnectVoice, activeUserProfile, presences]);
 
   // Logout handler from within the application
   const handleLogout = useCallback(async () => {
@@ -1138,6 +1243,39 @@ function StanduppApp() {
     presences,
   ]);
 
+  // Combine persisted global voice presence (`voiceChannelId`), ephemeral call broadcasts,
+  // and active WebRTC voice members so non-joined channel members see active sessions immediately.
+  const effectiveChannelCalls = useMemo(() => {
+    const knownProfiles = [
+      ...(liveChannelMembers || []),
+      ...(friends || []),
+      ...(isDm && activeDmFriend ? [activeDmFriend] : []),
+      ...(dmUserProfile ? [dmUserProfile] : []),
+      ...Object.values(presences || {}),
+    ];
+    return mergeChannelCallsWithPresences({
+      channelCalls,
+      presences,
+      knownProfiles,
+      activeCallChannelId,
+      isConnected,
+      voiceMembers,
+      currentUser: activeUserProfile,
+    });
+  }, [
+    channelCalls,
+    presences,
+    liveChannelMembers,
+    friends,
+    isDm,
+    activeDmFriend,
+    dmUserProfile,
+    activeCallChannelId,
+    isConnected,
+    voiceMembers,
+    activeUserProfile,
+  ]);
+
   // Per-user audio volume & local mute preferences persisted in localStorage
   const [peerAudioPrefs, setPeerAudioPrefs] = useState(() => {
     try {
@@ -1292,6 +1430,7 @@ function StanduppApp() {
       if (activeCallChannelId && targetIds.includes(activeCallChannelId)) {
         disconnectVoice();
         setActiveCallChannelId(null);
+        chatService.setVoiceChannel?.(null);
       }
 
       navigate('/', { replace: true });
@@ -1327,6 +1466,7 @@ function StanduppApp() {
         queueMicrotask(() => {
           disconnectVoice();
           setActiveCallChannelId(null);
+          chatService.setVoiceChannel?.(null);
         });
       }
       navigate(textChannels.length > 0 ? `/channel/${textChannels[0].id}` : '/', { replace: true });
@@ -1400,7 +1540,7 @@ function StanduppApp() {
         {/* Left Sidebar: Unified Direct Messages & Channels */}
         <Sidebar
           textChannels={textChannels}
-          channelCalls={channelCalls}
+          channelCalls={effectiveChannelCalls}
           friends={friends}
           incomingRequestsCount={friendshipsData.incoming?.length || 0}
           incomingRequests={friendshipsData.incoming || []}
@@ -1444,12 +1584,20 @@ function StanduppApp() {
             onOpenSettings={openSettings}
             onClearChat={handleClearActiveChat}
             // Universal In-Chat Voice Call Props (Steam-style joinable session)
-            isCallActive={Boolean(activeChannel && (channelCalls[activeChannel]?.active || (activeCallChannelId === activeChannel && isConnected)))}
+            isCallActive={Boolean(
+              activeChannel &&
+                (effectiveChannelCalls[activeChannel]?.active ||
+                  (activeCallChannelId === activeChannel && isConnected))
+            )}
             isInCall={Boolean(activeChannel && activeCallChannelId === activeChannel && isConnected)}
-            callMembers={activeChannel && activeCallChannelId === activeChannel && isConnected ? voiceMembers : ((activeChannel && channelCalls[activeChannel]?.members) || [])}
+            callMembers={
+              activeChannel && activeCallChannelId === activeChannel && isConnected
+                ? voiceMembers
+                : (activeChannel && effectiveChannelCalls[activeChannel]?.members) || []
+            }
             callState="active"
             isCaller={false}
-            callInitiator={activeChannel ? channelCalls[activeChannel]?.initiator : null}
+            callInitiator={activeChannel ? effectiveChannelCalls[activeChannel]?.initiator : null}
             targetUser={activeDmFriend}
             ringCount={1}
             maxRings={3}

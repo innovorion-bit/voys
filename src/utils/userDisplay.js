@@ -279,3 +279,160 @@ export const partitionSidebarGroupMembers = ({
   };
 };
 
+/**
+ * Combines stateful global presence (`voiceChannelId`) with transient call broadcasts
+ * and active WebRTC voice members so users who haven't joined voice chat yet still see
+ * everyone currently inside a channel's voice session.
+ */
+export const mergeChannelCallsWithPresences = ({
+  channelCalls = {},
+  presences = {},
+  knownProfiles = [],
+  activeCallChannelId = null,
+  isConnected = false,
+  voiceMembers = [],
+  currentUser = null,
+} = {}) => {
+  const profileLookup = new Map();
+  (knownProfiles || []).forEach((prof) => {
+    if (!prof || typeof prof !== 'object') return;
+    const pid = prof.id || prof.user_id || prof.userId;
+    if (pid) {
+      const key = String(pid);
+      profileLookup.set(key, { ...profileLookup.get(key), ...prof });
+    }
+  });
+  if (currentUser?.id) {
+    const selfKey = String(currentUser.id);
+    profileLookup.set(selfKey, { ...profileLookup.get(selfKey), ...currentUser });
+  }
+
+  const normalizeVoiceMember = (rawMember, fallbackId = null) => {
+    const uid = String(rawMember?.id || rawMember?.user_id || rawMember?.userId || fallbackId || '');
+    const matched = uid ? profileLookup.get(uid) : null;
+    const name = pickDisplayName(
+      [
+        matched?.display_name,
+        matched?.name,
+        matched?.username,
+        rawMember?.display_name,
+        rawMember?.name,
+        rawMember?.username,
+      ],
+      'Kullanıcı'
+    );
+    const avatar = matched?.avatar_url || matched?.avatar || rawMember?.avatar_url || rawMember?.avatar || '';
+    const username =
+      [matched?.username, rawMember?.username].find(
+        (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
+      ) || '';
+
+    return {
+      ...matched,
+      ...rawMember,
+      id: uid || rawMember?.id || rawMember?.peerId,
+      name,
+      display_name: name,
+      username,
+      avatar,
+      avatar_url: avatar,
+    };
+  };
+
+  const byChannel = new Map();
+  const ensureChanMap = (chanId) => {
+    const key = String(chanId);
+    if (!byChannel.has(key)) byChannel.set(key, new Map());
+    return byChannel.get(key);
+  };
+  const isUnconnectedSelf = (uid, chanId) =>
+    Boolean(
+      currentUser?.id &&
+        uid === String(currentUser.id) &&
+        !(isConnected && activeCallChannelId && String(activeCallChannelId) === String(chanId))
+    );
+
+  // 1. Authoritative online global presences currently in a voice channel
+  Object.values(presences || {}).forEach((p) => {
+    if (!p || !p.voiceChannelId) return;
+    const isOnline = p.isOnline !== false && p.status !== 'offline' && p.status !== 'invisible';
+    if (!isOnline) return;
+    const uid = String(p.userId || p.id || '');
+    if (!uid || isUnconnectedSelf(uid, p.voiceChannelId)) return;
+    const chanMap = ensureChanMap(p.voiceChannelId);
+    chanMap.set(uid, normalizeVoiceMember(p, uid));
+  });
+
+  // 2. Transient call_status broadcasts (with stale member pruning when newer presence contradicts)
+  Object.entries(channelCalls || {}).forEach(([chanId, callInfo]) => {
+    if (!chanId || !callInfo?.active) return;
+    const rawMembers = Array.isArray(callInfo.members) && callInfo.members.length > 0
+      ? callInfo.members
+      : callInfo.initiator
+        ? [callInfo.initiator]
+        : [];
+    if (rawMembers.length === 0) return;
+
+    const chanMap = ensureChanMap(chanId);
+    rawMembers.forEach((m) => {
+      if (!m) return;
+      const mUid = String(m.id || m.user_id || m.userId || '');
+      if (!mUid) return;
+
+      const p = presences?.[mUid];
+      if (p) {
+        if (p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false)) {
+          return;
+        }
+        const presenceChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
+        if (
+          presenceChan !== String(chanId) &&
+          (p.receivedAt || 0) >= (callInfo.receivedAt || 0) + 1500
+        ) {
+          return;
+        }
+      }
+
+      if (isUnconnectedSelf(mUid, chanId)) {
+        return;
+      }
+
+      if (!chanMap.has(mUid)) {
+        chanMap.set(mUid, normalizeVoiceMember(m, mUid));
+      }
+    });
+  });
+
+  // 3. Merge active local WebRTC call peers (carries speaking state, peerId, ping)
+  if (activeCallChannelId && isConnected) {
+    const chanKey = String(activeCallChannelId);
+    const chanMap = ensureChanMap(chanKey);
+    (voiceMembers || []).forEach((vm) => {
+      if (!vm) return;
+      const vmKey = String(vm.id || vm.userId || vm.peerId || '');
+      if (!vmKey) return;
+      const existing = chanMap.get(vmKey) || {};
+      chanMap.set(vmKey, normalizeVoiceMember({ ...existing, ...vm }, vmKey));
+    });
+  }
+
+  const merged = {};
+  byChannel.forEach((memberMap, chanId) => {
+    const members = Array.from(memberMap.values());
+    if (members.length === 0) return;
+    const prevCall = channelCalls?.[chanId] || {};
+    merged[chanId] = {
+      ...prevCall,
+      channelId: chanId,
+      active: true,
+      stage: 'active',
+      count: members.length,
+      members,
+      initiator: prevCall.initiator || members[0] || null,
+    };
+  });
+
+  return merged;
+};
+
+
