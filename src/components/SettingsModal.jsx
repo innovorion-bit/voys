@@ -64,6 +64,7 @@ import {
   buildMicDspChain,
   createVoiceAudioContext,
 } from '../utils/noiseSuppressionPipeline';
+import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 
 export const TurkeyFlag = ({ className = "w-5 h-3.5" }) => (
   <svg viewBox="0 0 1200 800" className={`${className} rounded-[2px] shadow-sm flex-shrink-0 inline-block`}>
@@ -1528,20 +1529,53 @@ export const SettingsModal = ({ onLogout = null }) => {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <label className="text-xs font-semibold text-gray-200">Hoparlör Ses Seviyesi</label>
-                      <span className="text-xs text-gray-400 font-mono">{outputVolume}%</span>
+                      <div className="flex items-center space-x-2">
+                        {outputVolume !== 100 && (
+                          <button
+                            type="button"
+                            onClick={() => changeOutputVolume(100)}
+                            className="text-[10px] text-gray-400 hover:text-white underline transition cursor-pointer"
+                            title="Varsayılana Sıfırla (%100)"
+                          >
+                            %100
+                          </button>
+                        )}
+                        <span
+                          className={`text-xs font-mono font-semibold ${
+                            outputVolume > 100 ? 'text-amber-400' : 'text-gray-400'
+                          }`}
+                        >
+                          {outputVolume}%
+                        </span>
+                      </div>
                     </div>
                     <div className="relative flex items-center py-1">
+                      <span
+                        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1.5px] h-3 bg-white/30 rounded-full z-0"
+                        aria-hidden="true"
+                      />
                       <input
                         type="range"
                         min="0"
-                        max="100"
+                        max={MAX_VOLUME_PERCENT}
                         value={outputVolume}
                         onChange={(e) => changeOutputVolume(Number(e.target.value))}
-                        className="w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider"
+                        className="relative z-10 w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider"
                         style={{
-                          background: `linear-gradient(to right, #5865F2 ${outputVolume}%, #232428 ${outputVolume}%)`
+                          background: getVolumeSliderFillStyle(
+                            outputVolume,
+                            MAX_VOLUME_PERCENT,
+                            '#5865F2',
+                            '#f59e0b',
+                            '#232428'
+                          ),
                         }}
                       />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-500 font-mono mt-0.5 select-none">
+                      <span>%0</span>
+                      <span>%100</span>
+                      <span>%200</span>
                     </div>
                   </div>
                 </div>

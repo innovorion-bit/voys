@@ -30,6 +30,7 @@ import {
   isUuidLike,
   mergeChannelCallsWithPresences,
 } from './utils/userDisplay';
+import { MAX_VOLUME_PERCENT, clampVolumePercent } from './utils/remoteAudioGain';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
@@ -1289,7 +1290,7 @@ function StanduppApp() {
   const handleSetPeerVolume = useCallback((member, volumePercent) => {
     const keys = [member?.id, member?.peerId].filter(Boolean).map(String);
     if (keys.length === 0) return;
-    const clamped = Math.max(0, Math.min(100, Math.round(Number(volumePercent) || 0)));
+    const clamped = clampVolumePercent(volumePercent, MAX_VOLUME_PERCENT, 100);
 
     setPeerAudioPrefs((prev) => {
       const next = { ...prev };

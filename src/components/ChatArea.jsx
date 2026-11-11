@@ -119,6 +119,7 @@ import { ScreenShareStage } from './ScreenShareStage';
 import { InChatCallStage } from './InChatCallStage';
 import { dbService } from '../lib/supabase';
 import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike, partitionSidebarGroupMembers } from '../utils/userDisplay';
+import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 
 // Helper to format file sizes nicely
 function formatFileSize(bytes) {
@@ -2603,7 +2604,9 @@ export const ChatArea = ({
                             className={`text-[10px] font-medium block truncate ${
                               (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
                                 ? 'text-rose-400/90'
-                                : 'text-gray-400'
+                                : !isMe && typeof pref?.volume === 'number' && pref.volume > 100
+                                  ? 'text-amber-400/90'
+                                  : 'text-gray-400'
                             }`}
                           >
                             {isMe && isDeafened
@@ -2612,7 +2615,9 @@ export const ChatArea = ({
                                 ? 'Mikrofon Kapalı'
                                 : !isMe && isLocallyMuted
                                   ? 'Sesi Kapatıldı'
-                                  : 'Seste'}
+                                  : !isMe && typeof pref?.volume === 'number' && pref.volume !== 100
+                                    ? `Seste • %${pref.volume}`
+                                    : 'Seste'}
                           </span>
                         </div>
 
@@ -3228,24 +3233,58 @@ export const ChatArea = ({
                     <div className="px-2 py-2 rounded-xl bg-white/[0.03] border border-white/5">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="flex items-center space-x-1.5 text-[11px] font-medium text-gray-300">
-                          <Volume1 size={14} className="text-emerald-400" />
+                          <Volume1
+                            size={14}
+                            className={
+                              !targetMuted && targetVolume > 100
+                                ? 'text-amber-400'
+                                : 'text-emerald-400'
+                            }
+                          />
                           <span>Kullanıcı Ses Seviyesi</span>
                         </span>
-                        <span className={`text-[11px] font-semibold tabular-nums ${
-                          targetMuted ? 'text-rose-400' : 'text-emerald-400'
-                        }`}>
+                        <span
+                          className={`text-[11px] font-semibold tabular-nums ${
+                            targetMuted
+                              ? 'text-rose-400'
+                              : targetVolume > 100
+                                ? 'text-amber-400'
+                                : 'text-emerald-400'
+                          }`}
+                        >
                           {targetMuted ? 'Kapalı' : `%${targetVolume}`}
                         </span>
                       </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={targetMuted ? 0 : targetVolume}
-                        onChange={(e) => onSetPeerVolume?.(liveTarget, Number(e.target.value))}
-                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                      />
+                      <div className="relative flex items-center py-0.5">
+                        <span
+                          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1.5px] h-2.5 bg-white/30 rounded-full z-0"
+                          aria-hidden="true"
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={MAX_VOLUME_PERCENT}
+                          step={1}
+                          value={targetMuted ? 0 : targetVolume}
+                          onChange={(e) => onSetPeerVolume?.(liveTarget, Number(e.target.value))}
+                          className={`relative z-10 w-full h-1.5 rounded-lg appearance-none cursor-pointer ${
+                            !targetMuted && targetVolume > 100
+                              ? 'accent-amber-400'
+                              : 'accent-emerald-400'
+                          }`}
+                          style={{
+                            background: getVolumeSliderFillStyle(
+                              targetMuted ? 0 : targetVolume,
+                              MAX_VOLUME_PERCENT
+                            ),
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[9px] text-gray-500 font-mono mt-1 select-none">
+                        <span>%0</span>
+                        <span>%100</span>
+                        <span>%200</span>
+                      </div>
                     </div>
 
                     <button

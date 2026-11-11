@@ -23,6 +23,7 @@ import {
   readStoredNumber,
   readStoredNoiseSuppressionMode,
 } from '../utils/noiseSuppressionPipeline';
+import { MAX_VOLUME_PERCENT, clampVolumePercent } from '../utils/remoteAudioGain';
 
 const defaultProfile = {
   name: 'Sen (You)',
@@ -96,7 +97,15 @@ export const SettingsProvider = ({ children }) => {
     return Number(localStorage.getItem('standupp_input_volume')) || 100;
   });
   const [outputVolume, setOutputVolume] = useState(() => {
-    return Number(localStorage.getItem('standupp_output_volume')) || 100;
+    try {
+      return clampVolumePercent(
+        localStorage.getItem('standupp_output_volume'),
+        MAX_VOLUME_PERCENT,
+        100
+      );
+    } catch {
+      return 100;
+    }
   });
 
   // Advanced Audio Processing (Echo Cancellation, Noise Suppression) + Separate AGC & Anti-Static DSP
@@ -579,8 +588,9 @@ export const SettingsProvider = ({ children }) => {
   }, []);
 
   const changeOutputVolume = useCallback((val) => {
-    setOutputVolume(val);
-    try { localStorage.setItem('standupp_output_volume', String(val)); } catch {}
+    const clamped = clampVolumePercent(val, MAX_VOLUME_PERCENT, 100);
+    setOutputVolume(clamped);
+    try { localStorage.setItem('standupp_output_volume', String(clamped)); } catch {}
   }, []);
 
   // Listen to hardware device plug/unplug events
