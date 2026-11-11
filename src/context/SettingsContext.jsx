@@ -16,12 +16,8 @@ import { applyWindowTransparency } from '../utils/windowManager';
 import {
   STORAGE_KEYS,
   DEFAULT_AI_NOISE_SUPPRESSION,
+  DEFAULT_NOISE_SUPPRESSION_MODE,
   DEFAULT_NOISE_GATE_THRESHOLD,
-  normalizeNoiseSuppressionMode,
-  clampNoiseGateThreshold,
-  readStoredBool,
-  readStoredNumber,
-  readStoredNoiseSuppressionMode,
 } from '../utils/noiseSuppressionPipeline';
 import { MAX_VOLUME_PERCENT, clampVolumePercent } from '../utils/remoteAudioGain';
 
@@ -106,112 +102,30 @@ export const SettingsProvider = ({ children }) => {
     }
   });
 
-  // Advanced Audio Processing (Echo Cancellation, Noise Suppression) + Separate AGC & Anti-Static DSP
-  const [advancedAudioFiltering, setAdvancedAudioFilteringState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('standupp_advanced_audio_filtering');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
-
-  const [autoGainControl, setAutoGainControlState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('standupp_auto_gain_control');
-      return saved !== null ? saved === 'true' : false;
-    } catch {
-      return false;
-    }
-  });
-
-  const [antiStaticFilter, setAntiStaticFilterState] = useState(() =>
-    readStoredBool('standupp_anti_static_filter', true)
-  );
-
-  // AI Noise Suppression (RNNoise) is always enabled by default
+  // Standard Balanced Audio Processing (locked defaults: AI RNNoise + Echo/Noise + Anti-Static enabled, AGC off)
+  const advancedAudioFiltering = true;
+  const autoGainControl = false;
+  const antiStaticFilter = true;
   const aiNoiseSuppression = DEFAULT_AI_NOISE_SUPPRESSION;
+  const noiseSuppressionMode = DEFAULT_NOISE_SUPPRESSION_MODE;
+  const noiseGateThreshold = DEFAULT_NOISE_GATE_THRESHOLD;
 
-  const [noiseSuppressionMode, setNoiseSuppressionModeState] = useState(() =>
-    readStoredNoiseSuppressionMode()
-  );
+  const lockAudioDefaults = useCallback(async () => {}, []);
+  const changeAdvancedAudioFiltering = lockAudioDefaults;
+  const changeAutoGainControl = lockAudioDefaults;
+  const changeAntiStaticFilter = lockAudioDefaults;
+  const changeNoiseSuppressionMode = lockAudioDefaults;
+  const changeNoiseGateThreshold = lockAudioDefaults;
 
-  const [noiseGateThreshold, setNoiseGateThresholdState] = useState(() =>
-    clampNoiseGateThreshold(readStoredNumber(STORAGE_KEYS.noiseGateThreshold, DEFAULT_NOISE_GATE_THRESHOLD))
-  );
-
-  const updateAudioSetting = useCallback(async ({ key, setter, storageKey, payload }) => {
-    setter(payload);
-    try {
-      localStorage.setItem(storageKey, String(payload));
-    } catch {}
-
-    try {
-      await peerService.applyAudioSettings({ [key]: payload });
-    } catch (err) {
-      console.warn(`apply ${key} error:`, err);
-    }
-  }, []);
-
-  const changeAdvancedAudioFiltering = useCallback(
-    (enabled) =>
-      updateAudioSetting({
-        key: 'advancedAudioFiltering',
-        setter: setAdvancedAudioFilteringState,
-        storageKey: 'standupp_advanced_audio_filtering',
-        payload: Boolean(enabled),
-      }),
-    [updateAudioSetting]
-  );
-
-  const changeAutoGainControl = useCallback(
-    (enabled) =>
-      updateAudioSetting({
-        key: 'autoGainControl',
-        setter: setAutoGainControlState,
-        storageKey: 'standupp_auto_gain_control',
-        payload: Boolean(enabled),
-      }),
-    [updateAudioSetting]
-  );
-
-  const changeAntiStaticFilter = useCallback(
-    (enabled) =>
-      updateAudioSetting({
-        key: 'antiStaticFilter',
-        setter: setAntiStaticFilterState,
-        storageKey: 'standupp_anti_static_filter',
-        payload: Boolean(enabled),
-      }),
-    [updateAudioSetting]
-  );
-
-  const changeNoiseSuppressionMode = useCallback(
-    (mode) =>
-      updateAudioSetting({
-        key: 'noiseSuppressionMode',
-        setter: setNoiseSuppressionModeState,
-        storageKey: STORAGE_KEYS.noiseSuppressionMode,
-        payload: normalizeNoiseSuppressionMode(mode),
-      }),
-    [updateAudioSetting]
-  );
-
-  const changeNoiseGateThreshold = useCallback(
-    (threshold) =>
-      updateAudioSetting({
-        key: 'noiseGateThreshold',
-        setter: setNoiseGateThresholdState,
-        storageKey: STORAGE_KEYS.noiseGateThreshold,
-        payload: clampNoiseGateThreshold(threshold),
-      }),
-    [updateAudioSetting]
-  );
-
-  // Synchronize peerService with initial audio processing preferences & live input volume
+  // Synchronize peerService with locked standard balanced audio processing preferences
   useEffect(() => {
     try {
       localStorage.removeItem(STORAGE_KEYS.aiNoiseSuppression);
+      localStorage.removeItem(STORAGE_KEYS.noiseSuppressionMode);
+      localStorage.removeItem(STORAGE_KEYS.noiseGateThreshold);
+      localStorage.removeItem('standupp_advanced_audio_filtering');
+      localStorage.removeItem('standupp_auto_gain_control');
+      localStorage.removeItem('standupp_anti_static_filter');
     } catch {}
     peerService.setAdvancedAudioFiltering(advancedAudioFiltering);
     peerService.setAutoGainControl(autoGainControl);
