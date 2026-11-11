@@ -1049,34 +1049,19 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                 </form>
               </div>
 
-              {/* Bölüm 4: Oturum ve Güvenlik (Çıkış Yap) */}
-              <div className="space-y-3 pt-2">
-                <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                  OTURUMU KAPAT
-                </label>
-
-                <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-200 font-semibold">
-                      Mevcut Oturumu Kapat
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      Bu cihazdaki Voys oturumunuzu güvenle sonlandırır.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleClose();
-                      onLogout?.();
-                    }}
-                    className="px-4 py-2 text-xs font-semibold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded-lg transition active:scale-95 flex items-center justify-center space-x-2 cursor-pointer shadow-sm flex-shrink-0"
-                  >
-                    <LogOut size={14} />
-                    <span>Çıkış Yap</span>
-                  </button>
-                </div>
+              {/* Sade Çıkış Yap Aksiyonu */}
+              <div className="pt-4 border-t border-white/[0.08] flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClose();
+                    onLogout?.();
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded-lg transition active:scale-95 inline-flex items-center space-x-2 cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Çıkış Yap</span>
+                </button>
               </div>
             </div>
           )}
