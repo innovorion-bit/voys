@@ -31,21 +31,8 @@ class SoundEffects {
         const savedVol = localStorage.getItem('standupp_sound_effects_volume');
         this.volume = savedVol !== null ? Math.max(0, Math.min(100, Number(savedVol))) / 100 : 0.75;
 
-        const savedCategories = localStorage.getItem('standupp_sound_categories');
-        if (savedCategories) {
-          const parsed = JSON.parse(savedCategories);
-          if (parsed && typeof parsed === 'object') {
-            this.categories = {
-              ...DEFAULT_SOUND_CATEGORIES,
-              ...Object.fromEntries(
-                Object.keys(DEFAULT_SOUND_CATEGORIES).map((k) => [
-                  k,
-                  parsed[k] !== undefined ? Boolean(parsed[k]) : DEFAULT_SOUND_CATEGORIES[k],
-                ])
-              ),
-            };
-          }
-        }
+        // Per-category toggles were removed from settings; ensure all categories follow the master toggle.
+        localStorage.removeItem('standupp_sound_categories');
       } catch {
         this.enabled = true;
         this.volume = 0.75;
