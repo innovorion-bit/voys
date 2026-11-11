@@ -123,8 +123,6 @@ export const SettingsModal = ({ onLogout = null }) => {
     changeAutoGainControl,
     antiStaticFilter,
     changeAntiStaticFilter,
-    aiNoiseSuppression,
-    changeAiNoiseSuppression,
     noiseSuppressionMode,
     changeNoiseSuppressionMode,
     noiseGateThreshold,
@@ -438,7 +436,7 @@ export const SettingsModal = ({ onLogout = null }) => {
       let chainCleanup = null;
       try {
         const chain = await buildMicDspChain(ctx, source, {
-          aiNoiseSuppression,
+          aiNoiseSuppression: true,
           noiseSuppressionMode,
           noiseGateThreshold,
           antiStaticFilter,
@@ -1589,33 +1587,17 @@ export const SettingsModal = ({ onLogout = null }) => {
                       Yapay zeka gürültü azaltma (RNNoise), gürültü kapısı ve elektriksel dip ses filtreleme ayarları.
                     </p>
                   </div>
-                  <span
-                    className={`inline-flex items-center space-x-1.5 text-[11px] font-mono px-2.5 py-1 rounded-full flex-shrink-0 border ${
-                      aiNoiseSuppression
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                        : 'bg-indigo-500/10 border-indigo-500/25 text-indigo-300'
-                    }`}
-                  >
+                  <span className="inline-flex items-center space-x-1.5 text-[11px] font-mono px-2.5 py-1 rounded-full flex-shrink-0 border bg-emerald-500/10 border-emerald-500/30 text-emerald-300">
                     <Activity size={12} />
-                    <span>{aiNoiseSuppression ? 'RNNoise 48kHz AI' : 'Opus 64kbps · FEC'}</span>
+                    <span>RNNoise 48kHz AI · Aktif</span>
                   </span>
                 </div>
 
-                {/* Yapay Zeka Gürültü Engelleme Kartı */}
+                {/* Yapay Zeka Gürültü Engelleme Kartı (Her Zaman Aktif) */}
                 <div className="rounded-xl bg-[#101015] border border-white/[0.08] divide-y divide-white/[0.06] overflow-hidden">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={aiNoiseSuppression}
-                    onClick={() => changeAiNoiseSuppression(!aiNoiseSuppression)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.03] transition cursor-pointer"
-                  >
+                  <div className="w-full flex items-center justify-between gap-3 px-4 py-3">
                     <div className="flex items-center space-x-3 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          aiNoiseSuppression ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/5 text-gray-500'
-                        }`}
-                      >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-500/15 text-emerald-400">
                         <AudioLines size={15} />
                       </div>
                       <div className="min-w-0">
@@ -1628,88 +1610,78 @@ export const SettingsModal = ({ onLogout = null }) => {
                           </span>
                         </div>
                         <span className="text-[11px] text-gray-500 block mt-0.5">
-                          Klavye tıklamalarını, bilgisayar fanını ve ortam uğultusunu konuşmanızı bozmadan temizler.
+                          Klavye tıklamalarını, bilgisayar fanını ve ortam uğultusunu varsayılan olarak otomatik temizler.
                         </span>
                       </div>
                     </div>
-                    <div
-                      className={`w-9 h-5 rounded-full transition-colors p-0.5 flex items-center flex-shrink-0 ${
-                        aiNoiseSuppression ? 'bg-emerald-500' : 'bg-white/10'
-                      }`}
-                    >
-                      <div
-                        className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                          aiNoiseSuppression ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </div>
-                  </button>
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+                      Varsayılan Aktif
+                    </span>
+                  </div>
 
-                  {aiNoiseSuppression && (
-                    <div className="px-4 py-3 space-y-3 bg-white/[0.015]">
-                      <div>
-                        <span className="text-[11px] font-semibold text-gray-300 block mb-2">
-                          Gürültü Engelleme Seviyesi
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {Object.values(NOISE_SUPPRESSION_MODES).map((mode) => {
-                            const selected = noiseSuppressionMode === mode.id;
-                            return (
-                              <button
-                                key={mode.id}
-                                type="button"
-                                onClick={() => changeNoiseSuppressionMode(mode.id)}
-                                className={`text-left p-2.5 rounded-lg border transition cursor-pointer ${
-                                  selected
-                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-white'
-                                    : 'bg-[#0c0c10] border-white/[0.06] text-gray-400 hover:text-gray-200 hover:border-white/15'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-semibold">{mode.label}</span>
-                                  {selected && <Check size={13} className="text-emerald-400 flex-shrink-0" />}
-                                </div>
-                                <span className="text-[11px] text-gray-500 block mt-0.5 leading-snug">
-                                  {mode.desc}
-                                </span>
-                              </button>
-                            );
-                          })}
+                  <div className="px-4 py-3 space-y-3 bg-white/[0.015]">
+                    <div>
+                      <span className="text-[11px] font-semibold text-gray-300 block mb-2">
+                        Gürültü Engelleme Seviyesi
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {Object.values(NOISE_SUPPRESSION_MODES).map((mode) => {
+                          const selected = noiseSuppressionMode === mode.id;
+                          return (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              onClick={() => changeNoiseSuppressionMode(mode.id)}
+                              className={`text-left p-2.5 rounded-lg border transition cursor-pointer ${
+                                selected
+                                  ? 'bg-emerald-500/10 border-emerald-500/40 text-white'
+                                  : 'bg-[#0c0c10] border-white/[0.06] text-gray-400 hover:text-gray-200 hover:border-white/15'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold">{mode.label}</span>
+                                {selected && <Check size={13} className="text-emerald-400 flex-shrink-0" />}
+                              </div>
+                              <span className="text-[11px] text-gray-500 block mt-0.5 leading-snug">
+                                {mode.desc}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {noiseSuppressionMode === 'aggressive' && (
+                      <div className="pt-1 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-gray-300">
+                            Gürültü Kapısı Eşiği (Noise Gate)
+                          </span>
+                          <span className="text-[11px] font-mono text-emerald-400">
+                            {gateThresholdDraft} dB
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={MIN_NOISE_GATE_THRESHOLD}
+                          max={MAX_NOISE_GATE_THRESHOLD}
+                          step={1}
+                          value={gateThresholdDraft}
+                          onChange={(e) => setGateThresholdDraft(Number(e.target.value))}
+                          onMouseUp={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
+                          onTouchEnd={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
+                          onKeyUp={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
+                          onBlur={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
+                          className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                        />
+                        <div className="flex justify-between text-[10px] text-gray-500">
+                          <span>-65 dB (Hassas)</span>
+                          <span>-48 dB (Önerilen)</span>
+                          <span>-25 dB (Sıkı)</span>
                         </div>
                       </div>
-
-                      {noiseSuppressionMode === 'aggressive' && (
-                        <div className="pt-1 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-medium text-gray-300">
-                              Gürültü Kapısı Eşiği (Noise Gate)
-                            </span>
-                            <span className="text-[11px] font-mono text-emerald-400">
-                              {gateThresholdDraft} dB
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min={MIN_NOISE_GATE_THRESHOLD}
-                            max={MAX_NOISE_GATE_THRESHOLD}
-                            step={1}
-                            value={gateThresholdDraft}
-                            onChange={(e) => setGateThresholdDraft(Number(e.target.value))}
-                            onMouseUp={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
-                            onTouchEnd={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
-                            onKeyUp={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
-                            onBlur={(e) => changeNoiseGateThreshold(Number(e.currentTarget.value))}
-                            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                          />
-                          <div className="flex justify-between text-[10px] text-gray-500">
-                            <span>-65 dB (Hassas)</span>
-                            <span>-48 dB (Önerilen)</span>
-                            <span>-25 dB (Sıkı)</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {[
                     {

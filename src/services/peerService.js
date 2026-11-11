@@ -151,10 +151,7 @@ export class MeshVoiceService {
     this.advancedAudioFiltering = readStoredBool('standupp_advanced_audio_filtering', true);
     this.autoGainControlEnabled = readStoredBool('standupp_auto_gain_control', false);
     this.antiStaticFilterEnabled = readStoredBool('standupp_anti_static_filter', true);
-    this.aiNoiseSuppressionEnabled = readStoredBool(
-      STORAGE_KEYS.aiNoiseSuppression,
-      DEFAULT_AI_NOISE_SUPPRESSION
-    );
+    this.aiNoiseSuppressionEnabled = DEFAULT_AI_NOISE_SUPPRESSION;
     this.noiseSuppressionMode = readStoredNoiseSuppressionMode();
     this.noiseGateThreshold = clampNoiseGateThreshold(
       readStoredNumber(STORAGE_KEYS.noiseGateThreshold, DEFAULT_NOISE_GATE_THRESHOLD)

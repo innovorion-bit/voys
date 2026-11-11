@@ -16,7 +16,6 @@ import { UserAvatar } from './UserAvatar';
 import { ConnectionQualityIndicator } from './ConnectionQualityIndicator';
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
-import { NoiseSuppressionButton } from './NoiseSuppressionButton';
 
 export const InChatCallStage = ({
   channelName = 'Sohbet',
@@ -466,9 +465,6 @@ export const InChatCallStage = ({
           >
             {isDeafened ? <VolumeX size={18} /> : <Headphones size={18} />}
           </button>
-
-          {/* AI Noise Suppression Toggle */}
-          <NoiseSuppressionButton variant="icon-lg" />
 
           {/* Screen Share Toggle */}
           <button

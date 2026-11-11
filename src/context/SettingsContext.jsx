@@ -122,9 +122,8 @@ export const SettingsProvider = ({ children }) => {
     readStoredBool('standupp_anti_static_filter', true)
   );
 
-  const [aiNoiseSuppression, setAiNoiseSuppressionState] = useState(() =>
-    readStoredBool(STORAGE_KEYS.aiNoiseSuppression, DEFAULT_AI_NOISE_SUPPRESSION)
-  );
+  // AI Noise Suppression (RNNoise) is always enabled by default
+  const aiNoiseSuppression = DEFAULT_AI_NOISE_SUPPRESSION;
 
   const [noiseSuppressionMode, setNoiseSuppressionModeState] = useState(() =>
     readStoredNoiseSuppressionMode()
@@ -180,21 +179,6 @@ export const SettingsProvider = ({ children }) => {
     [updateAudioSetting]
   );
 
-  const changeAiNoiseSuppression = useCallback(
-    (enabled) =>
-      updateAudioSetting({
-        key: 'aiNoiseSuppression',
-        setter: setAiNoiseSuppressionState,
-        storageKey: STORAGE_KEYS.aiNoiseSuppression,
-        payload: Boolean(enabled),
-      }),
-    [updateAudioSetting]
-  );
-
-  const toggleAiNoiseSuppression = useCallback(() => {
-    return changeAiNoiseSuppression(!aiNoiseSuppression);
-  }, [aiNoiseSuppression, changeAiNoiseSuppression]);
-
   const changeNoiseSuppressionMode = useCallback(
     (mode) =>
       updateAudioSetting({
@@ -219,6 +203,9 @@ export const SettingsProvider = ({ children }) => {
 
   // Synchronize peerService with initial audio processing preferences & live input volume
   useEffect(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.aiNoiseSuppression);
+    } catch {}
     peerService.setAdvancedAudioFiltering(advancedAudioFiltering);
     peerService.setAutoGainControl(autoGainControl);
     peerService.setAntiStaticFilter(antiStaticFilter);
@@ -671,8 +658,6 @@ export const SettingsProvider = ({ children }) => {
         antiStaticFilter,
         changeAntiStaticFilter,
         aiNoiseSuppression,
-        changeAiNoiseSuppression,
-        toggleAiNoiseSuppression,
         noiseSuppressionMode,
         changeNoiseSuppressionMode,
         noiseGateThreshold,

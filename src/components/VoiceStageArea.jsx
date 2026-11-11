@@ -20,7 +20,6 @@ import { UserAvatar } from './UserAvatar';
 import { ConnectionQualityIndicator } from './ConnectionQualityIndicator';
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
-import { NoiseSuppressionButton } from './NoiseSuppressionButton';
 
 export const VoiceStageArea = ({
   activeChannelName = 'Sesli Sohbet',
@@ -392,10 +391,7 @@ export const VoiceStageArea = ({
             {isDeafened ? <VolumeX size={18} /> : <Headphones size={18} />}
           </button>
 
-          {/* 3. AI Noise Suppression (AI NS) */}
-          <NoiseSuppressionButton variant="stage" />
-
-          {/* 4. Camera Toggle */}
+          {/* 3. Camera Toggle */}
           <div className="flex items-center space-x-0.5">
             <button
               type="button"
