@@ -281,6 +281,10 @@ function StanduppApp() {
 
     fetchAsync();
 
+    const unsubRecovered = dbService.onRealtimeRecovered?.(() => {
+      if (!cancelled) fetchAsync();
+    });
+
     const unsubFriendships = dbService.subscribeToTable('friendships', () => {
       fetchAsync();
     });
@@ -299,6 +303,7 @@ function StanduppApp() {
     return () => {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
+      unsubRecovered?.();
       unsubFriendships?.();
       unsubProfiles?.();
       unsubDms?.();
@@ -756,8 +761,13 @@ function StanduppApp() {
       }
     });
 
+    const unsubRecovered = dbService.onRealtimeRecovered?.(() => {
+      if (!cancelled) loadDbChannels();
+    });
+
     return () => {
       cancelled = true;
+      unsubRecovered?.();
       unsubChannels?.();
       unsubChannelMemberships?.();
     };

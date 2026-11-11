@@ -413,14 +413,15 @@ export const useRealtimeChat = (
 
     loadDatabaseMessages();
 
-    // Fallback 30s Polling Heartbeat (acts as a safety net if WebSocket drops without hammering the DB)
-    const pollInterval = setInterval(async () => {
-      if (isCancelled) return;
+    let lastDbSyncAt = Date.now();
+    const syncMessagesFromDb = async () => {
+      if (isCancelled || !channelId) return;
+      lastDbSyncAt = Date.now();
       try {
         let dbMsgs = [];
-        if (channelId && channelId.startsWith('dm-')) {
+        if (channelId.startsWith('dm-')) {
           dbMsgs = await dbService.fetchDmMessages(channelId, currentUserRef.current?.id, otherUserId);
-        } else if (channelId) {
+        } else {
           dbMsgs = await dbService.fetchMessages(channelId);
         }
         if (!isCancelled && Array.isArray(dbMsgs)) {
@@ -449,7 +450,22 @@ export const useRealtimeChat = (
           });
         }
       } catch {}
-    }, 30000);
+    };
+
+    // Adaptive fallback heartbeat: 60s when Realtime is healthy, 20s when degraded; pauses while tab is hidden
+    const pollInterval = setInterval(() => {
+      if (isCancelled) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const healthStatus = dbService.getRealtimeHealth?.()?.status;
+      const minGapMs = healthStatus === 'CONNECTED' ? 60000 : 20000;
+      if (Date.now() - lastDbSyncAt >= minGapMs) {
+        syncMessagesFromDb();
+      }
+    }, 20000);
+
+    const unsubRecovered = dbService.onRealtimeRecovered?.(() => {
+      syncMessagesFromDb();
+    });
 
     // Realtime Database Subscriptions for channel & DM tables
     const unsubChannel = dbService.subscribeToTable('channel_messages', (payload) => {
@@ -516,6 +532,7 @@ export const useRealtimeChat = (
     return () => {
       isCancelled = true;
       clearInterval(pollInterval);
+      unsubRecovered?.();
       chatService.off('message', handleMessage);
       chatService.off('reaction', handleReaction);
       chatService.off('typing', handleTyping);

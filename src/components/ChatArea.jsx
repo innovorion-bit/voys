@@ -271,6 +271,30 @@ export const ChatArea = ({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
+  const [expiredMediaKeys, setExpiredMediaKeys] = useState(() => new Set());
+
+  const markMediaExpired = useCallback((mediaKey) => {
+    if (!mediaKey) return;
+    setExpiredMediaKeys((prev) => {
+      if (prev.has(mediaKey)) return prev;
+      const next = new Set(prev);
+      next.add(mediaKey);
+      return next;
+    });
+  }, []);
+
+  const handleAttachmentDownload = useCallback(async (att, mediaKey) => {
+    if (!att?.url) return;
+    const res = await dbService.downloadFile(att.url, att.name || 'download');
+    if (res && res.ok === false) {
+      if (res.expired) {
+        markMediaExpired(mediaKey);
+        toast.error('Bu dosyanın 2 günlük saklama süresi dolduğu için silinmiş.');
+      } else {
+        toast.error('Dosya indirilemedi.');
+      }
+    }
+  }, [markMediaExpired]);
 
   // Voice participant right-click context menu state
   const [voiceContextMenu, setVoiceContextMenu] = useState(null); // { x, y, member }
@@ -416,15 +440,22 @@ export const ChatArea = ({
     }
 
     setIsUploadingGroupAvatar(true);
+    const previousAvatarUrl = channelData?.avatar_url || channelData?.avatar || '';
 
     try {
       const uploadedUrl = await dbService.uploadAvatar(file, activeChannel || 'group');
       // Dismiss spinner as soon as avatar URL is ready
       setIsUploadingGroupAvatar(false);
       if (onUpdateChannel && activeChannel) {
-        onUpdateChannel(activeChannel, { avatar_url: uploadedUrl, avatar: uploadedUrl }).catch((err) => {
-          console.warn('Grup fotoğrafı kaydetme uyarısı:', err);
-        });
+        onUpdateChannel(activeChannel, { avatar_url: uploadedUrl, avatar: uploadedUrl })
+          .then(() => {
+            if (previousAvatarUrl && previousAvatarUrl !== uploadedUrl) {
+              dbService.deleteStorageObjectByUrl('avatars', previousAvatarUrl);
+            }
+          })
+          .catch((err) => {
+            console.warn('Grup fotoğrafı kaydetme uyarısı:', err);
+          });
       }
       toast.success('Grup fotoğrafı güncellendi');
     } catch (err) {
@@ -438,11 +469,18 @@ export const ChatArea = ({
 
   const handleRemoveGroupAvatar = async () => {
     setIsUploadingGroupAvatar(true);
+    const previousAvatarUrl = channelData?.avatar_url || channelData?.avatar || '';
     try {
       if (onUpdateChannel && activeChannel) {
-        onUpdateChannel(activeChannel, { avatar_url: '', avatar: '' }).catch((err) => {
-          console.warn('Grup fotoğrafı kaldırma uyarısı:', err);
-        });
+        onUpdateChannel(activeChannel, { avatar_url: '', avatar: '' })
+          .then(() => {
+            if (previousAvatarUrl) {
+              dbService.deleteStorageObjectByUrl('avatars', previousAvatarUrl);
+            }
+          })
+          .catch((err) => {
+            console.warn('Grup fotoğrafı kaldırma uyarısı:', err);
+          });
       }
       toast.success('Grup fotoğrafı kaldırıldı');
     } catch (err) {
@@ -2022,10 +2060,31 @@ export const ChatArea = ({
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mt-2.5 flex flex-wrap gap-3">
                             {msg.attachments.map((att, idx) => {
+                              const mediaKey = att.id || `${msg.id}_att_${idx}`;
+                              const isMediaExpired = expiredMediaKeys.has(mediaKey);
                               const isImage = att.type?.startsWith('image/');
                               const isVideo = att.type?.startsWith('video/');
                               const ext = (att.name?.split('.').pop() || '').toLowerCase();
                               const isAudio = att.type?.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext);
+
+                              if (isMediaExpired) {
+                                return (
+                                  <div
+                                    key={att.id || idx}
+                                    className="flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl bg-[#111115] border border-amber-500/20 max-w-xs sm:max-w-md text-xs"
+                                  >
+                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex-shrink-0">
+                                      <File size={16} />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="text-gray-300 font-semibold truncate">{att.name || 'Dosya'}</div>
+                                      <div className="text-[11px] text-amber-300/80">
+                                        Dosyanın 2 günlük süresi doldu veya silindi
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
 
                               // Image Attachment with Rich Thumbnail
                               if (isImage) {
@@ -2041,6 +2100,7 @@ export const ChatArea = ({
                                       <img
                                         src={att.url}
                                         alt={att.name || 'Paylaşılan Görsel'}
+                                        onError={() => markMediaExpired(mediaKey)}
                                         className="max-h-72 w-auto object-contain rounded-t-2xl group-hover/img:scale-[1.01] transition-transform duration-200"
                                         loading="lazy"
                                       />
@@ -2063,7 +2123,7 @@ export const ChatArea = ({
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          dbService.downloadFile(att.url, att.name);
+                                          handleAttachmentDownload(att, mediaKey);
                                         }}
                                         className="p-1.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-white/5 hover:border-indigo-500/30 transition flex items-center space-x-1"
                                         title="Görseli İndir"
@@ -2086,6 +2146,7 @@ export const ChatArea = ({
                                     <video
                                       src={att.url}
                                       controls
+                                      onError={() => markMediaExpired(mediaKey)}
                                       className="max-h-80 w-full bg-black"
                                       preload="metadata"
                                     />
@@ -2096,7 +2157,7 @@ export const ChatArea = ({
                                       </div>
                                       <button
                                         type="button"
-                                        onClick={() => dbService.downloadFile(att.url, att.name)}
+                                        onClick={() => handleAttachmentDownload(att, mediaKey)}
                                         className="p-1.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-white/5 hover:border-indigo-500/30 transition flex items-center space-x-1 flex-shrink-0"
                                         title="Videoyu İndir"
                                       >
@@ -2127,14 +2188,14 @@ export const ChatArea = ({
                                       </div>
                                       <button
                                         type="button"
-                                        onClick={() => dbService.downloadFile(att.url, att.name)}
+                                        onClick={() => handleAttachmentDownload(att, mediaKey)}
                                         className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition flex-shrink-0 ml-2"
                                         title="Sesi İndir"
                                       >
                                         <Download size={13} />
                                       </button>
                                     </div>
-                                    <audio src={att.url} controls className="w-full h-8 rounded-lg" preload="metadata" />
+                                    <audio src={att.url} controls onError={() => markMediaExpired(mediaKey)} className="w-full h-8 rounded-lg" preload="metadata" />
                                   </div>
                                 );
                               }
@@ -2143,7 +2204,7 @@ export const ChatArea = ({
                               return (
                                 <div
                                   key={att.id || idx}
-                                  onClick={() => dbService.downloadFile(att.url, att.name)}
+                                  onClick={() => handleAttachmentDownload(att, mediaKey)}
                                   className="flex items-center space-x-3 px-3.5 py-3 rounded-2xl bg-[#141418] border border-white/10 hover:border-indigo-500/50 hover:bg-[#1a1a20] transition group/file w-full max-w-sm sm:max-w-md shadow-md cursor-pointer select-none"
                                 >
                                   <div className="p-2.5 bg-white/5 group-hover/file:bg-indigo-500/20 text-indigo-400 rounded-xl flex-shrink-0 transition border border-white/5 group-hover/file:border-indigo-500/30">
@@ -2164,7 +2225,7 @@ export const ChatArea = ({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        dbService.downloadFile(att.url, att.name);
+                                        handleAttachmentDownload(att, mediaKey);
                                       }}
                                       className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-600/30 group-hover/file:bg-indigo-600 text-gray-300 group-hover/file:text-white border border-white/10 group-hover/file:border-indigo-500/40 text-xs font-semibold flex items-center space-x-1.5 transition"
                                       title="Dosyayı İndir"

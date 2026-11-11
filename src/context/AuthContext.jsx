@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { AuthContext } from './authContextDef';
-import { dbService, localDb, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, dbService, localDb, isSupabaseConfigured, ADMIN_USER_ID, ADMIN_EMAIL } from '../lib/supabase';
 import { chatService } from '../services/chatService';
 import { resizeToMainWindow, resizeToLoginWindow } from '../utils/windowManager';
 
@@ -68,6 +68,7 @@ export const AuthProvider = ({ children }) => {
     return {
       ...rawUser,
       ...(profileData || {}),
+      app_metadata: rawUser.app_metadata || profileData?.app_metadata || null,
       id: rawUser.id,
       email: rawUser.email || profileData?.email,
       username: rawUsername,
@@ -95,6 +96,16 @@ export const AuthProvider = ({ children }) => {
           setUser(buildNormalizedUser(currentSession.user));
           setLoading(false);
           resizeToMainWindow();
+
+          // Upgrade JWT claims once if admin role was added server-side to an active session
+          if (
+            currentSession.user.id === ADMIN_USER_ID &&
+            String(currentSession.user.email || '').toLowerCase() === ADMIN_EMAIL &&
+            currentSession.user.app_metadata?.role !== 'admin' &&
+            supabase?.auth?.refreshSession
+          ) {
+            supabase.auth.refreshSession().catch(() => {});
+          }
 
           // Fetch fresh profile in background
           dbService.ensureProfile(currentSession.user)

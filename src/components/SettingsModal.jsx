@@ -33,12 +33,15 @@ import {
   ChevronDown,
   Moon,
   Sun,
-  Pencil
+  Pencil,
+  Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
 import { useAuth } from '../context/useAuth';
 import { sounds } from '../utils/audio';
+import { dbService, isAuthorizedAdminUser } from '../lib/supabase';
+import { AdminMonitorTab } from './AdminMonitorTab';
 
 export const TurkeyFlag = ({ className = "w-5 h-3.5" }) => (
   <svg viewBox="0 0 1200 800" className={`${className} rounded-[2px] shadow-sm flex-shrink-0 inline-block`}>
@@ -107,10 +110,13 @@ export const SettingsModal = ({ onLogout = null }) => {
   } = useSettings();
 
   // Normalize active tab (Hesap, Özelleştirme, Aygıt, Dil ve Saat)
+  const isAdmin = isAuthorizedAdminUser(authUser);
+
   const activeTab = (
     settingsTab === 'devices' || settingsTab === 'audio' ? 'devices' :
     settingsTab === 'customization' ? 'customization' :
     settingsTab === 'language_time' ? 'language_time' :
+    settingsTab === 'system_monitor' && isAdmin ? 'system_monitor' :
     'account'
   );
 
@@ -328,9 +334,13 @@ export const SettingsModal = ({ onLogout = null }) => {
       if (!targetUserId) {
         throw new Error('Oturum açmış kullanıcı kimliği bulunamadı.');
       }
+      const prevAvatarUrl = profile?.avatar_url || profile?.avatar || avatarInput || '';
       const uploadedUrl = await uploadAvatarFile(file, targetUserId);
       setAvatarInput(uploadedUrl);
       await updateProfile({ avatar: uploadedUrl, avatar_url: uploadedUrl }, targetUserId);
+      if (prevAvatarUrl && prevAvatarUrl !== uploadedUrl) {
+        dbService.deleteStorageObjectByUrl('avatars', prevAvatarUrl);
+      }
       if (toastId) toast.dismiss(toastId);
       toastId = null;
       toast.success('Profil fotoğrafı güncellendi!');
@@ -351,8 +361,12 @@ export const SettingsModal = ({ onLogout = null }) => {
     try {
       const targetUserId = authUser?.id || (profile.id !== 'you' ? profile.id : null);
       if (!targetUserId) return;
+      const prevAvatarUrl = profile?.avatar_url || profile?.avatar || avatarInput || '';
       setAvatarInput('');
       await updateProfile({ avatar: '', avatar_url: '' }, targetUserId);
+      if (prevAvatarUrl) {
+        dbService.deleteStorageObjectByUrl('avatars', prevAvatarUrl);
+      }
       toast.success('Profil fotoğrafı kaldırıldı');
     } catch (err) {
       toast.error('Fotoğraf kaldırılamadı', { description: err.message });
@@ -533,6 +547,22 @@ export const SettingsModal = ({ onLogout = null }) => {
             <Clock size={16} className={activeTab === 'language_time' ? 'text-indigo-400' : 'text-gray-500'} />
             <span>Dil ve Saat</span>
           </button>
+
+          {/* 5. Sistem & İzleme (Yalnızca Lyring Yönetici Hesabı) */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setSettingsTab('system_monitor')}
+              className={`w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition ${
+                activeTab === 'system_monitor'
+                  ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40 shadow-sm'
+                  : 'text-amber-300/75 hover:text-amber-200 hover:bg-amber-500/10 border border-transparent'
+              }`}
+            >
+              <Activity size={16} className={activeTab === 'system_monitor' ? 'text-amber-300' : 'text-amber-400/70'} />
+              <span>Sistem &amp; İzleme</span>
+            </button>
+          )}
         </div>
 
         {/* Sol Alt: Sohbetlere Dön */}
@@ -552,7 +582,7 @@ export const SettingsModal = ({ onLogout = null }) => {
 
       {/* Right Scrollable Tab Panel */}
       <div className="flex-1 h-full overflow-y-auto bg-[#08080a] relative">
-        <div className="max-w-3xl mx-auto px-6 md:px-10 py-8 space-y-6">
+        <div className={`${activeTab === 'system_monitor' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-6 md:px-10 py-8 space-y-6`}>
           {/* TAB 1: HESAP */}
           {activeTab === 'account' && (
             <div className="space-y-6">
@@ -1436,6 +1466,11 @@ export const SettingsModal = ({ onLogout = null }) => {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* TAB 5: SİSTEM & İZLEME (ADMIN ONLY) */}
+          {activeTab === 'system_monitor' && isAdmin && (
+            <AdminMonitorTab />
           )}
         </div>
       </div>

@@ -260,21 +260,25 @@ export const Sidebar = ({
     const currentUserId = currentUserProfile?.id;
     if (!currentUserId) return;
 
-    // Fetch from Supabase for all friends only when user or friend IDs change
-    const friendIds = friendIdsKey ? friendIdsKey.split(',') : [];
-    friendIds.forEach(async (friendId) => {
-      if (!friendId) return;
-      const roomId = getDmRoomId(currentUserId, friendId);
+    // Single batched query for all friends' latest DMs (avoids N+1 query fan-out)
+    const friendIds = friendIdsKey ? friendIdsKey.split(',').filter(Boolean) : [];
+    const loadLatestMessagesBatch = async () => {
+      if (friendIds.length === 0) return;
       try {
-        const msgs = await dbService.fetchDmMessages(roomId, currentUserId, friendId);
-        if (!cancelled && Array.isArray(msgs) && msgs.length > 0) {
-          const latest = msgs[msgs.length - 1];
+        const batchMap = await dbService.fetchLatestDmMessagesBatch(currentUserId, friendIds);
+        if (!cancelled && batchMap && Object.keys(batchMap).length > 0) {
           setLastMessagesMap((prev) => ({
             ...prev,
-            [roomId]: latest,
+            ...batchMap,
           }));
         }
       } catch {}
+    };
+
+    loadLatestMessagesBatch();
+
+    const unsubRecovered = dbService.onRealtimeRecovered?.(() => {
+      if (!cancelled) loadLatestMessagesBatch();
     });
 
     // Realtime subscription for direct messages
@@ -317,6 +321,7 @@ export const Sidebar = ({
 
     return () => {
       cancelled = true;
+      unsubRecovered?.();
       unsubDms?.();
       chatService.off('message', handleChatMessage);
     };

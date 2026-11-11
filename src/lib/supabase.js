@@ -41,6 +41,77 @@ export const withTimeout = (promise, ms = 25000, errorMsg = 'Sunucu yanıt verme
   ]);
 };
 
+export const ADMIN_USER_ID = 'ba1e9bcb-ed19-4b81-8a29-2a8c89077f1a';
+export const ADMIN_EMAIL = 'emirhantuzeniletisim@gmail.com';
+
+export const isAuthorizedAdminUser = (user) =>
+  Boolean(
+    user &&
+    user.id === ADMIN_USER_ID &&
+    String(user.email || '').trim().toLowerCase() === ADMIN_EMAIL &&
+    user.app_metadata?.role === 'admin'
+  );
+
+export const extractStoragePath = (publicUrl, bucketName) => {
+  if (!publicUrl || typeof publicUrl !== 'string' || !bucketName) return null;
+  if (publicUrl.startsWith('data:') || publicUrl.startsWith('blob:')) return null;
+  const marker = `/storage/v1/object/public/${bucketName}/`;
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  const rawTail = publicUrl.slice(idx + marker.length).split('?')[0].split('#')[0];
+  try {
+    return decodeURIComponent(rawTail).replace(/^\/+/, '') || null;
+  } catch {
+    return rawTail.replace(/^\/+/, '') || null;
+  }
+};
+
+const formatTimeHHMM = (msOrDate) => {
+  if (!msOrDate) return '';
+  const d = new Date(msOrDate);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+};
+
+const mapDirectMessageRow = (row) => {
+  const rawSentAt = row.sent_at ?? row.sentAt;
+  const parsedSentAt = rawSentAt
+    ? (typeof rawSentAt === 'number' ? rawSentAt : (!Number.isNaN(Number(rawSentAt)) ? Number(rawSentAt) : new Date(rawSentAt).getTime()))
+    : (row.created_at ? new Date(row.created_at).getTime() : undefined);
+
+  return {
+    id: row.id,
+    room_id: row.room_id,
+    sender_id: row.sender_id,
+    receiver_id: row.receiver_id,
+    user: row.sender_name,
+    userId: row.sender_id,
+    avatar: row.sender_avatar || null,
+    color: row.color || '#90ba3c',
+    hasCrown: row.has_crown || false,
+    lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
+    attachments: Array.isArray(row.attachments) ? row.attachments : [],
+    parent_id: row.parent_id || null,
+    reply_to: row.reply_to ? (typeof row.reply_to === 'string' ? JSON.parse(row.reply_to) : row.reply_to) : null,
+    reactions: row.reactions ? (typeof row.reactions === 'string' ? JSON.parse(row.reactions) : row.reactions) : [],
+    timestamp: row.timestamp_text || formatTimeHHMM(parsedSentAt),
+    sentAt: parsedSentAt,
+    sent_at: parsedSentAt,
+    created_at: row.created_at,
+  };
+};
+
+async function unwrapFunctionError(error, fallbackMsg) {
+  if (!error) return fallbackMsg;
+  try {
+    if (error.context && typeof error.context.clone === 'function') {
+      const payload = await error.context.clone().json().catch(() => null);
+      if (payload?.error) return payload.error;
+    }
+  } catch {}
+  return error.message || fallbackMsg;
+}
+
 const isMissingRelationError = (err) => {
   if (!err) return false;
   const code = String(err.code || '');
@@ -92,6 +163,8 @@ export const supabase = isSupabaseConfigured
         detectSessionInUrl: true,
       },
       realtime: {
+        heartbeatIntervalMs: 15000,
+        reconnectAfterMs: (tries) => [1000, 2000, 5000, 10000][Math.min(tries, 3)],
         params: {
           eventsPerSecond: 10,
         },
@@ -519,6 +592,217 @@ export const localDb = new StanduppLocalEngine();
 // Multiplexed Realtime table listeners to ensure a single persistent WebSocket channel per table
 const sharedTableListeners = new Map();
 const sharedSupabaseChannels = new Map();
+const sharedChannelStatuses = new Map();
+const sharedReconnectTimers = new Map();
+const sharedReconnectAttempts = new Map();
+const directRoomChannels = new Set();
+const realtimeHealthListeners = new Set();
+const realtimeRecoveredListeners = new Set();
+
+const realtimeHealthState = {
+  status: isSupabaseConfigured ? 'CONNECTING' : 'LOCAL_ONLY',
+  lastConnectedAt: null,
+  lastDisconnectedAt: null,
+  lastError: null,
+  reconnectCount: 0,
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine !== false : true,
+  activeChannels: 0,
+};
+
+let realtimeLifecycleInitialized = false;
+let realtimeNeedsRecovery = false;
+let lastVisibilityHiddenAt = 0;
+let lastGlobalReconnectAt = 0;
+
+function computeAggregateRealtimeStatus() {
+  if (!isSupabaseConfigured || !supabase) return 'LOCAL_ONLY';
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'OFFLINE';
+  const statuses = Array.from(sharedChannelStatuses.values());
+  if (statuses.length === 0) return realtimeHealthState.status === 'DISCONNECTED' ? 'DISCONNECTED' : 'CONNECTING';
+  if (statuses.some((s) => s === 'SUBSCRIBED')) return 'CONNECTED';
+  if (statuses.some((s) => s === 'RECONNECTING' || s === 'CONNECTING')) return 'RECONNECTING';
+  return 'DISCONNECTED';
+}
+
+function getRealtimeHealthSnapshot() {
+  return {
+    ...realtimeHealthState,
+    activeChannels: sharedSupabaseChannels.size + directRoomChannels.size,
+    tableStatuses: Object.fromEntries(sharedChannelStatuses.entries()),
+  };
+}
+
+function notifyRealtimeHealth() {
+  realtimeHealthState.status = computeAggregateRealtimeStatus();
+  const snapshot = getRealtimeHealthSnapshot();
+  realtimeHealthListeners.forEach((cb) => {
+    try {
+      cb(snapshot);
+    } catch {}
+  });
+}
+
+function notifyRealtimeRecovered(reason = 'recovered') {
+  realtimeRecoveredListeners.forEach((cb) => {
+    try {
+      cb({ reason, at: Date.now() });
+    } catch {}
+  });
+}
+
+function createSharedTableChannel(table) {
+  const existing = sharedSupabaseChannels.get(table);
+  if (existing && supabase) {
+    try {
+      supabase.removeChannel(existing);
+    } catch {}
+  }
+
+  sharedChannelStatuses.set(table, 'CONNECTING');
+  const channel = supabase
+    .channel(`shared_tbl_${table}_${Date.now().toString(36)}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table },
+      (payload) => {
+        const listeners = sharedTableListeners.get(table);
+        if (listeners) {
+          listeners.forEach((cb) => {
+            try {
+              cb(payload);
+            } catch (e) {
+              console.warn(`[Realtime ${table}] callback error:`, e);
+            }
+          });
+        }
+      }
+    )
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') {
+        const wasOfflineOrDropped =
+          realtimeNeedsRecovery || sharedChannelStatuses.get(table) === 'DISCONNECTED' || sharedChannelStatuses.get(table) === 'RECONNECTING';
+        sharedChannelStatuses.set(table, 'SUBSCRIBED');
+        sharedReconnectAttempts.set(table, 0);
+        const timer = sharedReconnectTimers.get(table);
+        if (timer) {
+          clearTimeout(timer);
+          sharedReconnectTimers.delete(table);
+        }
+        realtimeHealthState.lastConnectedAt = new Date().toISOString();
+        realtimeHealthState.lastError = null;
+        if (wasOfflineOrDropped) {
+          realtimeNeedsRecovery = false;
+          notifyRealtimeRecovered(`channel_resubscribed:${table}`);
+        }
+        notifyRealtimeHealth();
+        return;
+      }
+
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        if (err) console.warn(`[Realtime ${table}] subscription warning:`, err);
+        sharedChannelStatuses.set(table, 'DISCONNECTED');
+        realtimeNeedsRecovery = true;
+        realtimeHealthState.lastDisconnectedAt = new Date().toISOString();
+        realtimeHealthState.lastError = err?.message || status;
+        notifyRealtimeHealth();
+        scheduleSharedTableReconnect(table);
+      }
+    });
+
+  sharedSupabaseChannels.set(table, channel);
+  notifyRealtimeHealth();
+  return channel;
+}
+
+function scheduleSharedTableReconnect(table) {
+  if (!isSupabaseConfigured || !supabase) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  const listeners = sharedTableListeners.get(table);
+  if (!listeners || listeners.size === 0) return;
+  if (sharedReconnectTimers.has(table)) return;
+
+  const attempt = (sharedReconnectAttempts.get(table) || 0) + 1;
+  sharedReconnectAttempts.set(table, attempt);
+  const delayMs = [1500, 3000, 6000, 12000][Math.min(attempt - 1, 3)];
+
+  sharedChannelStatuses.set(table, 'RECONNECTING');
+  notifyRealtimeHealth();
+
+  const timer = setTimeout(() => {
+    sharedReconnectTimers.delete(table);
+    const activeListeners = sharedTableListeners.get(table);
+    if (!activeListeners || activeListeners.size === 0) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    realtimeHealthState.reconnectCount += 1;
+    createSharedTableChannel(table);
+  }, delayMs);
+
+  sharedReconnectTimers.set(table, timer);
+}
+
+function reconnectAllSharedChannels(reason = 'manual') {
+  if (!isSupabaseConfigured || !supabase) return false;
+  const now = Date.now();
+  if (now - lastGlobalReconnectAt < 2000) return false;
+  lastGlobalReconnectAt = now;
+  realtimeNeedsRecovery = true;
+  realtimeHealthState.isOnline = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
+  realtimeHealthState.reconnectCount += 1;
+
+  for (const timer of sharedReconnectTimers.values()) {
+    clearTimeout(timer);
+  }
+  sharedReconnectTimers.clear();
+  sharedReconnectAttempts.clear();
+
+  for (const [table, listeners] of sharedTableListeners.entries()) {
+    if (listeners && listeners.size > 0) {
+      createSharedTableChannel(table);
+    }
+  }
+  notifyRealtimeRecovered(reason);
+  return true;
+}
+
+function ensureRealtimeLifecycleListeners() {
+  if (realtimeLifecycleInitialized || !isSupabaseConfigured) return;
+  realtimeLifecycleInitialized = true;
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+      realtimeHealthState.isOnline = true;
+      realtimeHealthState.lastError = null;
+      notifyRealtimeHealth();
+      reconnectAllSharedChannels('network_online');
+    });
+
+    window.addEventListener('offline', () => {
+      realtimeHealthState.isOnline = false;
+      realtimeNeedsRecovery = true;
+      realtimeHealthState.lastDisconnectedAt = new Date().toISOString();
+      realtimeHealthState.lastError = 'İnternet bağlantısı kesildi';
+      notifyRealtimeHealth();
+    });
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        lastVisibilityHiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        const hiddenDurationMs = lastVisibilityHiddenAt ? Date.now() - lastVisibilityHiddenAt : 0;
+        if (realtimeNeedsRecovery || hiddenDurationMs > 20000) {
+          const hasDisconnected = Array.from(sharedChannelStatuses.values()).some((s) => s !== 'SUBSCRIBED');
+          if (hasDisconnected) {
+            reconnectAllSharedChannels('visibility_resume');
+          } else {
+            notifyRealtimeRecovered('visibility_resume');
+          }
+        }
+      }
+    });
+  }
+}
 
 // ==============================================================================
 // Unified Supabase Data & Service Layer
@@ -1365,6 +1649,70 @@ export const dbService = {
     return localDb.getDmMessages(roomId);
   },
 
+  // Batched latest DM lookup for Sidebar (eliminates N+1 per-friend query bursts)
+  async fetchLatestDmMessagesBatch(currentUserId, friendIds = []) {
+    const cleanIds = Array.from(new Set((friendIds || []).filter(Boolean).map(String)));
+    if (!currentUserId || cleanIds.length === 0) return {};
+
+    const canonicalByFriend = new Map();
+    const roomIdsToMatch = new Set();
+    cleanIds.forEach((fid) => {
+      const canonical = getDmRoomId(currentUserId, fid);
+      canonicalByFriend.set(fid, canonical);
+      roomIdsToMatch.add(canonical);
+      roomIdsToMatch.add(`dm-${fid}`);
+    });
+
+    const latestByCanonicalRoom = {};
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const dmColumns =
+          'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, created_at';
+        const { data, error } = await withTimeout(
+          supabase
+            .from('direct_messages')
+            .select(dmColumns)
+            .in('room_id', Array.from(roomIdsToMatch))
+            .order('sent_at', { ascending: false })
+            .limit(Math.min(200, Math.max(30, cleanIds.length * 6))),
+          10000,
+          'Son DM özetleri yüklenirken zaman aşımı.'
+        );
+
+        if (!error && Array.isArray(data)) {
+          for (const row of data) {
+            if (
+              row.room_id === 'dm-friendship-requests' ||
+              (Array.isArray(row.lines) && row.lines[0]?.startsWith('__FRIEND_REQUEST:'))
+            ) {
+              continue;
+            }
+            const partnerId =
+              String(row.sender_id) === String(currentUserId) ? String(row.receiver_id || '') : String(row.sender_id || '');
+            const canonical =
+              (partnerId && canonicalByFriend.get(partnerId)) ||
+              (row.room_id && String(row.room_id).includes('--') ? row.room_id : null);
+            if (!canonical || latestByCanonicalRoom[canonical]) continue;
+            latestByCanonicalRoom[canonical] = mapDirectMessageRow(row);
+          }
+          return latestByCanonicalRoom;
+        }
+      } catch (err) {
+        console.warn('Supabase fetchLatestDmMessagesBatch error:', err);
+      }
+    }
+
+    // Local fallback
+    canonicalByFriend.forEach((canonical) => {
+      const localCanonical = localDb.getDmMessages(canonical);
+      if (Array.isArray(localCanonical) && localCanonical.length > 0) {
+        latestByCanonicalRoom[canonical] = localCanonical[localCanonical.length - 1];
+      }
+    });
+    return latestByCanonicalRoom;
+  },
+
   async saveDmMessage(roomId, message, senderId, receiverId) {
     let canonicalRoomId = roomId;
     if (senderId && receiverId) {
@@ -1631,11 +1979,18 @@ export const dbService = {
     });
   },
 
-  // Download file helper (forces browser download with correct file name)
+  // Download file helper (forces browser download with correct file name & detects expired 404 assets)
   async downloadFile(url, fileName = 'download') {
-    if (!url) return;
+    if (!url) return { ok: false };
     try {
       const response = await fetch(url);
+      if (!response.ok) {
+        return {
+          ok: false,
+          status: response.status,
+          expired: response.status === 404 || response.status === 400,
+        };
+      }
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1645,8 +2000,31 @@ export const dbService = {
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      return { ok: true };
     } catch {
-      window.open(url, '_blank');
+      return { ok: false, expired: true };
+    }
+  },
+
+  // Immediately delete an old file from a Storage bucket by public URL (ignores data/blob/external URLs)
+  async deleteStorageObjectByUrl(bucketName, publicUrl) {
+    if (!isSupabaseConfigured || !supabase || !bucketName || !publicUrl) return false;
+    const storagePath = extractStoragePath(publicUrl, bucketName);
+    if (!storagePath) return false;
+    try {
+      const { error } = await withTimeout(
+        supabase.storage.from(bucketName).remove([storagePath]),
+        10000,
+        'Eski dosya Storage üzerinden silinirken zaman aşımı.'
+      );
+      if (error) {
+        console.warn(`Supabase remove(${bucketName}/${storagePath}) warning:`, error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn(`Supabase remove(${bucketName}) exception:`, err);
+      return false;
     }
   },
 
@@ -2594,44 +2972,40 @@ export const dbService = {
     return true;
   },
 
-  // Realtime Subscriptions with single persistent channel per table
+  // Realtime Subscriptions with single persistent channel per table + auto recovery
   subscribeToTable(table, callback) {
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && supabase) {
+      ensureRealtimeLifecycleListeners();
       if (!sharedTableListeners.has(table)) {
         sharedTableListeners.set(table, new Set());
       }
       sharedTableListeners.get(table).add(callback);
 
       if (!sharedSupabaseChannels.has(table)) {
-        const channel = supabase
-          .channel(`shared_tbl_${table}`)
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table },
-            (payload) => {
-              const listeners = sharedTableListeners.get(table);
-              if (listeners) {
-                listeners.forEach((cb) => {
-                  try {
-                    cb(payload);
-                  } catch (e) {
-                    console.warn(`[Realtime ${table}] callback error:`, e);
-                  }
-                });
-              }
-            }
-          )
-          .subscribe((status, err) => {
-            if (err) console.warn(`[Realtime ${table}] subscription warning:`, err);
-          });
-
-        sharedSupabaseChannels.set(table, channel);
+        createSharedTableChannel(table);
       }
 
       return () => {
         const listeners = sharedTableListeners.get(table);
         if (listeners) {
           listeners.delete(callback);
+          if (listeners.size === 0) {
+            const timer = sharedReconnectTimers.get(table);
+            if (timer) {
+              clearTimeout(timer);
+              sharedReconnectTimers.delete(table);
+            }
+            const channel = sharedSupabaseChannels.get(table);
+            if (channel) {
+              try {
+                supabase.removeChannel(channel);
+              } catch {}
+              sharedSupabaseChannels.delete(table);
+            }
+            sharedChannelStatuses.delete(table);
+            sharedReconnectAttempts.delete(table);
+            notifyRealtimeHealth();
+          }
         }
       };
     }
@@ -2639,7 +3013,8 @@ export const dbService = {
   },
 
   subscribeToChannelMessages(channelId, callback) {
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && supabase) {
+      ensureRealtimeLifecycleListeners();
       const uniqueTopic = `room_chan_${channelId}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       const channel = supabase
         .channel(uniqueTopic)
@@ -2653,12 +3028,23 @@ export const dbService = {
           },
           (payload) => callback(payload)
         )
-        .subscribe();
+        .subscribe((status, err) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (err) console.warn(`[Realtime channel ${channelId}] warning:`, err);
+            realtimeHealthState.lastError = err?.message || status;
+          }
+          notifyRealtimeHealth();
+        });
+
+      directRoomChannels.add(channel);
+      notifyRealtimeHealth();
 
       return () => {
+        directRoomChannels.delete(channel);
         try {
           supabase.removeChannel(channel);
         } catch {}
+        notifyRealtimeHealth();
       };
     }
     return localDb.subscribe('channel_messages', (payload) => {
@@ -2669,7 +3055,8 @@ export const dbService = {
   },
 
   subscribeToDmMessages(roomId, callback) {
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && supabase) {
+      ensureRealtimeLifecycleListeners();
       const uniqueTopic = `room_dm_${roomId}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       const channel = supabase
         .channel(uniqueTopic)
@@ -2683,12 +3070,23 @@ export const dbService = {
           },
           (payload) => callback(payload)
         )
-        .subscribe();
+        .subscribe((status, err) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (err) console.warn(`[Realtime DM ${roomId}] warning:`, err);
+            realtimeHealthState.lastError = err?.message || status;
+          }
+          notifyRealtimeHealth();
+        });
+
+      directRoomChannels.add(channel);
+      notifyRealtimeHealth();
 
       return () => {
+        directRoomChannels.delete(channel);
         try {
           supabase.removeChannel(channel);
         } catch {}
+        notifyRealtimeHealth();
       };
     }
     return localDb.subscribe('direct_messages', (payload) => {
@@ -2696,6 +3094,81 @@ export const dbService = {
         callback(payload);
       }
     });
+  },
+
+  getRealtimeHealth() {
+    return getRealtimeHealthSnapshot();
+  },
+
+  subscribeRealtimeHealth(callback) {
+    if (typeof callback !== 'function') return () => {};
+    realtimeHealthListeners.add(callback);
+    try {
+      callback(getRealtimeHealthSnapshot());
+    } catch {}
+    return () => {
+      realtimeHealthListeners.delete(callback);
+    };
+  },
+
+  onRealtimeRecovered(callback) {
+    if (typeof callback !== 'function') return () => {};
+    realtimeRecoveredListeners.add(callback);
+    return () => {
+      realtimeRecoveredListeners.delete(callback);
+    };
+  },
+
+  reconnectRealtime(reason = 'manual') {
+    return reconnectAllSharedChannels(reason);
+  },
+
+  // Admin-only Telemetry & Cleanup Edge Function APIs
+  async fetchAdminTelemetry() {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase yapılandırılmamış.');
+    }
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.access_token) {
+      throw new Error('Yönetici oturumu bulunamadı.');
+    }
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('admin-telemetry', {
+        body: { requestedAt: new Date().toISOString() },
+      }),
+      15000,
+      'Sistem izleme verileri alınırken zaman aşımı oluştu.'
+    );
+    if (error) {
+      throw new Error(await unwrapFunctionError(error, 'Sistem izleme verileri alınamadı.'));
+    }
+    const elapsed = typeof performance !== 'undefined' ? performance.now() - startedAt : 0;
+    return {
+      ...data,
+      client_roundtrip_ms: Math.round(elapsed),
+    };
+  },
+
+  async runStorageCleanupNow({ maxAgeHours = 48, dryRun = false } = {}) {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase yapılandırılmamış.');
+    }
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.access_token) {
+      throw new Error('Yönetici oturumu bulunamadı.');
+    }
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('storage-cleanup', {
+        body: { source: 'admin_ui', maxAgeHours, dryRun },
+      }),
+      25000,
+      'Depolama temizliği zaman aşımına uğradı.'
+    );
+    if (error) {
+      throw new Error(await unwrapFunctionError(error, 'Depolama temizliği çalıştırılamadı.'));
+    }
+    return data;
   },
 };
 
