@@ -208,8 +208,8 @@ html.theme-light .voys-glass-sidebar .bg-white\/5 {
 
 html.theme-light .voys-glass-sidebar .bg-white\/10,
 html.theme-light .voys-glass-sidebar [class*="bg-[#18181f]"] {
-  background-color: rgba(88, 101, 242, 0.12) !important;
-  color: #5865F2 !important;
+  background-color: rgba(139, 81, 255, 0.12) !important;
+  color: #8B51FF !important;
 }
 
 /* Main Chat Area */
@@ -450,9 +450,9 @@ html.theme-light .voys-glass-settings-sidebar button:hover {
 
 html.theme-light .voys-glass-settings-sidebar button.bg-indigo-600\/25,
 html.theme-light .voys-glass-settings-sidebar button.bg-indigo-600\/20 {
-  background-color: rgba(88, 101, 242, 0.12) !important;
-  color: #5865F2 !important;
-  border-color: rgba(88, 101, 242, 0.25) !important;
+  background-color: rgba(139, 81, 255, 0.12) !important;
+  color: #8B51FF !important;
+  border-color: rgba(139, 81, 255, 0.25) !important;
 }
 
 html.theme-light .voys-glass-settings .bg-white\/5 {
@@ -470,7 +470,7 @@ html.theme-light .voys-glass-settings input[type="range"].voice-slider {
 }
 
 html.theme-light .voys-glass-settings input[type="range"].voice-slider::-webkit-slider-thumb {
-  background: #5865f2 !important;
+  background: #8B51FF !important;
 }
 
 /* Modals & Dialogs (Create Channel, Add Friend, Logout Confirm, Peer Connect, Delete Chat) */

@@ -750,7 +750,7 @@ export const Sidebar = ({
                 <ArrowLeft size={18} />
               </button>
               <div className="flex items-center space-x-2">
-                <Users size={16} className="text-[#00a884]" />
+                <Users size={16} className="text-[#8B51FF]" />
                 <h2 className="text-sm font-bold text-white tracking-wide">
                   Arkadaşlar ({friends?.length || 0})
                 </h2>
@@ -761,7 +761,7 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={openAddFriendView}
-              className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-emerald-400 text-xs font-semibold rounded-lg border border-emerald-500/30 flex items-center space-x-1 transition cursor-pointer"
+              className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-indigo-400 text-xs font-semibold rounded-lg border border-indigo-500/30 flex items-center space-x-1 transition cursor-pointer"
               title="Yeni Arkadaş Ekle"
             >
               <UserPlus size={13} />
@@ -771,7 +771,7 @@ export const Sidebar = ({
 
           {/* Search Box inside Friends */}
           <div className="p-3 border-b border-white/[0.06] bg-[#0c0c0e]">
-            <div className="h-9 px-3 bg-[#141418] rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#00a884]/60 transition">
+            <div className="h-9 px-3 bg-[#141418] rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#8B51FF]/60 transition">
               <Search size={14} className="text-gray-400 mr-2 flex-shrink-0" />
               <input
                 type="text"
@@ -856,7 +856,7 @@ export const Sidebar = ({
                         onSelectDm?.(friend.id);
                         setSidebarView('chats');
                       }}
-                      className="px-2.5 py-1 bg-white/5 hover:bg-[#00a884]/20 hover:text-[#25d366] text-gray-300 rounded-lg text-xs font-semibold border border-white/5 hover:border-[#00a884]/30 transition cursor-pointer"
+                      className="px-2.5 py-1 bg-white/5 hover:bg-[#8B51FF]/20 hover:text-[#bb94ff] text-gray-300 rounded-lg text-xs font-semibold border border-white/5 hover:border-[#8B51FF]/30 transition cursor-pointer"
                       title="Sohbeti Aç"
                     >
                       Mesaj
@@ -961,7 +961,7 @@ export const Sidebar = ({
             {addFriendTab === 'search' && (
               <>
                 {/* Search Input Box */}
-                <div className="h-9 px-3 bg-[#141418] rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#00a884]/60 focus-within:ring-1 focus-within:ring-[#00a884]/40 transition">
+                <div className="h-9 px-3 bg-[#141418] rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#8B51FF]/60 focus-within:ring-1 focus-within:ring-[#8B51FF]/40 transition">
                   <Search size={14} className="text-gray-400 flex-shrink-0 mr-2" />
                   <input
                     type="text"
@@ -1375,7 +1375,7 @@ export const Sidebar = ({
           {/* 1. SEARCH BAR & ADD FRIEND BUTTON */}
           <div className="px-3 pt-3 pb-2 bg-[#0c0c0e] sidebar-transparent-on-glass">
         <div className="flex items-center space-x-2">
-          <div className="flex-1 h-9 px-3 bg-[#141418] sidebar-search-box rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#00a884]/60 focus-within:ring-1 focus-within:ring-[#00a884]/40 transition">
+          <div className="flex-1 h-9 px-3 bg-[#141418] sidebar-search-box rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#8B51FF]/60 focus-within:ring-1 focus-within:ring-[#8B51FF]/40 transition">
             <Search size={15} className="text-gray-400 flex-shrink-0 mr-2" />
             <input
               type="text"
@@ -1401,8 +1401,8 @@ export const Sidebar = ({
             onClick={() => setSidebarView((prev) => (prev === 'friends' ? 'chats' : 'friends'))}
             className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${
               sidebarView === 'friends'
-                ? 'bg-[#00a884] text-white border-[#00a884]'
-                : 'bg-[#141418] hover:bg-[#00a884] hover:text-white text-gray-300 border-white/[0.08]'
+                ? 'bg-[#8B51FF] text-white border-[#8B51FF]'
+                : 'bg-[#141418] hover:bg-[#8B51FF] hover:text-white text-gray-300 border-white/[0.08]'
             }`}
             title={`Tüm Arkadaşlar (${friends?.length || 0})`}
           >
@@ -1416,8 +1416,8 @@ export const Sidebar = ({
               onClick={() => setIsPlusMenuOpen((prev) => !prev)}
               className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${
                 isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup'
-                  ? 'bg-[#00a884] text-white border-[#00a884]'
-                  : 'bg-[#141418] hover:bg-[#00a884] hover:text-white text-gray-300 border-white/[0.08]'
+                  ? 'bg-[#8B51FF] text-white border-[#8B51FF]'
+                  : 'bg-[#141418] hover:bg-[#8B51FF] hover:text-white text-gray-300 border-white/[0.08]'
               }`}
               title={`Ekle ${incomingRequestsCount > 0 ? `(${incomingRequestsCount} İstek)` : ''}`}
             >
@@ -1470,7 +1470,7 @@ export const Sidebar = ({
             onClick={() => setFilterTab('all')}
             className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
               filterTab === 'all'
-                ? 'bg-[#00a884]/20 text-[#25d366] border border-[#00a884]/40 shadow-sm'
+                ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
                 : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
             }`}
           >
@@ -1482,7 +1482,7 @@ export const Sidebar = ({
             onClick={() => setFilterTab('dms')}
             className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
               filterTab === 'dms'
-                ? 'bg-[#00a884]/20 text-[#25d366] border border-[#00a884]/40 shadow-sm'
+                ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
                 : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
             }`}
           >
@@ -1502,7 +1502,7 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={openAddFriendView}
-              className="px-3.5 py-1.5 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-lg text-xs transition shadow-md"
+              className="px-3.5 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-bold rounded-lg text-xs transition shadow-md"
             >
               + Yeni Sohbet Başlat
             </button>
@@ -1557,7 +1557,7 @@ export const Sidebar = ({
                   onClick={() => onSelectDm?.(friend.id)}
                   className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
                     isSelected
-                      ? 'bg-[#18181f] border-l-[3.5px] border-[#25d366]'
+                      ? 'bg-[#18181f] border-l-[3.5px] border-[#8B51FF]'
                       : 'border-l-[3.5px] border-transparent hover:bg-[#121215]'
                   }`}
                 >
@@ -1669,7 +1669,7 @@ export const Sidebar = ({
                   onClick={() => onSelectChannel?.(chan.id)}
                   className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
                     isSelected
-                      ? 'bg-[#18181f] border-l-[3.5px] border-[#25d366]'
+                      ? 'bg-[#18181f] border-l-[3.5px] border-[#8B51FF]'
                       : 'border-l-[3.5px] border-transparent hover:bg-[#121215]'
                   }`}
                 >

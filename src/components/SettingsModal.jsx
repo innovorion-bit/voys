@@ -776,7 +776,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   />
                   <div 
                     onClick={() => avatarFileInputRef.current?.click()}
-                    className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#5865F2] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
+                    className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
                     title="Fotoğraf değiştirmek için tıklayın"
                   >
                     {avatarInput ? (
@@ -806,7 +806,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         type="button"
                         disabled={isUploadingAvatar}
                         onClick={() => avatarFileInputRef.current?.click()}
-                        className="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 disabled:opacity-50 cursor-pointer"
                       >
                         {isUploadingAvatar ? (
                           <>
@@ -852,7 +852,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                           className={`w-full rounded-lg pl-8 pr-9 py-2.5 text-xs font-mono transition ${
                             isEditingUsername
-                              ? 'bg-[#1e1f22] text-white border border-[#5865F2] ring-2 ring-[#5865F2]/20 focus:outline-none'
+                              ? 'bg-[#1e1f22] text-white border border-[#8B51FF] ring-2 ring-[#8B51FF]/20 focus:outline-none'
                               : 'bg-[#161719]/80 text-gray-400 border border-white/5 cursor-not-allowed select-none opacity-60'
                           }`}
                         />
@@ -882,7 +882,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           onChange={(e) => setEmailInput(e.target.value)}
                           className={`w-full rounded-lg pl-3.5 pr-9 py-2.5 text-xs transition ${
                             isEditingEmail
-                              ? 'bg-[#1e1f22] text-white border border-[#5865F2] ring-2 ring-[#5865F2]/20 focus:outline-none'
+                              ? 'bg-[#1e1f22] text-white border border-[#8B51FF] ring-2 ring-[#8B51FF]/20 focus:outline-none'
                               : 'bg-[#161719]/80 text-gray-400 border border-white/5 cursor-not-allowed select-none opacity-60'
                           }`}
                         />
@@ -912,7 +912,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           onChange={(e) => setDisplayNameInput(e.target.value)}
                           className={`w-full rounded-lg pl-3.5 pr-9 py-2.5 text-xs transition ${
                             isEditingDisplayName
-                              ? 'bg-[#1e1f22] text-white border border-[#5865F2] ring-2 ring-[#5865F2]/20 focus:outline-none'
+                              ? 'bg-[#1e1f22] text-white border border-[#8B51FF] ring-2 ring-[#8B51FF]/20 focus:outline-none'
                               : 'bg-[#161719]/80 text-gray-400 border border-white/5 cursor-not-allowed select-none opacity-60'
                           }`}
                         />
@@ -938,7 +938,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     <button
                       type="submit"
                       disabled={isSavingProfile || isUploadingAvatar}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-[#5865F2] hover:bg-[#4752C4] rounded-lg shadow transition active:scale-95 flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
+                      className="px-4 py-2 text-xs font-semibold text-white bg-[#8B51FF] hover:bg-[#773BF5] rounded-lg shadow transition active:scale-95 flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isSavingProfile ? (
                         <>
@@ -983,7 +983,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-[#1e1f22] border border-black/40 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#5865F2] transition"
+                        className="w-full bg-[#1e1f22] border border-black/40 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#8B51FF] transition"
                       />
                     </div>
 
@@ -997,7 +997,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-[#1e1f22] border border-black/40 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#5865F2] transition"
+                        className="w-full bg-[#1e1f22] border border-black/40 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#8B51FF] transition"
                       />
                     </div>
                   </div>
@@ -1012,7 +1012,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     <button
                       type="submit"
                       disabled={isUpdatingPassword || !newPassword}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-[#5865F2] hover:bg-[#4752C4] rounded-lg shadow transition active:scale-95 flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
+                      className="px-4 py-2 text-xs font-semibold text-white bg-[#8B51FF] hover:bg-[#773BF5] rounded-lg shadow transition active:scale-95 flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdatingPassword ? (
                         <>
@@ -1073,7 +1073,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     }}
                     className={`group relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
                       (chatSettings?.theme || 'dark') === 'dark'
-                        ? 'border-[#5865F2] bg-[#1a1b24] shadow-[0_0_20px_rgba(88,101,242,0.15)] ring-1 ring-[#5865F2]/50'
+                        ? 'border-[#8B51FF] bg-[#1a1b24] shadow-[0_0_20px_rgba(139,81,255,0.15)] ring-1 ring-[#8B51FF]/50'
                         : isLight
                           ? 'border-black/10 bg-[#f2f3f5] hover:border-black/20 hover:bg-[#ebedef]'
                           : 'border-white/10 bg-[#111214] hover:border-white/20 hover:bg-[#16171c]'
@@ -1107,7 +1107,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                               <div className="h-1.5 w-10 bg-white/30 rounded-full" />
                             </div>
                             <div className="h-2 w-4/5 bg-[#252730] rounded-md" />
-                            <div className="h-2 w-3/5 bg-[#5865F2]/40 rounded-md ml-auto" />
+                            <div className="h-2 w-3/5 bg-[#8B51FF]/40 rounded-md ml-auto" />
                           </div>
                           <div className="h-3 w-full bg-[#1b1c22] rounded border border-white/5 flex items-center px-1">
                             <div className="h-1 w-12 bg-white/20 rounded-full" />
@@ -1121,7 +1121,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                       <div className="flex items-center space-x-3">
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition ${
                           (chatSettings?.theme || 'dark') === 'dark'
-                            ? 'bg-[#5865F2] text-white shadow-md'
+                            ? 'bg-[#8B51FF] text-white shadow-md'
                             : isLight
                               ? 'bg-black/5 text-gray-600 group-hover:text-black'
                               : 'bg-white/5 text-gray-400 group-hover:text-white'
@@ -1144,7 +1144,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                       {/* Custom Radio Button */}
                       <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition ${
                         (chatSettings?.theme || 'dark') === 'dark'
-                          ? 'border-[#5865F2] bg-[#5865F2]'
+                          ? 'border-[#8B51FF] bg-[#8B51FF]'
                           : isLight
                             ? 'border-black/30 group-hover:border-black/50'
                             : 'border-white/30 group-hover:border-white/50'
@@ -1165,8 +1165,8 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     className={`group relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
                       chatSettings?.theme === 'light'
                         ? isLight
-                          ? 'border-[#5865F2] bg-white shadow-[0_0_20px_rgba(88,101,242,0.15)] ring-1 ring-[#5865F2]/50'
-                          : 'border-[#5865F2] bg-[#1a1b24] shadow-[0_0_20px_rgba(88,101,242,0.15)] ring-1 ring-[#5865F2]/50'
+                          ? 'border-[#8B51FF] bg-white shadow-[0_0_20px_rgba(139,81,255,0.15)] ring-1 ring-[#8B51FF]/50'
+                          : 'border-[#8B51FF] bg-[#1a1b24] shadow-[0_0_20px_rgba(139,81,255,0.15)] ring-1 ring-[#8B51FF]/50'
                         : isLight
                           ? 'border-black/10 bg-[#f2f3f5] hover:border-black/20 hover:bg-[#ebedef]'
                           : 'border-white/10 bg-[#111214] hover:border-white/20 hover:bg-[#16171c]'
@@ -1200,7 +1200,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                               <div className="h-1.5 w-10 bg-black/40 rounded-full" />
                             </div>
                             <div className="h-2 w-4/5 bg-[#e8eaed] rounded-md" />
-                            <div className="h-2 w-3/5 bg-[#5865F2]/40 rounded-md ml-auto" />
+                            <div className="h-2 w-3/5 bg-[#8B51FF]/40 rounded-md ml-auto" />
                           </div>
                           <div className="h-3 w-full bg-[#f2f3f5] rounded border border-black/5 flex items-center px-1">
                             <div className="h-1 w-12 bg-black/20 rounded-full" />
@@ -1214,7 +1214,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                       <div className="flex items-center space-x-3">
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition ${
                           chatSettings?.theme === 'light'
-                            ? 'bg-[#5865F2] text-white shadow-md'
+                            ? 'bg-[#8B51FF] text-white shadow-md'
                             : isLight
                               ? 'bg-black/5 text-gray-600 group-hover:text-amber-500'
                               : 'bg-white/5 text-gray-400 group-hover:text-amber-400'
@@ -1237,7 +1237,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                       {/* Custom Radio Button */}
                       <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition ${
                         chatSettings?.theme === 'light'
-                          ? 'border-[#5865F2] bg-[#5865F2]'
+                          ? 'border-[#8B51FF] bg-[#8B51FF]'
                           : isLight
                             ? 'border-black/30 group-hover:border-black/50'
                             : 'border-white/30 group-hover:border-white/50'
@@ -1362,7 +1362,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         onChange={(e) => changeInputVolume(Number(e.target.value))}
                         className="w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider"
                         style={{
-                          background: `linear-gradient(to right, #5865F2 ${inputVolume}%, #232428 ${inputVolume}%)`
+                          background: `linear-gradient(to right, #8B51FF ${inputVolume}%, #232428 ${inputVolume}%)`
                         }}
                       />
                     </div>
@@ -1448,7 +1448,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           background: getVolumeSliderFillStyle(
                             outputVolume,
                             MAX_VOLUME_PERCENT,
-                            '#5865F2',
+                            '#8B51FF',
                             '#f59e0b',
                             '#232428'
                           ),
@@ -1472,7 +1472,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   className={`px-5 py-2.5 rounded-lg text-xs font-semibold transition flex-shrink-0 shadow-sm ${
                     isTestingMic 
                       ? 'bg-red-500 hover:bg-red-600 text-white' 
-                      : 'bg-[#5865F2] hover:bg-[#4752c4] text-white active:scale-[0.98]'
+                      : 'bg-[#8B51FF] hover:bg-[#773BF5] text-white active:scale-[0.98]'
                   }`}
                 >
                   {isTestingMic ? 'Testi Durdur' : 'Mikrofon Testi'}
@@ -1534,7 +1534,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     }}
                     className={`flex items-start space-x-3 p-4 rounded-xl border text-left transition cursor-pointer ${
                       inputMode === 'open'
-                        ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_20px_rgba(99,102,241,0.12)]'
+                        ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_20px_rgba(139,81,255,0.12)]'
                         : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
                     }`}
                   >
@@ -1564,7 +1564,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     }}
                     className={`flex items-start space-x-3 p-4 rounded-xl border text-left transition cursor-pointer ${
                       inputMode === 'ptt'
-                        ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_20px_rgba(99,102,241,0.12)]'
+                        ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_20px_rgba(139,81,255,0.12)]'
                         : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
                     }`}
                   >
@@ -1683,7 +1683,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex-shrink-0 cursor-pointer ${
                           isRecordingPttKey
                             ? 'bg-rose-500 hover:bg-rose-600 text-white'
-                            : 'bg-[#5865F2] hover:bg-[#4752c4] text-white'
+                            : 'bg-[#8B51FF] hover:bg-[#773BF5] text-white'
                         }`}
                       >
                         {isRecordingPttKey ? 'Kaydı Durdur' : 'Tuş Ata'}
@@ -1856,7 +1856,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         }}
                         className={`flex flex-col justify-between p-3.5 rounded-xl border text-left transition cursor-pointer gap-1.5 ${
                           isSelected
-                            ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_16px_rgba(99,102,241,0.12)]'
+                            ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_16px_rgba(139,81,255,0.12)]'
                             : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
                         }`}
                       >
@@ -1933,7 +1933,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         }}
                         className={`w-full px-3 py-2.5 rounded-md flex items-center justify-between text-xs transition cursor-pointer ${
                           (chatSettings?.language || 'tr') === 'tr'
-                            ? 'bg-[#5865F2] text-white font-semibold'
+                            ? 'bg-[#8B51FF] text-white font-semibold'
                             : 'text-gray-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
@@ -1955,7 +1955,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         }}
                         className={`w-full px-3 py-2.5 rounded-md flex items-center justify-between text-xs transition cursor-pointer ${
                           chatSettings?.language === 'en'
-                            ? 'bg-[#5865F2] text-white font-semibold'
+                            ? 'bg-[#8B51FF] text-white font-semibold'
                             : 'text-gray-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
@@ -2000,7 +2000,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         <div
                           className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
                             isSelected
-                              ? 'bg-[#5865F2] border-2 border-[#5865F2]'
+                              ? 'bg-[#8B51FF] border-2 border-[#8B51FF]'
                               : 'border-2 border-[#4e5058] group-hover:border-gray-400 bg-transparent'
                           }`}
                         >

@@ -85,7 +85,7 @@ export const VoiceStageArea = ({
     name: currentUser?.name || 'Sen (You)',
     avatar: currentUser?.avatar,
     initial: (currentUser?.name || 'S').slice(0, 1).toUpperCase(),
-    color: '#3b82f6',
+    color: '#8B51FF',
     isSpeaking: isSpeaking,
     isMuted: isMuted,
     isCurrentUser: true,

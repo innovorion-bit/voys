@@ -7,6 +7,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        indigo: {
+          50: '#f5f0ff',
+          100: '#ebe0ff',
+          200: '#d7c2ff',
+          300: '#bb94ff',
+          400: '#a36eff',
+          500: '#8B51FF',
+          600: '#773BF5',
+          700: '#6429DA',
+          800: '#5322B5',
+          900: '#451E93',
+          950: '#2A0F63',
+        },
         standupp: {
           darkest: '#101214',
           header: '#181b1f',
@@ -22,7 +35,7 @@ export default {
           online: '#57cbde',
           greenBtn: '#54a320',
           greenActive: '#3d9921',
-          accent: '#66c0f4',
+          accent: '#8B51FF',
         }
       },
       fontFamily: {

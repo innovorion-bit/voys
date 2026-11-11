@@ -32,10 +32,10 @@ export const NavigationRail = ({
           <button
             type="button"
             onClick={() => onSelectTab?.('channels')}
-            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4f46e5]/30 to-[#121216] border border-indigo-500/40 hover:border-indigo-400 flex items-center justify-center text-indigo-400 hover:text-white shadow-[0_0_20px_rgba(79,70,229,0.25)] transition-all transform hover:scale-105 active:scale-95 group"
+            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8B51FF]/30 to-[#121216] border border-indigo-500/40 hover:border-indigo-400 flex items-center justify-center text-indigo-400 hover:text-white shadow-[0_0_20px_rgba(139,81,255,0.25)] transition-all transform hover:scale-105 active:scale-95 group"
             title="Voys Ana Ekran"
           >
-            <Radio size={24} className="text-[#818cf8] group-hover:text-white transition-colors" />
+            <Radio size={24} className="text-[#a36eff] group-hover:text-white transition-colors" />
           </button>
         </div>
 

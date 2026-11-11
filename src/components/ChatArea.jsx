@@ -1082,9 +1082,9 @@ export const ChatArea = ({
     const elem = document.getElementById(`msg-${targetId}`);
     if (elem) {
       elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      elem.classList.add('bg-[#181822]', 'ring-1', 'ring-[#66c0f4]');
+      elem.classList.add('bg-[#181822]', 'ring-1', 'ring-[#8B51FF]');
       setTimeout(() => {
-        elem.classList.remove('bg-[#181822]', 'ring-1', 'ring-[#66c0f4]');
+        elem.classList.remove('bg-[#181822]', 'ring-1', 'ring-[#8B51FF]');
       }, 1800);
     }
   };
@@ -1125,7 +1125,7 @@ export const ChatArea = ({
               <button
                 type="button"
                 onClick={onOpenAddMember}
-                className="px-4 py-2 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-xl text-xs transition shadow-lg flex items-center space-x-2 cursor-pointer"
+                className="px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-indigo-600/25 flex items-center space-x-2 cursor-pointer"
               >
                 <UserPlus size={15} />
                 <span>Arkadaş Ekle</span>
@@ -1157,12 +1157,12 @@ export const ChatArea = ({
       {/* Drag and Drop Fullscreen Overlay (Windows Desktop & Browser) */}
       {(isDragActive || isWindowDragging) && (
         <div className="absolute inset-0 bg-[#08080a]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-150 pointer-events-none">
-          <div className="w-full h-full max-w-2xl max-h-[85%] border-2 border-dashed border-indigo-500/80 rounded-3xl bg-[#121216]/80 flex flex-col items-center justify-center p-8 shadow-[0_0_50px_rgba(99,102,241,0.25)] text-center relative overflow-hidden">
+          <div className="w-full h-full max-w-2xl max-h-[85%] border-2 border-dashed border-indigo-500/80 rounded-3xl bg-[#121216]/80 flex flex-col items-center justify-center p-8 shadow-[0_0_50px_rgba(139,81,255,0.25)] text-center relative overflow-hidden">
             {/* Ambient Background Glow */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
 
             {/* Glowing Icon Container */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mb-5 shadow-[0_0_35px_rgba(99,102,241,0.4)] animate-bounce duration-1000">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mb-5 shadow-[0_0_35px_rgba(139,81,255,0.4)] animate-bounce duration-1000">
               <UploadCloud size={40} className="text-indigo-400" />
             </div>
 
@@ -2088,7 +2088,7 @@ export const ChatArea = ({
                             title="Orijinal mesaja git"
                           >
                             <CornerDownRight size={11} className="text-indigo-400 flex-shrink-0" />
-                            <span className="font-semibold truncate max-w-[120px]" style={{ color: msg.reply_to.color || '#818cf8' }}>
+                            <span className="font-semibold truncate max-w-[120px]" style={{ color: msg.reply_to.color || '#a36eff' }}>
                               @{pickDisplayName([msg.reply_to.user], 'Kullanıcı')}
                             </span>
                             <span className="truncate max-w-[200px] sm:max-w-md italic opacity-80">
@@ -2101,7 +2101,7 @@ export const ChatArea = ({
                         <div className={`flex items-center gap-2 leading-none mb-1 select-none ${isMe ? 'flex-row-reverse' : ''}`}>
                           <span
                             className="font-bold text-[13.5px] tracking-wide hover:underline cursor-pointer"
-                            style={{ color: isMe ? '#818cf8' : (msg.color || '#e2e8f0') }}
+                            style={{ color: isMe ? '#a36eff' : (msg.color || '#e2e8f0') }}
                           >
                             {messageUser}
                           </span>
@@ -2448,7 +2448,7 @@ export const ChatArea = ({
                     <span className="text-xs text-gray-400">Yanıtlanıyor:</span>
                     <span
                       className="text-xs font-bold truncate"
-                      style={{ color: replyingTo.color || '#818cf8' }}
+                      style={{ color: replyingTo.color || '#a36eff' }}
                     >
                       @{replyingTo.user}
                     </span>
@@ -3342,12 +3342,12 @@ export const ChatArea = ({
                       type="button"
                       disabled={Boolean(contextActionLoading)}
                       onClick={handleSendFriendReq}
-                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-500/15 text-emerald-300 hover:text-emerald-200 transition text-left cursor-pointer font-medium disabled:opacity-50"
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-indigo-500/15 text-indigo-300 hover:text-indigo-200 transition text-left cursor-pointer font-medium disabled:opacity-50"
                     >
                       {contextActionLoading === 'friend' ? (
                         <Loader2 size={14} className="animate-spin flex-shrink-0" />
                       ) : (
-                        <UserPlus size={14} className="text-emerald-400 flex-shrink-0" />
+                        <UserPlus size={14} className="text-indigo-400 flex-shrink-0" />
                       )}
                       <span>Arkadaş Ekle</span>
                     </button>
@@ -3617,7 +3617,7 @@ export const ChatArea = ({
               <img
                 src={activeMediaModal.url}
                 alt={activeMediaModal.name}
-                className="max-h-[78vh] max-w-full rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_rgba(79,70,229,0.15)] object-contain border border-white/10"
+                className="max-h-[78vh] max-w-full rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_rgba(139,81,255,0.15)] object-contain border border-white/10"
               />
             ) : activeMediaModal.fallbackUser ? (
               <div className="w-56 h-56 rounded-full bg-[#18181b] border-4 border-indigo-500/30 flex items-center justify-center shadow-2xl text-white font-bold select-none p-2">

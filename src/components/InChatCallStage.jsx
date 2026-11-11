@@ -118,7 +118,7 @@ export const InChatCallStage = ({
                 key={r}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   ringCount >= r 
-                    ? 'w-10 bg-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.9)]' 
+                    ? 'w-10 bg-indigo-400 shadow-[0_0_12px_rgba(163,110,255,0.9)]' 
                     : 'w-3 bg-white/10'
                 }`}
               />

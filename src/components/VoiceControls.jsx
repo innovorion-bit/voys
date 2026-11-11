@@ -113,7 +113,7 @@ export const VoiceControls = ({
         title={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
         className={`w-8 h-8 flex items-center justify-center rounded-lg transition active:scale-95 ${
           isScreenSharing
-            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.3)]'
+            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 shadow-[0_0_12px_rgba(139,81,255,0.3)]'
             : 'hover:bg-white/10 text-gray-300 hover:text-white'
         }`}
       >
