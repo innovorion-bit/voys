@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { compressAvatarImage } from '../utils/imageCompressor';
+import { pickDisplayName, getCachedUserProfile, cacheUserProfiles, isUuidLike } from '../utils/userDisplay';
 
 // Retrieve environment variables from Vite
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -966,17 +967,25 @@ export const dbService = {
             'Üye profilleri alınırken zaman aşımı oluştu.'
           );
 
+          if (profiles) {
+            cacheUserProfiles(profiles);
+          }
           const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
 
           return memberRows.map((m) => {
             const prof = profileMap.get(m.user_id) || {};
-            const resolvedName = prof.display_name || prof.username || 'Kullanıcı';
+            const cached = getCachedUserProfile(m.user_id);
+            const resolvedName = pickDisplayName(
+              [prof.display_name, prof.username, cached?.name, cached?.display_name, cached?.username],
+              'Kullanıcı'
+            );
+            const resolvedAvatar = prof.avatar_url || cached?.avatar_url || cached?.avatar || null;
             return {
               ...m,
               name: resolvedName,
-              username: prof.username || 'user',
-              avatar: prof.avatar_url || null,
-              avatar_url: prof.avatar_url || null,
+              username: (!isUuidLike(prof.username) && prof.username) || cached?.username || 'user',
+              avatar: resolvedAvatar,
+              avatar_url: resolvedAvatar,
               game: prof.game || '',
               substatus: prof.substatus || '',
               status: prof.status || 'offline',
@@ -1832,23 +1841,32 @@ export const dbService = {
     if (!userId) return null;
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
+        const { data, error } = await withTimeout(
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle(),
+          8000,
+          'Kullanıcı profili alınırken zaman aşımı oluştu.'
+        );
         if (!error && data) {
-          return {
+          const resolvedName = pickDisplayName([data.display_name, data.username], null);
+          const profileObj = {
             id: data.id,
-            name: data.display_name || data.username,
+            name: resolvedName,
+            display_name: resolvedName,
             username: data.username,
             tag: data.tag || '0001',
             avatar: data.avatar_url,
+            avatar_url: data.avatar_url,
             game: data.game,
             substatus: data.substatus,
             status: data.status,
             email: data.email,
           };
+          cacheUserProfiles([profileObj]);
+          return profileObj;
         }
       } catch (err) {
         console.warn('fetchUserProfile error:', err);
@@ -1856,16 +1874,23 @@ export const dbService = {
     }
     const localUsers = localDb.getUsers();
     const u = localUsers.find((x) => x.id === userId);
-    return u ? {
-      id: u.id,
-      name: u.display_name || u.username,
-      username: u.username,
-      avatar: u.avatar_url,
-      game: u.game,
-      substatus: u.substatus,
-      status: u.status,
-      email: u.email,
-    } : null;
+    if (u) {
+      const localName = pickDisplayName([u.display_name, u.name, u.username], null);
+      return {
+        id: u.id,
+        name: localName,
+        display_name: localName,
+        username: u.username,
+        tag: u.tag || '0001',
+        avatar: u.avatar_url,
+        avatar_url: u.avatar_url,
+        game: u.game,
+        substatus: u.substatus,
+        status: u.status,
+        email: u.email,
+      };
+    }
+    return getCachedUserProfile(userId);
   },
 
   // Friends & Profiles Operations
@@ -2163,10 +2188,14 @@ export const dbService = {
 
       // 1. Try friendships table
       try {
-        const { data, error } = await supabase
-          .from('friendships')
-          .select('*')
-          .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
+        const { data, error } = await withTimeout(
+          supabase
+            .from('friendships')
+            .select('*')
+            .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`),
+          8000,
+          'Arkadaş listesi alınırken zaman aşımı oluştu.'
+        );
         if (!error && Array.isArray(data)) {
           rows = data;
         }
@@ -2177,11 +2206,15 @@ export const dbService = {
       // 2. Fallback to direct_messages bridge if friendships table is not present
       if (!rows) {
         try {
-          const { data: dmRows, error: dmErr } = await supabase
-            .from('direct_messages')
-            .select('*')
-            .eq('room_id', 'dm-friendship-requests')
-            .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+          const { data: dmRows, error: dmErr } = await withTimeout(
+            supabase
+              .from('direct_messages')
+              .select('*')
+              .eq('room_id', 'dm-friendship-requests')
+              .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`),
+            8000,
+            'Arkadaşlık istekleri alınırken zaman aşımı oluştu.'
+          );
 
           if (!dmErr && Array.isArray(dmRows)) {
             rows = dmRows.map((dm) => {
@@ -2206,13 +2239,22 @@ export const dbService = {
         let profileMap = new Map();
 
         if (otherIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, username, tag, display_name, avatar_url, game, substatus, status')
-            .in('id', otherIds);
+          try {
+            const { data: profiles } = await withTimeout(
+              supabase
+                .from('profiles')
+                .select('id, username, tag, display_name, avatar_url, game, substatus, status')
+                .in('id', otherIds),
+              8000,
+              'Arkadaş profilleri alınırken zaman aşımı oluştu.'
+            );
 
-          if (profiles) {
-            profileMap = new Map(profiles.map((p) => [p.id, p]));
+            if (profiles) {
+              cacheUserProfiles(profiles);
+              profileMap = new Map(profiles.map((p) => [p.id, p]));
+            }
+          } catch (profErr) {
+            console.warn('Friend profiles fetch warning:', profErr);
           }
         }
 
@@ -2237,7 +2279,8 @@ export const dbService = {
 
         rows.forEach((r) => {
           const otherId = r.user_id === currentUserId ? r.friend_id : r.user_id;
-          const prof = profileMap.get(otherId) || {
+          const cached = getCachedUserProfile(otherId);
+          const prof = profileMap.get(otherId) || cached || {
             id: otherId,
             username: 'user',
             tag: '0001',
@@ -2245,14 +2288,19 @@ export const dbService = {
             status: 'offline',
           };
 
-          const resolvedAvatar = prof.avatar_url || prof.avatar || null;
+          const resolvedAvatar = prof.avatar_url || prof.avatar || cached?.avatar_url || cached?.avatar || null;
+          const resolvedName = pickDisplayName(
+            [prof.display_name, prof.name, prof.username, cached?.display_name, cached?.name, cached?.username],
+            'Kullanıcı'
+          );
 
           const friendItem = {
             friendshipId: r.id,
             id: otherId,
-            name: prof.display_name || prof.username || 'Kullanıcı',
-            username: prof.username,
-            tag: prof.tag || '0001',
+            name: resolvedName,
+            display_name: resolvedName,
+            username: (!isUuidLike(prof.username) && prof.username) || cached?.username || 'user',
+            tag: prof.tag || cached?.tag || '0001',
             avatar: resolvedAvatar,
             avatar_url: resolvedAvatar,
             game: null,

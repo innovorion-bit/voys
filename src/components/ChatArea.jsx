@@ -113,6 +113,7 @@ import { VoiceControls } from './VoiceControls';
 import { ScreenShareStage } from './ScreenShareStage';
 import { InChatCallStage } from './InChatCallStage';
 import { dbService } from '../lib/supabase';
+import { pickDisplayName, isRealDisplayName, getCachedUserProfile } from '../utils/userDisplay';
 
 // Helper to format file sizes nicely
 function formatFileSize(bytes) {
@@ -212,7 +213,7 @@ export const ChatArea = ({
   friends = [],
   onMemberAdded = null,
   isDmMode = false,
-  activeDmFriend = null,
+  activeDmFriend: rawActiveDmFriend = null,
   onBackToChannels,
   onOpenSettings = null,
   onClearChat = null,
@@ -314,7 +315,7 @@ export const ChatArea = ({
   // Reset inner view to 'messages' when channel or friend changes
   useEffect(() => {
     setChatInnerView('messages');
-  }, [activeChannel, activeDmFriend?.id]);
+  }, [activeChannel, rawActiveDmFriend?.id]);
 
   // Close inner view on Escape key
   useEffect(() => {
@@ -359,8 +360,8 @@ export const ChatArea = ({
       if (onClearChat) {
         await onClearChat();
       } else {
-        const roomId = isDmMode && activeDmFriend && currentUser
-          ? `dm-${currentUser.id}--${activeDmFriend.id}`
+        const roomId = isDmMode && rawActiveDmFriend && currentUser
+          ? `dm-${currentUser.id}--${rawActiveDmFriend.id}`
           : activeChannel;
         await dbService.deleteChatMessages(roomId, isDmMode ? null : activeChannel);
       }
@@ -466,7 +467,9 @@ export const ChatArea = ({
 
     return {
       id: memberId,
-      name: isSelf ? (currentUser?.name || 'Sen (You)') : (p?.name || profile.display_name || profile.username || m.name || 'Üye'),
+      name: isSelf
+        ? pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)')
+        : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Üye'),
       avatar: isSelf ? (currentUser?.avatar || currentUser?.avatar_url) : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
       game: isOnline ? (isSelf ? currentUser?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
       substatus: isOnline ? (isSelf ? currentUser?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
@@ -484,7 +487,7 @@ export const ChatArea = ({
         const selfOnline = selfStatus !== 'offline' && selfStatus !== 'invisible';
         return [{
           id: currentUser.id,
-          name: currentUser.name || currentUser.display_name || 'Sen (You)',
+          name: pickDisplayName([currentUser.name, currentUser.display_name, currentUser.username], 'Sen (You)'),
           avatar: currentUser.avatar || currentUser.avatar_url,
           game: selfOnline ? currentUser.game : null,
           substatus: selfOnline ? currentUser.substatus : '',
@@ -545,56 +548,110 @@ export const ChatArea = ({
     }
   };
 
-  // Dynamic profile lookup map for automatically resolving current user avatars across chat
+  // Dynamic profile lookup map for automatically resolving current user avatars and safe names across chat
   const userProfileMap = useMemo(() => {
     const map = new Map();
+
+    const upsertProfile = (uId, candidateNames, candidateAvatar, { alsoKeyYou = false } = {}) => {
+      if (!uId) return;
+      const existing = map.get(uId) || {};
+      const cleanName = pickDisplayName([...candidateNames, existing.name], null);
+      const av = candidateAvatar || existing.avatar || null;
+      const entry = { id: uId, name: cleanName, avatar: av };
+      map.set(uId, entry);
+      if (alsoKeyYou) map.set('you', entry);
+      if (isRealDisplayName(cleanName)) {
+        map.set(cleanName.toLowerCase(), entry);
+      }
+    };
 
     // 1. Channel members profiles
     (channelMembers || []).forEach((m) => {
       const uId = m.user_id || m.id;
-      if (uId) {
-        const prof = m.profile || m.profiles || {};
-        const av = m.avatar || prof.avatar_url || prof.avatar || null;
-        const nm = m.name || prof.display_name || prof.username || null;
-        const entry = { id: uId, name: nm, avatar: av };
-        map.set(uId, entry);
-        if (nm) map.set(nm.toLowerCase(), entry);
-      }
+      const prof = m.profile || m.profiles || {};
+      upsertProfile(
+        uId,
+        [m.name, prof.display_name, prof.username],
+        m.avatar || prof.avatar_url || prof.avatar || null
+      );
     });
 
-    // 2. Real-time presences (live avatar broadcasts)
+    // 2. Real-time presences (live name & avatar broadcasts)
     Object.entries(presences || {}).forEach(([uId, p]) => {
-      if (uId && p) {
-        const existing = map.get(uId) || {};
-        const av = p.avatar || p.avatar_url || existing.avatar || null;
-        const nm = p.name || p.display_name || existing.name || null;
-        const entry = { id: uId, name: nm, avatar: av };
-        map.set(uId, entry);
-        if (nm) map.set(nm.toLowerCase(), entry);
-      }
+      if (!p) return;
+      upsertProfile(
+        uId,
+        [p.name, p.display_name, p.username],
+        p.avatar || p.avatar_url || null
+      );
     });
 
-    // 3. Active DM Friend (authoritative for other user in DM)
-    if (activeDmFriend && activeDmFriend.id) {
-      const av = activeDmFriend.avatar || activeDmFriend.avatar_url || null;
-      const nm = activeDmFriend.name || activeDmFriend.display_name;
-      const entry = { id: activeDmFriend.id, name: nm, avatar: av };
-      map.set(activeDmFriend.id, entry);
-      if (nm) map.set(nm.toLowerCase(), entry);
+    // 3. Active DM Friend (never clobbers a real resolved name with a UUID or generic placeholder)
+    if (rawActiveDmFriend && rawActiveDmFriend.id) {
+      upsertProfile(
+        rawActiveDmFriend.id,
+        [rawActiveDmFriend.name, rawActiveDmFriend.display_name, rawActiveDmFriend.username],
+        rawActiveDmFriend.avatar || rawActiveDmFriend.avatar_url || null
+      );
     }
 
-    // 4. Current user (authoritative for own messages)
+    // 4. Enrich from loaded message history (covers offline / not-yet-fetched senders)
+    (messages || []).forEach((msg) => {
+      const uId = msg?.userId || msg?.user_id || msg?.sender_id;
+      if (!uId || uId === 'you') return;
+      const existing = map.get(uId);
+      const msgName = msg.user || msg.sender_name || msg.user_name;
+      upsertProfile(
+        uId,
+        [existing?.name, msgName],
+        existing?.avatar || msg.avatar || msg.sender_avatar || null
+      );
+    });
+
+    // 5. Current user (authoritative for own messages)
     if (currentUser && currentUser.id) {
-      const av = currentUser.avatar_url || currentUser.avatar || null;
-      const nm = currentUser.display_name || currentUser.name;
-      const entry = { id: currentUser.id, name: nm, avatar: av };
-      map.set(currentUser.id, entry);
-      map.set('you', entry);
-      if (nm) map.set(nm.toLowerCase(), entry);
+      upsertProfile(
+        currentUser.id,
+        [currentUser.display_name, currentUser.name, currentUser.username],
+        currentUser.avatar_url || currentUser.avatar || null,
+        { alsoKeyYou: true }
+      );
     }
 
     return map;
-  }, [channelMembers, presences, activeDmFriend, currentUser]);
+  }, [channelMembers, presences, rawActiveDmFriend, messages, currentUser]);
+
+  const activeDmFriend = useMemo(() => {
+    if (!rawActiveDmFriend) return null;
+    const fromMap = rawActiveDmFriend.id ? userProfileMap.get(rawActiveDmFriend.id) : null;
+    const cached = rawActiveDmFriend.id ? getCachedUserProfile(rawActiveDmFriend.id) : null;
+    const resolvedName = pickDisplayName(
+      [
+        rawActiveDmFriend.name,
+        rawActiveDmFriend.display_name,
+        rawActiveDmFriend.username,
+        fromMap?.name,
+        cached?.display_name,
+        cached?.name,
+        cached?.username,
+      ],
+      'Kullanıcı'
+    );
+    const resolvedAvatar =
+      rawActiveDmFriend.avatar ||
+      rawActiveDmFriend.avatar_url ||
+      fromMap?.avatar ||
+      cached?.avatar_url ||
+      cached?.avatar ||
+      '';
+    return {
+      ...rawActiveDmFriend,
+      name: resolvedName,
+      display_name: resolvedName,
+      avatar: resolvedAvatar,
+      avatar_url: resolvedAvatar,
+    };
+  }, [rawActiveDmFriend, userProfileMap]);
 
   // Reply and Reaction state
   const [replyingTo, setReplyingTo] = useState(null); // { id, user, color, text }
@@ -905,13 +962,13 @@ export const ChatArea = ({
   };
 
   // Handle start replying to a message
-  const handleStartReply = (msg) => {
+  const handleStartReply = (msg, resolvedAuthorName) => {
     const previewText = msg.lines?.[0] ||
       (msg.attachments?.length > 0 ? `📎 ${msg.attachments[0].name}` : '') ||
       'Mesaj';
     setReplyingTo({
       id: msg.id,
-      user: msg.user,
+      user: pickDisplayName([resolvedAuthorName, msg.user], 'Kullanıcı'),
       color: msg.color || '#90ba3c',
       text: previewText,
     });
@@ -1776,23 +1833,30 @@ export const ChatArea = ({
                   );
 
                   const senderId = msg.userId || msg.user_id;
+                  const safeMsgUser = pickDisplayName([msg.user, msg.sender_name, msg.user_name], null);
+                  const cachedSender = (!isMe && senderId) ? getCachedUserProfile(senderId) : null;
                   const resolvedProfile = isMe
                     ? {
                       id: currentUserId,
-                      name: currentUser?.display_name || currentUser?.name || msg.user,
+                      name: pickDisplayName([currentUser?.display_name, currentUser?.name, currentUser?.username, safeMsgUser], 'Sen (You)'),
                       avatar: currentUser?.avatar_url || currentUser?.avatar || msg.avatar,
                     }
                     : (senderId ? userProfileMap.get(senderId) : null) ||
-                    (msg.user ? userProfileMap.get(msg.user.toLowerCase()) : null) ||
+                    (safeMsgUser ? userProfileMap.get(safeMsgUser.toLowerCase()) : null) ||
                     (isDmMode && activeDmFriend ? {
                       id: activeDmFriend.id,
                       name: activeDmFriend.name,
                       avatar: activeDmFriend.avatar || activeDmFriend.avatar_url || msg.avatar,
+                    } : null) ||
+                    (cachedSender ? {
+                      id: cachedSender.id,
+                      name: pickDisplayName([cachedSender.display_name, cachedSender.name, cachedSender.username], null),
+                      avatar: cachedSender.avatar_url || cachedSender.avatar || msg.avatar,
                     } : null);
 
                   const messageUser = isMe
-                    ? (currentUser?.display_name || currentUser?.name || msg.user)
-                    : (resolvedProfile?.name || msg.user);
+                    ? pickDisplayName([currentUser?.display_name, currentUser?.name, currentUser?.username, safeMsgUser], 'Sen (You)')
+                    : pickDisplayName([resolvedProfile?.name, safeMsgUser, isDmMode ? activeDmFriend?.name : null], 'Kullanıcı');
 
                   const currentDate = getMessageDate(msg);
                   const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
@@ -1853,7 +1917,7 @@ export const ChatArea = ({
                         {/* "Yanıtla" Button */}
                         <button
                           type="button"
-                          onClick={() => handleStartReply(msg)}
+                          onClick={() => handleStartReply(msg, messageUser)}
                           className="px-2 py-1 hover:bg-white/10 text-gray-300 hover:text-indigo-400 rounded-lg transition flex items-center space-x-1 text-xs font-medium"
                           title="Mesajı Yanıtla"
                         >
@@ -1916,7 +1980,7 @@ export const ChatArea = ({
                           >
                             <CornerDownRight size={11} className="text-indigo-400 flex-shrink-0" />
                             <span className="font-semibold truncate max-w-[120px]" style={{ color: msg.reply_to.color || '#818cf8' }}>
-                              @{msg.reply_to.user}
+                              @{pickDisplayName([msg.reply_to.user], 'Kullanıcı')}
                             </span>
                             <span className="truncate max-w-[200px] sm:max-w-md italic opacity-80">
                               {msg.reply_to.text}

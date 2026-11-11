@@ -3,6 +3,7 @@ import { chatService } from '../services/chatService';
 import { dbService } from '../lib/supabase';
 import { initialChatMessages, initialDmMessages } from '../data/mockData';
 import { sounds } from '../utils/audio';
+import { pickDisplayName } from '../utils/userDisplay';
 
 // Helper to format current timestamp (HH:mm only)
 const formatTimestamp = () => {
@@ -66,6 +67,29 @@ const parseReplyTo = (replyTo) => {
   } catch {
     return null;
   }
+};
+
+// Normalize a database message row into the UI message shape with a safe non-UUID author name
+const formatDbMessageRow = (row, channelId) => {
+  const parsedSentAt = parseMessageSentAt(row) || Date.now();
+  return {
+    id: row.id,
+    room: channelId,
+    user: pickDisplayName([row.user_name, row.sender_name, row.user], 'Kullanıcı'),
+    userId: row.user_id || row.sender_id || row.userId,
+    avatar: row.user_avatar || row.sender_avatar || row.avatar || row.avatar_url || null,
+    color: row.color || '#90ba3c',
+    hasCrown: row.has_crown || false,
+    lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : (row.text ? [row.text] : [])),
+    attachments: Array.isArray(row.attachments) ? row.attachments : [],
+    parent_id: row.parent_id || null,
+    reply_to: parseReplyTo(row.reply_to),
+    reactions: parseReactions(row.reactions),
+    timestamp: row.timestamp_text || row.timestamp || formatTimeFromDate(parsedSentAt) || formatTimestamp(),
+    sentAt: parsedSentAt,
+    sent_at: parsedSentAt,
+    created_at: row.created_at,
+  };
 };
 
 export const useRealtimeChat = (
@@ -144,7 +168,7 @@ export const useRealtimeChat = (
       } else {
         const newEntry = {
           id: incoming.id,
-          user: incoming.user || incoming.user_name || incoming.sender_name || 'Kullanıcı',
+          user: pickDisplayName([incoming.user, incoming.user_name, incoming.sender_name], 'Kullanıcı'),
           userId: incoming.userId || incoming.user_id || incoming.sender_id || 'you',
           avatar: incoming.avatar || incoming.avatar_url || incoming.user_avatar || incoming.sender_avatar || null,
           color: incoming.color || '#90ba3c',
@@ -230,7 +254,7 @@ export const useRealtimeChat = (
 
     const formattedReplyTo = replyTo ? {
       id: replyTo.id,
-      user: replyTo.user,
+      user: pickDisplayName([replyTo.user], 'Kullanıcı'),
       color: replyTo.color || '#90ba3c',
       text: replyTo.text || (replyTo.lines ? replyTo.lines[0] : '') || '📎 Medya / Dosya',
     } : null;
@@ -239,7 +263,7 @@ export const useRealtimeChat = (
     const payload = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       room: channelId,
-      user: activeUser?.name || 'Sen (You)',
+      user: pickDisplayName([activeUser?.display_name, activeUser?.name, activeUser?.username], 'Sen (You)'),
       userId: activeUser?.id || 'you',
       avatar: activeUser?.avatar_url || activeUser?.avatar || null,
       color: '#90ba3c',
@@ -300,7 +324,13 @@ export const useRealtimeChat = (
 
   // Handle typing indicator
   const setTyping = useCallback((isTyping) => {
-    chatService.sendTyping(currentUserRef.current?.name, isTyping);
+    const typingName = pickDisplayName(
+      [currentUserRef.current?.display_name, currentUserRef.current?.name, currentUserRef.current?.username],
+      null
+    );
+    if (typingName) {
+      chatService.sendTyping(typingName, isTyping);
+    }
   }, []);
 
   // Switch room in chatService when channelId changes
@@ -326,13 +356,14 @@ export const useRealtimeChat = (
     };
 
     const handleTyping = ({ user, isTyping, room }) => {
-      if (user === currentUserRef.current?.name || room !== channelId) return;
+      const safeUser = pickDisplayName([user], null);
+      if (!safeUser || safeUser === currentUserRef.current?.name || room !== channelId) return;
       setTypingUsers((prev) => {
-        if (isTyping && !prev.includes(user)) {
-          return [...prev, user];
+        if (isTyping && !prev.includes(safeUser)) {
+          return [...prev, safeUser];
         }
         if (!isTyping) {
-          return prev.filter((u) => u !== user);
+          return prev.filter((u) => u !== safeUser);
         }
         return prev;
       });
@@ -358,27 +389,7 @@ export const useRealtimeChat = (
         }
 
         if (!isCancelled && Array.isArray(dbMsgs)) {
-          const formattedDbMsgs = dbMsgs.map((row) => {
-            const parsedSentAt = parseMessageSentAt(row) || Date.now();
-            return {
-              id: row.id,
-              room: channelId,
-              user: row.user_name || row.sender_name || row.user || 'Kullanıcı',
-              userId: row.user_id || row.sender_id || row.userId,
-              avatar: row.user_avatar || row.sender_avatar || row.avatar || row.avatar_url || null,
-              color: row.color || '#90ba3c',
-              hasCrown: row.has_crown || false,
-              lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : (row.text ? [row.text] : [])),
-              attachments: Array.isArray(row.attachments) ? row.attachments : [],
-              parent_id: row.parent_id || null,
-              reply_to: parseReplyTo(row.reply_to),
-              reactions: parseReactions(row.reactions),
-              timestamp: row.timestamp_text || row.timestamp || formatTimeFromDate(parsedSentAt) || formatTimestamp(),
-              sentAt: parsedSentAt,
-              sent_at: parsedSentAt,
-              created_at: row.created_at,
-            };
-          });
+          const formattedDbMsgs = dbMsgs.map((row) => formatDbMessageRow(row, channelId));
 
           formattedDbMsgs.forEach((m) => receivedMsgIdsRef.current.add(m.id));
 
@@ -413,27 +424,7 @@ export const useRealtimeChat = (
           dbMsgs = await dbService.fetchMessages(channelId);
         }
         if (!isCancelled && Array.isArray(dbMsgs)) {
-          const formattedDbMsgs = dbMsgs.map((row) => {
-            const parsedSentAt = parseMessageSentAt(row) || Date.now();
-            return {
-              id: row.id,
-              room: channelId,
-              user: row.user_name || row.sender_name || row.user || 'Kullanıcı',
-              userId: row.user_id || row.sender_id || row.userId,
-              avatar: row.user_avatar || row.sender_avatar || row.avatar || row.avatar_url || null,
-              color: row.color || '#90ba3c',
-              hasCrown: row.has_crown || false,
-              lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : (row.text ? [row.text] : [])),
-              attachments: Array.isArray(row.attachments) ? row.attachments : [],
-              parent_id: row.parent_id || null,
-              reply_to: parseReplyTo(row.reply_to),
-              reactions: parseReactions(row.reactions),
-              timestamp: row.timestamp_text || row.timestamp || formatTimeFromDate(parsedSentAt) || formatTimestamp(),
-              sentAt: parsedSentAt,
-              sent_at: parsedSentAt,
-              created_at: row.created_at,
-            };
-          });
+          const formattedDbMsgs = dbMsgs.map((row) => formatDbMessageRow(row, channelId));
 
           formattedDbMsgs.forEach((m) => receivedMsgIdsRef.current.add(m.id));
 
@@ -478,25 +469,7 @@ export const useRealtimeChat = (
             return { ...prevMap, [channelId]: updated };
           });
         } else {
-          const parsedSentAt = parseMessageSentAt(row) || Date.now();
-          appendMessage({
-            id: row.id,
-            room: channelId,
-            user: row.sender_name || row.user || 'Kullanıcı',
-            userId: row.sender_id || row.userId,
-            avatar: row.sender_avatar || row.avatar || null,
-            color: row.color || '#90ba3c',
-            hasCrown: row.has_crown || false,
-            lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : (row.text ? [row.text] : [])),
-            attachments: Array.isArray(row.attachments) ? row.attachments : [],
-            parent_id: row.parent_id || null,
-            reply_to: parseReplyTo(row.reply_to),
-            reactions: parseReactions(row.reactions),
-            timestamp: row.timestamp_text || formatTimeFromDate(parsedSentAt) || formatTimestamp(),
-            sentAt: parsedSentAt,
-            sent_at: parsedSentAt,
-            created_at: row.created_at,
-          });
+          appendMessage(formatDbMessageRow(row, channelId));
         }
       }
     });
@@ -535,25 +508,7 @@ export const useRealtimeChat = (
             return { ...prevMap, [channelId]: updated };
           });
         } else {
-          const parsedSentAt = parseMessageSentAt(row) || Date.now();
-          appendMessage({
-            id: row.id,
-            room: channelId,
-            user: row.sender_name || row.user || 'Kullanıcı',
-            userId: row.sender_id || row.userId,
-            avatar: row.sender_avatar || row.avatar || null,
-            color: row.color || '#90ba3c',
-            hasCrown: row.has_crown || false,
-            lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
-            attachments: Array.isArray(row.attachments) ? row.attachments : [],
-            parent_id: row.parent_id || null,
-            reply_to: parseReplyTo(row.reply_to),
-            reactions: parseReactions(row.reactions),
-            timestamp: row.timestamp_text || formatTimeFromDate(parsedSentAt) || formatTimestamp(),
-            sentAt: parsedSentAt,
-            sent_at: parsedSentAt,
-            created_at: row.created_at,
-          });
+          appendMessage(formatDbMessageRow(row, channelId));
         }
       }
     });

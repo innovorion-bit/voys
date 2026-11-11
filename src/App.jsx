@@ -23,6 +23,7 @@ import { useAuth } from './context/useAuth';
 import { chatService } from './services/chatService';
 import { dbService, getDmRoomId, isSupabaseConfigured } from './lib/supabase';
 import { sounds } from './utils/audio';
+import { pickDisplayName, getCachedUserProfile, isUuidLike } from './utils/userDisplay';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
@@ -410,8 +411,8 @@ function StanduppApp() {
         id: memberId,
         user_id: memberId,
         name: isSelf
-          ? activeUserProfile?.name
-          : (p?.name || profile.display_name || profile.username || m.name || 'Kullanıcı'),
+          ? pickDisplayName([activeUserProfile?.name, activeUserProfile?.display_name, activeUserProfile?.username], 'Sen (You)')
+          : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Kullanıcı'),
         avatar: isSelf
           ? (activeUserProfile?.avatar || activeUserProfile?.avatar_url)
           : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
@@ -440,16 +441,19 @@ function StanduppApp() {
     return () => {
       cancelled = true;
     };
-  }, [isDm, activeDmUserId]);
+  }, [isDm, activeDmUserId, currentUserId]);
 
   // Compute dynamic friends list with real-time presences merged
   const friends = useMemo(() => {
     return (friendshipsData.friends || []).map((f) => {
       const p = presences[f.id];
+      const fallbackProf = dmUserProfile?.id === f.id ? dmUserProfile : null;
+      const cachedProf = getCachedUserProfile(f.id);
       const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
-      const fallbackAv = (dmUserProfile?.id === f.id && (dmUserProfile.avatar_url || dmUserProfile.avatar)) || null;
+      const fallbackAv = (fallbackProf && (fallbackProf.avatar_url || fallbackProf.avatar)) || null;
+      const cachedAv = cachedProf?.avatar_url || cachedProf?.avatar || null;
       const fAvatar = (f.avatar || f.avatar_url || '').trim?.() || (f.avatar || f.avatar_url || '');
-      const resolvedAv = pAvatar || fallbackAv || fAvatar || '';
+      const resolvedAv = pAvatar || fallbackAv || fAvatar || cachedAv || '';
 
       // A friend is strictly online ONLY if active presence is confirmed and not offline/invisible
       const isFriendOnline = Boolean(
@@ -460,9 +464,29 @@ function StanduppApp() {
         p.isOnline !== false
       );
 
+      const resolvedName = pickDisplayName(
+        [
+          isFriendOnline ? p?.name : null,
+          isFriendOnline ? p?.display_name : null,
+          f.name,
+          f.display_name,
+          fallbackProf?.display_name,
+          fallbackProf?.name,
+          p?.name,
+          p?.display_name,
+          f.username,
+          cachedProf?.display_name,
+          cachedProf?.name,
+          cachedProf?.username,
+        ],
+        'Kullanıcı'
+      );
+
       if (!isFriendOnline) {
         return {
           ...f,
+          name: resolvedName,
+          display_name: resolvedName,
           avatar: resolvedAv,
           avatar_url: resolvedAv,
           status: 'offline',
@@ -475,7 +499,8 @@ function StanduppApp() {
 
       return {
         ...f,
-        name: p.name || f.name,
+        name: resolvedName,
+        display_name: resolvedName,
         avatar: resolvedAv,
         avatar_url: resolvedAv,
         game: p.game || null,
@@ -491,6 +516,7 @@ function StanduppApp() {
     if (!isDm || !activeDmUserId) return null;
     const found = friends.find((f) => f.id === activeDmUserId);
     const fallbackProfile = dmUserProfile?.id === activeDmUserId ? dmUserProfile : null;
+    const cachedProfile = getCachedUserProfile(activeDmUserId);
     const p = presences[activeDmUserId];
     const isTargetOnline = Boolean(
       p &&
@@ -500,9 +526,34 @@ function StanduppApp() {
       p.isOnline !== false
     );
 
-    const base = found || fallbackProfile || {
+    const resolvedName = pickDisplayName(
+      [
+        found?.name,
+        found?.display_name,
+        fallbackProfile?.display_name,
+        fallbackProfile?.name,
+        p?.name,
+        p?.display_name,
+        found?.username,
+        fallbackProfile?.username,
+        p?.username,
+        cachedProfile?.display_name,
+        cachedProfile?.name,
+        cachedProfile?.username,
+      ],
+      'Kullanıcı'
+    );
+
+    const resolvedUsername =
+      [found?.username, fallbackProfile?.username, p?.username, cachedProfile?.username].find(
+        (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
+      ) || '';
+
+    const base = found || fallbackProfile || cachedProfile || {
       id: activeDmUserId,
-      name: activeDmUserId,
+      name: resolvedName,
+      display_name: resolvedName,
+      username: resolvedUsername,
       game: null,
       substatus: '',
       status: 'offline',
@@ -510,10 +561,22 @@ function StanduppApp() {
     };
 
     const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
-    const finalAvatar = pAvatar || base.avatar || base.avatar_url || fallbackProfile?.avatar || fallbackProfile?.avatar_url || '';
+    const finalAvatar =
+      pAvatar ||
+      base.avatar ||
+      base.avatar_url ||
+      fallbackProfile?.avatar ||
+      fallbackProfile?.avatar_url ||
+      cachedProfile?.avatar ||
+      cachedProfile?.avatar_url ||
+      '';
 
     return {
       ...base,
+      id: activeDmUserId,
+      name: resolvedName,
+      display_name: resolvedName,
+      username: resolvedUsername || base.username || '',
       avatar: finalAvatar,
       avatar_url: finalAvatar,
       status: isTargetOnline ? (p?.status || 'online') : 'offline',
@@ -951,12 +1014,16 @@ function StanduppApp() {
           }
         }
 
-        const resolvedName =
-          matchedProfile?.display_name ||
-          matchedProfile?.name ||
-          meta.name ||
-          meta.userName ||
-          `Katılımcı-${peerId.slice(0, 5)}`;
+        const resolvedName = pickDisplayName(
+          [
+            matchedProfile?.display_name,
+            matchedProfile?.name,
+            matchedProfile?.username,
+            meta.name,
+            meta.userName,
+          ],
+          `Katılımcı-${peerId.slice(0, 5)}`
+        );
 
         const resolvedAvatar =
           matchedProfile?.avatar_url ||
