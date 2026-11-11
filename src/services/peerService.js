@@ -45,13 +45,106 @@ function readInitialScreenSharePreset() {
   return 'balanced';
 }
 
+function readStoredBool(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const val = localStorage.getItem(key);
+    return val !== null ? val === 'true' : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function readStoredNumber(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const val = localStorage.getItem(key);
+    if (val === null) return fallback;
+    const num = Number(val);
+    return Number.isFinite(num) ? num : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Enhances WebRTC Opus SDP parameters for clean voice clarity and resilience:
+ * - Enables in-band Forward Error Correction (useinbandfec=1) to eliminate packet-loss crackles
+ * - Sets 64 kbps mono voice bitrate ceiling (maxaveragebitrate=64000, stereo=0)
+ * - Disables discontinuous comfort noise hiss (usedtx=0)
+ */
+export function optimizeOpusSdp(sdp) {
+  if (!sdp || typeof sdp !== 'string') return sdp;
+
+  const eol = sdp.includes('\r\n') ? '\r\n' : '\n';
+  const lines = sdp.split(/\r?\n/);
+
+  let opusPt = null;
+  let rtpmapIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^a=rtpmap:(\d+)\s+opus\/48000/i);
+    if (m) {
+      opusPt = m[1];
+      rtpmapIdx = i;
+      break;
+    }
+  }
+  if (!opusPt) return sdp;
+
+  const desiredParams = {
+    minptime: '10',
+    useinbandfec: '1',
+    usedtx: '0',
+    stereo: '0',
+    'sprop-stereo': '0',
+    maxaveragebitrate: '64000',
+  };
+
+  const fmtpPrefix = `a=fmtp:${opusPt} `;
+  const fmtpIdx = lines.findIndex((line) => line.startsWith(fmtpPrefix));
+
+  if (fmtpIdx !== -1) {
+    const rawParams = lines[fmtpIdx].slice(fmtpPrefix.length).trim();
+    const paramMap = new Map();
+    rawParams.split(';').forEach((token) => {
+      const cleaned = token.trim();
+      if (!cleaned) return;
+      const eqIdx = cleaned.indexOf('=');
+      if (eqIdx === -1) {
+        paramMap.set(cleaned, null);
+      } else {
+        paramMap.set(cleaned.slice(0, eqIdx).trim(), cleaned.slice(eqIdx + 1).trim());
+      }
+    });
+
+    Object.entries(desiredParams).forEach(([k, v]) => {
+      paramMap.set(k, v);
+    });
+
+    const formatted = Array.from(paramMap.entries())
+      .map(([k, v]) => (v === null ? k : `${k}=${v}`))
+      .join(';');
+    lines[fmtpIdx] = `${fmtpPrefix}${formatted}`;
+  } else if (rtpmapIdx !== -1) {
+    const formatted = Object.entries(desiredParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(';');
+    lines.splice(rtpmapIdx + 1, 0, `${fmtpPrefix}${formatted}`);
+  }
+
+  return lines.join(eol);
+}
+
 class MeshVoiceService {
   constructor() {
     this.peer = null;
     this.myPeerId = null;
     this.userName = 'Sen (You)';
     this.userMeta = { userId: null, name: 'Sen (You)', avatar: null };
+    this.rawLocalStream = null;
     this.localStream = null;
+    this.micAudioCtx = null;
+    this.micGainNode = null;
     this.activeCalls = new Map(); // peerId -> MediaConnection
     this.activeDataConns = new Map(); // peerId -> DataConnection
     this.remoteStreams = new Map(); // peerId -> MediaStream
@@ -61,7 +154,10 @@ class MeshVoiceService {
     this.roomName = 'sesli-sohbet-mesh-v1';
 
     this.selectedAudioInputId = null;
-    this.advancedAudioFiltering = true;
+    this.advancedAudioFiltering = readStoredBool('standupp_advanced_audio_filtering', true);
+    this.autoGainControlEnabled = readStoredBool('standupp_auto_gain_control', false);
+    this.antiStaticFilterEnabled = readStoredBool('standupp_anti_static_filter', true);
+    this.inputVolume = Math.max(0, Math.min(100, readStoredNumber('standupp_input_volume', 100)));
 
     // Screen sharing state
     this.screenStream = null;
@@ -129,33 +225,188 @@ class MeshVoiceService {
     return Object.fromEntries(this.peerMetadata);
   }
 
-  // Set advanced audio filtering state
+  // Set advanced audio filtering & voice clarity state
   setAdvancedAudioFiltering(enabled) {
     this.advancedAudioFiltering = Boolean(enabled);
   }
 
-  // 1. Get user microphone access via navigator.mediaDevices.getUserMedia with advanced audio filtering
+  setAutoGainControl(enabled) {
+    this.autoGainControlEnabled = Boolean(enabled);
+  }
+
+  setAntiStaticFilter(enabled) {
+    this.antiStaticFilterEnabled = Boolean(enabled);
+  }
+
+  getBaseAudioConstraints(deviceIdOverride = this.selectedAudioInputId, customConstraints = null) {
+    return {
+      echoCancellation: this.advancedAudioFiltering,
+      noiseSuppression: this.advancedAudioFiltering,
+      autoGainControl: this.autoGainControlEnabled,
+      sampleRate: { ideal: 48000 },
+      channelCount: { ideal: 1 },
+      ...(deviceIdOverride ? { deviceId: { exact: deviceIdOverride } } : {}),
+      ...customConstraints,
+    };
+  }
+
+  cleanupMicProcessing() {
+    this.micGainNode = null;
+    if (this.micAudioCtx) {
+      try {
+        this.micAudioCtx.close().catch(() => {});
+      } catch {}
+      this.micAudioCtx = null;
+    }
+  }
+
+  stopLocalAudioTracks() {
+    this.cleanupMicProcessing();
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((t) => {
+        try { t.stop(); } catch {}
+      });
+      this.localStream = null;
+    }
+    if (this.rawLocalStream) {
+      this.rawLocalStream.getTracks().forEach((t) => {
+        try { t.stop(); } catch {}
+      });
+      this.rawLocalStream = null;
+    }
+  }
+
+  buildProcessedLocalStream(rawStream) {
+    this.cleanupMicProcessing();
+    if (!rawStream || rawStream.getAudioTracks().length === 0) return rawStream;
+
+    const needsDsp = this.antiStaticFilterEnabled || this.inputVolume !== 100;
+    if (!needsDsp || typeof window === 'undefined') {
+      return rawStream;
+    }
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return rawStream;
+
+      let ctx;
+      try {
+        ctx = new AudioCtx({ latencyHint: 'interactive' });
+      } catch {
+        ctx = new AudioCtx();
+      }
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      const source = ctx.createMediaStreamSource(rawStream);
+      let head = source;
+
+      if (this.antiStaticFilterEnabled) {
+        // Cut 50/60Hz mains hum, PC fan rumble, and breath pops below 85Hz
+        const highpass = ctx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 85;
+        highpass.Q.value = 0.707;
+
+        // Roll off high-frequency USB/ground hiss and GPU coil whine above 12.5kHz
+        const lowpass = ctx.createBiquadFilter();
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 12500;
+        lowpass.Q.value = 0.707;
+
+        // Soft dynamic compressor prevents mic clipping & digital crackling pops
+        const compressor = ctx.createDynamicsCompressor();
+        compressor.threshold.value = -18;
+        compressor.knee.value = 12;
+        compressor.ratio.value = 3.5;
+        compressor.attack.value = 0.005;
+        compressor.release.value = 0.12;
+
+        head.connect(highpass);
+        highpass.connect(lowpass);
+        lowpass.connect(compressor);
+        head = compressor;
+      }
+
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = Math.max(0, Math.min(1.5, Number(this.inputVolume) / 100));
+      head.connect(gainNode);
+
+      const dest = ctx.createMediaStreamDestination();
+      gainNode.connect(dest);
+
+      const rawTrack = rawStream.getAudioTracks()[0];
+      const outTrack = dest.stream.getAudioTracks()[0];
+      if (rawTrack && outTrack) {
+        outTrack.enabled = rawTrack.enabled;
+      }
+
+      this.micAudioCtx = ctx;
+      this.micGainNode = gainNode;
+      return dest.stream;
+    } catch (err) {
+      console.warn('Audio DSP pipeline fallback to raw mic stream:', err);
+      this.cleanupMicProcessing();
+      return rawStream;
+    }
+  }
+
+  replaceOutgoingAudioTrack(newTrack) {
+    if (!newTrack) return;
+    this.activeCalls.forEach((call) => {
+      try {
+        if (call.peerConnection) {
+          const senders = call.peerConnection.getSenders();
+          const audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
+          if (audioSender) {
+            audioSender.replaceTrack(newTrack).catch((err) => {
+              console.warn('replaceTrack warning:', err);
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Call sender replaceTrack error:', e);
+      }
+    });
+  }
+
+  setInputVolume(volumePercent) {
+    const rawNum = Number(volumePercent);
+    const clamped = Math.max(0, Math.min(100, Number.isFinite(rawNum) ? rawNum : 100));
+    this.inputVolume = clamped;
+
+    if (this.micGainNode && this.micAudioCtx && this.micAudioCtx.state !== 'closed') {
+      try {
+        this.micGainNode.gain.setTargetAtTime(clamped / 100, this.micAudioCtx.currentTime, 0.015);
+      } catch {
+        this.micGainNode.gain.value = clamped / 100;
+      }
+    } else if (this.rawLocalStream && this.rawLocalStream.active && clamped !== 100) {
+      // Lazily attach DSP/gain pipeline when user adjusts mic slider from 100%
+      const processed = this.buildProcessedLocalStream(this.rawLocalStream);
+      this.localStream = processed;
+      this.replaceOutgoingAudioTrack(processed.getAudioTracks()[0]);
+      this.emit('localStreamChanged', processed);
+    }
+  }
+
+  // 1. Get user microphone access via navigator.mediaDevices.getUserMedia with voice clarity pipeline
   async getLocalAudioStream(customConstraints = null) {
     if (this.localStream && this.localStream.active) {
       return this.localStream;
     }
 
     try {
-      const audioConstraints = {
-        echoCancellation: this.advancedAudioFiltering,
-        noiseSuppression: this.advancedAudioFiltering,
-        autoGainControl: this.advancedAudioFiltering,
-        ...(this.selectedAudioInputId ? { deviceId: { exact: this.selectedAudioInputId } } : {}),
-        ...customConstraints,
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const audioConstraints = this.getBaseAudioConstraints(this.selectedAudioInputId, customConstraints);
+      const rawStream = await navigator.mediaDevices.getUserMedia({
         audio: audioConstraints,
         video: false,
       });
 
-      this.localStream = stream;
-      return stream;
+      this.rawLocalStream = rawStream;
+      this.localStream = this.buildProcessedLocalStream(rawStream);
+      return this.localStream;
     } catch (err) {
       console.warn('Microphone access denied or unavailable:', err);
       throw err;
@@ -164,53 +415,32 @@ class MeshVoiceService {
 
   // Seamlessly switch microphone input device or reacquire stream without interrupting active WebRTC calls
   async switchAudioInput(deviceId = this.selectedAudioInputId) {
-    if (deviceId) {
+    if (deviceId !== undefined && deviceId !== null) {
       this.selectedAudioInputId = deviceId;
     }
 
     try {
-      const audioConstraints = {
-        echoCancellation: this.advancedAudioFiltering,
-        noiseSuppression: this.advancedAudioFiltering,
-        autoGainControl: this.advancedAudioFiltering,
-        ...(this.selectedAudioInputId ? { deviceId: { exact: this.selectedAudioInputId } } : {}),
-      };
-
-      const newStream = await navigator.mediaDevices.getUserMedia({
+      const audioConstraints = this.getBaseAudioConstraints(this.selectedAudioInputId);
+      const rawNewStream = await navigator.mediaDevices.getUserMedia({
         audio: audioConstraints,
         video: false,
       });
 
-      const newTrack = newStream.getAudioTracks()[0];
-      const oldTrack = this.localStream ? this.localStream.getAudioTracks()[0] : null;
-
-      // Preserve mute state if previously muted
-      if (oldTrack && !oldTrack.enabled) {
-        newTrack.enabled = false;
+      const oldEnabled = this.localStream?.getAudioTracks?.()[0]?.enabled;
+      const rawNewTrack = rawNewStream.getAudioTracks()[0];
+      if (rawNewTrack && oldEnabled === false) {
+        rawNewTrack.enabled = false;
       }
 
-      // Stop old microphone track
-      if (oldTrack) {
-        oldTrack.stop();
-      }
+      // Stop old tracks cleanly before attaching new processed stream
+      this.stopLocalAudioTracks();
+
+      this.rawLocalStream = rawNewStream;
+      const newStream = this.buildProcessedLocalStream(rawNewStream);
       this.localStream = newStream;
 
-      // Seamlessly replace audio track on all active WebRTC calls
-      this.activeCalls.forEach((call) => {
-        try {
-          if (call.peerConnection) {
-            const senders = call.peerConnection.getSenders();
-            const audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
-            if (audioSender) {
-              audioSender.replaceTrack(newTrack).catch((err) => {
-                console.warn('replaceTrack warning:', err);
-              });
-            }
-          }
-        } catch (e) {
-          console.warn('Call sender replaceTrack error:', e);
-        }
-      });
+      const newTrack = newStream.getAudioTracks()[0];
+      this.replaceOutgoingAudioTrack(newTrack);
 
       this.emit('localStreamChanged', newStream);
       return newStream;
@@ -220,38 +450,54 @@ class MeshVoiceService {
     }
   }
 
-  // Dynamically update audio constraints on active microphone or reacquire stream seamlessly
-  async applyAudioFiltering(enabled) {
-    this.advancedAudioFiltering = Boolean(enabled);
+  // Dynamically update audio processing settings (EC/NS, AGC, Anti-Static DSP) seamlessly
+  async applyAudioSettings({ advancedAudioFiltering, autoGainControl, antiStaticFilter } = {}) {
+    if (advancedAudioFiltering !== undefined) {
+      this.advancedAudioFiltering = Boolean(advancedAudioFiltering);
+    }
+    if (autoGainControl !== undefined) {
+      this.autoGainControlEnabled = Boolean(autoGainControl);
+    }
+    const dspChanged =
+      antiStaticFilter !== undefined && this.antiStaticFilterEnabled !== Boolean(antiStaticFilter);
+    if (antiStaticFilter !== undefined) {
+      this.antiStaticFilterEnabled = Boolean(antiStaticFilter);
+    }
 
-    if (this.localStream && this.localStream.active) {
-      const audioTrack = this.localStream.getAudioTracks()[0];
-      const constraints = {
-        echoCancellation: this.advancedAudioFiltering,
-        noiseSuppression: this.advancedAudioFiltering,
-        autoGainControl: this.advancedAudioFiltering,
-      };
+    if (!this.rawLocalStream || !this.rawLocalStream.active) return;
 
-      let applied = false;
-      if (audioTrack && typeof audioTrack.applyConstraints === 'function') {
-        try {
-          await audioTrack.applyConstraints(constraints);
-          applied = true;
-          console.info(`[Stand.upp] Audio track constraints applied live. Filtering: ${this.advancedAudioFiltering}`);
-        } catch (err) {
-          console.warn('[Stand.upp] applyConstraints warning, recreating audio stream:', err);
-        }
-      }
+    const rawTrack = this.rawLocalStream.getAudioTracks()[0];
+    const constraints = this.getBaseAudioConstraints(this.selectedAudioInputId);
 
-      // If applyConstraints didn't take effect or failed, recreate stream seamlessly
-      if (!applied) {
-        try {
-          await this.switchAudioInput(this.selectedAudioInputId);
-        } catch (swapErr) {
-          console.warn('[Stand.upp] Seamless stream recreate warning:', swapErr);
-        }
+    let applied = false;
+    if (rawTrack && typeof rawTrack.applyConstraints === 'function') {
+      try {
+        await rawTrack.applyConstraints(constraints);
+        applied = true;
+      } catch (err) {
+        console.warn('[Voys] applyConstraints warning, recreating audio stream:', err);
       }
     }
+
+    if (!applied) {
+      try {
+        await this.switchAudioInput(this.selectedAudioInputId);
+        return;
+      } catch (swapErr) {
+        console.warn('[Voys] Seamless stream recreate warning:', swapErr);
+      }
+    }
+
+    if (dspChanged) {
+      const processed = this.buildProcessedLocalStream(this.rawLocalStream);
+      this.localStream = processed;
+      this.replaceOutgoingAudioTrack(processed.getAudioTracks()[0]);
+      this.emit('localStreamChanged', processed);
+    }
+  }
+
+  async applyAudioFiltering(enabled) {
+    return this.applyAudioSettings({ advancedAudioFiltering: enabled });
   }
 
   // 2. Initialize PeerJS connection and mesh discovery
@@ -364,24 +610,42 @@ class MeshVoiceService {
             return;
           }
 
-          this.activeCalls.set(incomingPeerId, call);
+          // Deduplicate WebRTC glare calls so two concurrent audio streams never play at once
+          const existingVoiceCall = this.activeCalls.get(incomingPeerId);
+          if (existingVoiceCall && existingVoiceCall !== call) {
+            const existingState = existingVoiceCall.peerConnection?.connectionState;
+            const existingHealthy = existingVoiceCall._open && existingState === 'connected';
+            if (existingHealthy && this.myPeerId > incomingPeerId) {
+              try { call.close(); } catch {}
+              return;
+            }
+            this.activeCalls.set(incomingPeerId, call);
+            try { existingVoiceCall.close(); } catch {}
+          } else {
+            this.activeCalls.set(incomingPeerId, call);
+          }
 
           // Get or request current local stream to answer with
           const currentStream = this.localStream || await this.getLocalAudioStream().catch(() => null);
-          
-          call.answer(currentStream || undefined);
+
+          call.answer(currentStream || undefined, {
+            sdpTransform: optimizeOpusSdp,
+          });
 
           call.on('stream', (remoteStream) => {
+            if (this.activeCalls.get(incomingPeerId) !== call) return;
             this.remoteStreams.set(incomingPeerId, remoteStream);
             this.emit('stream', { peerId: incomingPeerId, stream: remoteStream });
             this.emit('peersUpdated', Array.from(this.remoteStreams.keys()));
           });
 
           call.on('close', () => {
+            if (this.activeCalls.get(incomingPeerId) !== call) return;
             this.removePeer(incomingPeerId);
           });
 
           call.on('error', (err) => {
+            if (this.activeCalls.get(incomingPeerId) !== call) return;
             console.error(`Call error with ${incomingPeerId}:`, err);
             this.removePeer(incomingPeerId);
           });
@@ -428,8 +692,18 @@ class MeshVoiceService {
               userId: data.userId,
               avatar: data.avatar,
             });
-            // A new peer joined the room: Call them to establish P2P audio
-            this.callPeer(data.peerId);
+            // A new peer joined the room: deterministic priority avoids dual-call glare
+            if (!this.activeCalls.has(data.peerId)) {
+              if (this.myPeerId > data.peerId) {
+                this.callPeer(data.peerId);
+              } else {
+                setTimeout(() => {
+                  if (this.peer && !this.peer.destroyed && !this.activeCalls.has(data.peerId)) {
+                    this.callPeer(data.peerId);
+                  }
+                }, 1200);
+              }
+            }
             // Announce ourselves and our known mesh peers to the new peer
             this.broadcastChannel.postMessage({
               type: 'ROOM_ANNOUNCE',
@@ -540,7 +814,15 @@ class MeshVoiceService {
                 this.setPeerMetadata(remotePeerId, remoteInfo);
               }
               if (!this.activeCalls.has(remotePeerId)) {
-                this.callPeer(remotePeerId);
+                if (this.myPeerId > remotePeerId) {
+                  this.callPeer(remotePeerId);
+                } else {
+                  setTimeout(() => {
+                    if (this.peer && !this.peer.destroyed && !this.activeCalls.has(remotePeerId)) {
+                      this.callPeer(remotePeerId);
+                    }
+                  }, 1500);
+                }
               }
             }
           })
@@ -637,6 +919,7 @@ class MeshVoiceService {
     try {
       const stream = this.localStream || await this.getLocalAudioStream().catch(() => null);
       const call = this.peer.call(targetPeerId, stream || undefined, {
+        sdpTransform: optimizeOpusSdp,
         metadata: {
           type: 'voice',
           userName: this.userName,
@@ -650,16 +933,19 @@ class MeshVoiceService {
       this.activeCalls.set(targetPeerId, call);
 
       call.on('stream', (remoteStream) => {
+        if (this.activeCalls.get(targetPeerId) !== call) return;
         this.remoteStreams.set(targetPeerId, remoteStream);
         this.emit('stream', { peerId: targetPeerId, stream: remoteStream });
         this.emit('peersUpdated', Array.from(this.remoteStreams.keys()));
       });
 
       call.on('close', () => {
+        if (this.activeCalls.get(targetPeerId) !== call) return;
         this.removePeer(targetPeerId);
       });
 
       call.on('error', (err) => {
+        if (this.activeCalls.get(targetPeerId) !== call) return;
         console.error(`Call error with ${targetPeerId}:`, err);
         this.removePeer(targetPeerId);
       });
@@ -876,10 +1162,16 @@ class MeshVoiceService {
 
   // 6. Control microphone track enabled state (Mute / Unmute)
   setMicrophoneEnabled(enabled) {
-    if (!this.localStream) return;
-    this.localStream.getAudioTracks().forEach((track) => {
-      track.enabled = enabled;
-    });
+    if (this.rawLocalStream) {
+      this.rawLocalStream.getAudioTracks().forEach((track) => {
+        track.enabled = enabled;
+      });
+    }
+    if (this.localStream) {
+      this.localStream.getAudioTracks().forEach((track) => {
+        track.enabled = enabled;
+      });
+    }
   }
 
   // 7. Real-Time Latency & Connection Quality Monitoring (RTT in ms via WebRTC getStats & RTCDataChannel)
@@ -1082,10 +1374,7 @@ class MeshVoiceService {
 
     this.remoteStreams.clear();
 
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => track.stop());
-      this.localStream = null;
-    }
+    this.stopLocalAudioTracks();
 
     if (this.peer) {
       this.peer.destroy();

@@ -111,6 +111,10 @@ export const SettingsModal = ({ onLogout = null }) => {
     changeSoundCategory,
     advancedAudioFiltering,
     changeAdvancedAudioFiltering,
+    autoGainControl,
+    changeAutoGainControl,
+    antiStaticFilter,
+    changeAntiStaticFilter,
     inputMode,
     changeInputMode,
     pttKey,
@@ -396,7 +400,7 @@ export const SettingsModal = ({ onLogout = null }) => {
           ...(selectedAudioInput ? { deviceId: { exact: selectedAudioInput } } : {}),
           echoCancellation: advancedAudioFiltering,
           noiseSuppression: advancedAudioFiltering,
-          autoGainControl: advancedAudioFiltering,
+          autoGainControl: autoGainControl,
         },
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -1524,6 +1528,94 @@ export const SettingsModal = ({ onLogout = null }) => {
                           active ? 'bg-[#23a55a] shadow-[0_0_6px_rgba(35,165,90,0.8)]' : 'bg-[#232428]'
                         }`}
                       />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Ses İşleme & Cızırtı Engelleme */}
+              <div className="pt-6 border-t border-white/[0.08] space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      SES İŞLEME VE CIZIRTI ENGELLEME
+                    </label>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Mikrofondaki elektriksel dip gürültüyü, arka plan hışırtısını ve patlamaları filtreleyin.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center space-x-1.5 text-[11px] font-mono px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 flex-shrink-0">
+                    <Activity size={12} />
+                    <span>Opus 64kbps · FEC</span>
+                  </span>
+                </div>
+
+                <div className="rounded-xl bg-[#101015] border border-white/[0.08] divide-y divide-white/[0.06] overflow-hidden">
+                  {[
+                    {
+                      id: 'ec_ns',
+                      label: 'Yankı & Arka Plan Gürültüsü Engelleme',
+                      desc: 'Hoparlörden dönen yankıyı ve oda/klavye gürültüsünü temizler (Önerilen: Açık).',
+                      enabled: advancedAudioFiltering,
+                      onToggle: () => changeAdvancedAudioFiltering(!advancedAudioFiltering),
+                      icon: Mic,
+                    },
+                    {
+                      id: 'anti_static',
+                      label: 'Cızırtı ve Dip Gürültü Filtresi (85Hz – 12.5kHz)',
+                      desc: '50/60Hz elektriksel dip uğultuyu, tiz USB cızırtısını ve ses patlamalarını keser (Önerilen: Açık).',
+                      enabled: antiStaticFilter,
+                      onToggle: () => changeAntiStaticFilter(!antiStaticFilter),
+                      icon: Sliders,
+                    },
+                    {
+                      id: 'agc',
+                      label: 'Otomatik Kazanç Kontrolü (AGC)',
+                      desc: 'Kısık sesleri yapay olarak yükseltir. Arka planda hafif hışırtı/cızırtı oluşturabileceği için kapalı tutulması önerilir.',
+                      enabled: autoGainControl,
+                      onToggle: () => changeAutoGainControl(!autoGainControl),
+                      icon: Radio,
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="switch"
+                        aria-checked={item.enabled}
+                        onClick={item.onToggle}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.03] transition cursor-pointer"
+                      >
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              item.enabled ? 'bg-indigo-500/15 text-indigo-400' : 'bg-white/5 text-gray-500'
+                            }`}
+                          >
+                            <Icon size={15} />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-gray-200 block">
+                              {item.label}
+                            </span>
+                            <span className="text-[11px] text-gray-500 block">
+                              {item.desc}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          className={`w-9 h-5 rounded-full transition-colors p-0.5 flex items-center flex-shrink-0 ${
+                            item.enabled ? 'bg-indigo-500' : 'bg-white/10'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                              item.enabled ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </div>
+                      </button>
                     );
                   })}
                 </div>

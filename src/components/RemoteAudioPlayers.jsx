@@ -20,7 +20,7 @@ const RemoteAudioItem = ({
   // Bind remote MediaStream to <audio> tag
   useEffect(() => {
     const audioEl = audioRef.current;
-    if (!audioEl || !stream) return;
+    if (!audioEl || !stream) return undefined;
 
     if (audioEl.srcObject !== stream) {
       audioEl.srcObject = stream;
@@ -32,6 +32,15 @@ const RemoteAudioItem = ({
         console.warn(`Remote audio autoplay for ${peerId} paused:`, err);
       });
     }
+
+    return () => {
+      if (audioEl) {
+        try {
+          audioEl.pause();
+          audioEl.srcObject = null;
+        } catch {}
+      }
+    };
   }, [stream, peerId]);
 
   // Dynamically control volume and muted state based on isDeafened and per-peer overrides
@@ -45,12 +54,12 @@ const RemoteAudioItem = ({
     audioEl.volume = effectiveMuted ? 0 : Math.max(0, Math.min(1, volume * peerMultiplier));
   }, [isDeafened, isPeerMuted, peerVolume, volume]);
 
-  // Dynamically route audio output to the selected speaker/headphones
+  // Dynamically route audio output to the selected speaker/headphones (only when sink actually changes)
   useEffect(() => {
     const audioEl = audioRef.current;
     if (!audioEl) return;
 
-    if (sinkId && typeof audioEl.setSinkId === 'function') {
+    if (sinkId && typeof audioEl.setSinkId === 'function' && audioEl.sinkId !== sinkId) {
       audioEl.setSinkId(sinkId).catch((err) => {
         console.warn(`setSinkId failed for peer ${peerId}:`, err);
       });
@@ -82,9 +91,19 @@ export const RemoteAudioPlayers = ({
 }) => {
   if (!remotePeers || remotePeers.length === 0) return null;
 
+  // Deduplicate by peerId so the same remote audio stream can never play twice simultaneously
+  const uniquePeers = [];
+  const seen = new Set();
+  for (const peer of remotePeers) {
+    if (peer?.peerId && peer?.stream && !seen.has(peer.peerId)) {
+      seen.add(peer.peerId);
+      uniquePeers.push(peer);
+    }
+  }
+
   return (
     <div className="hidden pointer-events-none select-none" aria-hidden="true">
-      {remotePeers.map((peer) => {
+      {uniquePeers.map((peer) => {
         const override = peerAudioMap?.[peer.peerId];
         return (
           <RemoteAudioItem

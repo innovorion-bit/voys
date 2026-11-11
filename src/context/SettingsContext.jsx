@@ -89,10 +89,28 @@ export const SettingsProvider = ({ children }) => {
     return Number(localStorage.getItem('standupp_output_volume')) || 100;
   });
 
-  // Advanced Audio Processing (Echo Cancellation, Noise Suppression, Auto Gain Control vs Studio Raw Audio)
+  // Advanced Audio Processing (Echo Cancellation, Noise Suppression) + Separate AGC & Anti-Static DSP
   const [advancedAudioFiltering, setAdvancedAudioFilteringState] = useState(() => {
     try {
       const saved = localStorage.getItem('standupp_advanced_audio_filtering');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const [autoGainControl, setAutoGainControlState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('standupp_auto_gain_control');
+      return saved !== null ? saved === 'true' : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const [antiStaticFilter, setAntiStaticFilterState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('standupp_anti_static_filter');
       return saved !== null ? saved === 'true' : true;
     } catch {
       return true;
@@ -107,16 +125,50 @@ export const SettingsProvider = ({ children }) => {
     } catch {}
 
     try {
-      await peerService.applyAudioFiltering(val);
+      await peerService.applyAudioSettings({ advancedAudioFiltering: val });
     } catch (err) {
       console.warn('applyAudioFiltering error:', err);
     }
   }, []);
 
-  // Synchronize peerService with initial filtering preference
+  const changeAutoGainControl = useCallback(async (enabled) => {
+    const val = Boolean(enabled);
+    setAutoGainControlState(val);
+    try {
+      localStorage.setItem('standupp_auto_gain_control', String(val));
+    } catch {}
+
+    try {
+      await peerService.applyAudioSettings({ autoGainControl: val });
+    } catch (err) {
+      console.warn('applyAutoGainControl error:', err);
+    }
+  }, []);
+
+  const changeAntiStaticFilter = useCallback(async (enabled) => {
+    const val = Boolean(enabled);
+    setAntiStaticFilterState(val);
+    try {
+      localStorage.setItem('standupp_anti_static_filter', String(val));
+    } catch {}
+
+    try {
+      await peerService.applyAudioSettings({ antiStaticFilter: val });
+    } catch (err) {
+      console.warn('applyAntiStaticFilter error:', err);
+    }
+  }, []);
+
+  // Synchronize peerService with initial audio processing preferences & live input volume
   useEffect(() => {
     peerService.setAdvancedAudioFiltering(advancedAudioFiltering);
-  }, [advancedAudioFiltering]);
+    peerService.setAutoGainControl(autoGainControl);
+    peerService.setAntiStaticFilter(antiStaticFilter);
+  }, [advancedAudioFiltering, autoGainControl, antiStaticFilter]);
+
+  useEffect(() => {
+    peerService.setInputVolume(inputVolume);
+  }, [inputVolume]);
 
   // Input Mode & Push-to-Talk (PTT) Configuration
   const [inputMode, setInputModeState] = useState(() => {
@@ -467,6 +519,7 @@ export const SettingsProvider = ({ children }) => {
   // Update volume settings
   const changeInputVolume = useCallback((val) => {
     setInputVolume(val);
+    peerService.setInputVolume(val);
     try { localStorage.setItem('standupp_input_volume', String(val)); } catch {}
   }, []);
 
@@ -545,6 +598,10 @@ export const SettingsProvider = ({ children }) => {
         changeSoundCategory,
         advancedAudioFiltering,
         changeAdvancedAudioFiltering,
+        autoGainControl,
+        changeAutoGainControl,
+        antiStaticFilter,
+        changeAntiStaticFilter,
         inputMode,
         changeInputMode,
         pttKey,
