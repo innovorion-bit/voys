@@ -45,16 +45,6 @@ export const SCREEN_SHARE_PRESETS = {
 };
 
 function readInitialScreenSharePreset() {
-  if (typeof window === 'undefined') return 'balanced';
-  try {
-    const saved = localStorage.getItem('standupp_chat_settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed?.screenSharePreset && SCREEN_SHARE_PRESETS[parsed.screenSharePreset]) {
-        return parsed.screenSharePreset;
-      }
-    }
-  } catch {}
   return 'balanced';
 }
 
@@ -1084,10 +1074,8 @@ export class MeshVoiceService {
   }
 
   // 5. Screen Sharing
-  setScreenSharePreset(preset) {
-    if (SCREEN_SHARE_PRESETS[preset]) {
-      this.screenSharePreset = preset;
-    }
+  setScreenSharePreset() {
+    this.screenSharePreset = 'balanced';
   }
 
   getScreenSharePreset() {

@@ -34,14 +34,12 @@ import {
   Keyboard,
   Radio,
   RotateCcw,
-  VolumeX,
-  Monitor
+  VolumeX
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
 import { useAuth } from '../context/useAuth';
 import { sounds } from '../utils/audio';
-import { SCREEN_SHARE_PRESETS } from '../services/peerService';
 import { dbService, isAuthorizedAdminUser } from '../lib/supabase';
 import { AdminMonitorTab } from './AdminMonitorTab';
 import {
@@ -1813,50 +1811,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     onChange={(e) => changeSoundEffectsVolume(Number(e.target.value))}
                     className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
-                </div>
-              </div>
-
-              {/* Ekran Paylaşımı Kalitesi & Oyun FPS Koruması */}
-              <div className="pt-6 border-t border-white/[0.08] space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
-                    EKRAN PAYLAŞIMI KALİTESİ (FPS KORUMASI)
-                  </label>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    CS2 ve diğer oyunlarda yayın yaparken GPU/CPU kodlama ve ağ yükünü buradan sınırlandırabilirsiniz.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {['performance', 'balanced', 'high'].map((presetKey) => {
-                    const preset = SCREEN_SHARE_PRESETS[presetKey];
-                    const currentPreset = chatSettings?.screenSharePreset || 'balanced';
-                    const isSelected = currentPreset === presetKey;
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          updateChatSetting('screenSharePreset', preset.id);
-                          toast.success(`Ekran paylaşımı kalitesi: ${preset.label}`);
-                        }}
-                        className={`flex flex-col justify-between p-3.5 rounded-xl border text-left transition cursor-pointer gap-1.5 ${
-                          isSelected
-                            ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_16px_rgba(139,81,255,0.12)]'
-                            : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center space-x-1.5 text-xs font-semibold text-white">
-                            <Monitor size={14} className={isSelected ? 'text-indigo-400' : 'text-gray-400'} />
-                            <span>{preset.label}</span>
-                          </span>
-                          {isSelected && <Check size={14} className="text-indigo-400 flex-shrink-0" />}
-                        </div>
-                        <p className="text-[11px] text-gray-400 leading-relaxed">{preset.desc}</p>
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             </div>

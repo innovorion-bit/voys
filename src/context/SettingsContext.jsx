@@ -324,10 +324,10 @@ export const SettingsProvider = ({ children }) => {
     applyWindowTransparency(clampedOpacity);
   }, [chatSettings?.windowOpacity]);
 
-  // Sync Screen Share quality preset with PeerService
+  // Screen Share quality preset locked to balanced (720p · 30 FPS)
   useEffect(() => {
-    peerService.setScreenSharePreset(chatSettings?.screenSharePreset || 'balanced');
-  }, [chatSettings?.screenSharePreset]);
+    peerService.setScreenSharePreset('balanced');
+  }, []);
 
   // Game Performance Mode: locked to Automatic (activates while a game is detected in profile.game)
   const isPerformanceModeActive = Boolean((profile?.game || '').trim());
