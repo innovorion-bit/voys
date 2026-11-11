@@ -1357,7 +1357,7 @@ export const SettingsModal = ({ onLogout = null }) => {
                           </span>
                           {selected && <Check size={14} className="text-indigo-400 flex-shrink-0" />}
                         </div>
-                        <p className="text-[11px] opacity60 leading-relaxed">{opt.desc}</p>
+                        <p className="text-[11px] opacity-60 leading-relaxed">{opt.desc}</p>
                       </button>
                     );
                   })}
