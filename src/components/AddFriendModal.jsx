@@ -29,38 +29,57 @@ export const AddFriendModal = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
   const handleSearchChange = (val) => {
+    const trimmed = val.trim();
     setSearchQuery(val);
     setFeedback(null);
-    if (!val.trim() || val.length < 2) {
+    setSearchError(null);
+    if (!trimmed || trimmed.length < 2) {
       setSearchResults([]);
+      setIsSearching(false);
+    } else {
+      setIsSearching(true);
     }
   };
 
   // Auto search with debounce
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.length < 2) {
-      return;
-    }
+    if (!isOpen) return;
+    const q = searchQuery.trim();
+    if (!q || q.length < 2) return;
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         setIsSearching(true);
-        const results = await dbService.searchUsers(searchQuery, currentUser?.id);
-        setSearchResults(results || []);
+        setSearchError(null);
+        const results = await dbService.searchUsers(q, currentUser?.id);
+        if (!cancelled) {
+          setSearchResults(results || []);
+        }
       } catch (err) {
         console.warn('Search users error:', err);
+        if (!cancelled) {
+          setSearchResults([]);
+          setSearchError(err?.message || 'Kullanıcı araması sırasında bir hata oluştu.');
+        }
       } finally {
-        setIsSearching(false);
+        if (!cancelled) {
+          setIsSearching(false);
+        }
       }
     }, 250);
 
-    return () => clearTimeout(timer);
-  }, [searchQuery, currentUser?.id]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isOpen, searchQuery, currentUser?.id]);
 
   // ESC key listener & sync latest friendships when modal opens
   useEffect(() => {
@@ -331,7 +350,17 @@ export const AddFriendModal = ({
 
               {/* Search Results */}
               <div className="space-y-2 pt-1">
-                {searchResults.length > 0 ? (
+                {isSearching && searchResults.length === 0 ? (
+                  <div className="py-8 flex flex-col items-center justify-center text-gray-400 space-y-2 bg-white/[0.02] rounded-2xl border border-white/5">
+                    <Loader2 size={18} className="animate-spin text-indigo-400" />
+                    <span className="text-xs">Kullanıcılar aranıyor...</span>
+                  </div>
+                ) : searchError ? (
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs text-center space-y-1">
+                    <div className="font-semibold">Arama yapılamadı</div>
+                    <div className="text-[11px] text-rose-300/80">{searchError}</div>
+                  </div>
+                ) : searchResults.length > 0 ? (
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block px-1">
                       Arama Sonuçları ({searchResults.length})
@@ -392,7 +421,7 @@ export const AddFriendModal = ({
                       );
                     })}
                   </div>
-                ) : searchQuery.length >= 2 && !isSearching ? (
+                ) : searchQuery.trim().length >= 2 && !isSearching ? (
                   <div className="py-8 text-center text-xs text-gray-400 bg-white/[0.02] rounded-2xl border border-white/5">
                     "{searchQuery}" ile eşleşen kullanıcı bulunamadı.
                   </div>

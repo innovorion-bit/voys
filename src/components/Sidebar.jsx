@@ -385,6 +385,7 @@ export const Sidebar = ({
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [friendFeedback, setFriendFeedback] = useState(null);
 
@@ -461,6 +462,10 @@ export const Sidebar = ({
 
   const openAddFriendView = () => {
     setFriendFeedback(null);
+    setSearchError(null);
+    if (friendSearchQuery.trim().length >= 2) {
+      setIsSearchingUsers(true);
+    }
     setSidebarView('addFriend');
   };
 
@@ -483,19 +488,32 @@ export const Sidebar = ({
     const q = friendSearchQuery.trim();
     if (!q || q.length < 2) return;
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         setIsSearchingUsers(true);
+        setSearchError(null);
         const results = await dbService.searchUsers(q, resolvedCurrentUserId);
-        setSearchResults(results || []);
+        if (!cancelled) {
+          setSearchResults(results || []);
+        }
       } catch (err) {
         console.warn('Search users error in sidebar:', err);
+        if (!cancelled) {
+          setSearchResults([]);
+          setSearchError(err?.message || 'Kullanıcı araması sırasında bir hata oluştu.');
+        }
       } finally {
-        setIsSearchingUsers(false);
+        if (!cancelled) {
+          setIsSearchingUsers(false);
+        }
       }
     }, 250);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [friendSearchQuery, sidebarView, resolvedCurrentUserId]);
 
   const handleSendFriendRequest = async (targetUserId, targetName) => {
@@ -910,11 +928,15 @@ export const Sidebar = ({
                     value={friendSearchQuery}
                     onChange={(e) => {
                       const val = e.target.value;
+                      const trimmed = val.trim();
                       setFriendSearchQuery(val);
                       setFriendFeedback(null);
-                      if (!val.trim() || val.trim().length < 2) {
+                      setSearchError(null);
+                      if (!trimmed || trimmed.length < 2) {
                         setSearchResults([]);
                         setIsSearchingUsers(false);
+                      } else {
+                        setIsSearchingUsers(true);
                       }
                     }}
                     placeholder="Kullanıcı adı veya isim ara..."
@@ -928,6 +950,7 @@ export const Sidebar = ({
                         setFriendSearchQuery('');
                         setSearchResults([]);
                         setIsSearchingUsers(false);
+                        setSearchError(null);
                         setFriendFeedback(null);
                       }}
                       className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition"
@@ -962,6 +985,11 @@ export const Sidebar = ({
                     <div className="py-6 flex flex-col items-center justify-center text-gray-400 space-y-2">
                       <Loader2 size={18} className="animate-spin text-emerald-400" />
                       <span className="text-xs">Kullanıcılar aranıyor...</span>
+                    </div>
+                  ) : searchError ? (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs text-center space-y-1">
+                      <p className="font-semibold">Arama yapılamadı</p>
+                      <p className="text-[11px] text-rose-300/80">{searchError}</p>
                     </div>
                   ) : searchResults.length > 0 ? (
                     searchResults.map((user) => {

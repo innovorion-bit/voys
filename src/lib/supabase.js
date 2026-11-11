@@ -25,20 +25,27 @@ export const getDmRoomId = (user1Id, user2Id) => {
 
 // Timeout wrapper helper to prevent network requests from hanging indefinitely
 export const withTimeout = (promise, ms = 25000, errorMsg = 'Sunucu yanıt vermedi (Zaman aşımı).') => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      const timer = setTimeout(() => {
-        const err = new Error(errorMsg);
-        err.name = 'TimeoutError';
-        err.isNetworkOrTimeout = true;
-        reject(err);
-      }, ms);
-      if (promise && typeof promise.then === 'function') {
-        promise.finally(() => clearTimeout(timer)).catch(() => {});
-      }
-    }),
-  ]);
+  // Normalize arbitrary thenables (e.g. Supabase PostgrestFilterBuilder) into a real Promise
+  // so .finally/.catch are always available and late rejections never leak unhandled.
+  const settledPromise = Promise.resolve(promise);
+  settledPromise.catch(() => {});
+
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error(errorMsg);
+      err.name = 'TimeoutError';
+      err.isNetworkOrTimeout = true;
+      reject(err);
+    }, ms);
+  });
+
+  return Promise.race([settledPromise, timeoutPromise]).finally(() => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  });
 };
 
 export const ADMIN_USER_ID = 'ba1e9bcb-ed19-4b81-8a29-2a8c89077f1a';
@@ -2367,9 +2374,10 @@ export const dbService = {
       tagPart = parts[1].trim();
     }
 
-    const cleanName = namePart.toLowerCase().replace(/[(),]/g, '');
-    const cleanTag = tagPart ? tagPart.toLowerCase().replace(/[(),]/g, '') : null;
+    const cleanName = namePart.replace(/İ/g, 'i').toLowerCase().replace(/[(),]/g, '');
+    const cleanTag = tagPart ? tagPart.replace(/İ/g, 'i').toLowerCase().replace(/[(),]/g, '') : null;
     const foundMap = new Map();
+    let supabaseSearchError = null;
 
     // 1. Search in Supabase profiles if configured
     if (isSupabaseConfigured) {
@@ -2428,7 +2436,11 @@ export const dbService = {
             error = res.error;
           }
 
-          if (!error && Array.isArray(data)) {
+          if (error) {
+            throw new Error(error.message || 'Kullanıcı araması başarısız oldu.');
+          }
+
+          if (Array.isArray(data)) {
             cacheUserProfiles(data);
             data.forEach((u) => {
               if (u.id !== currentUserId) {
@@ -2445,6 +2457,7 @@ export const dbService = {
           }
         }
       } catch (err) {
+        supabaseSearchError = err;
         console.warn('Supabase searchUsers error:', err);
       }
     }
@@ -2453,9 +2466,9 @@ export const dbService = {
     const localUsers = localDb.getUsers();
     localUsers.forEach((u) => {
       if (u.id !== currentUserId && !foundMap.has(u.id)) {
-        const uName = (u.username || '').toLowerCase();
-        const uDisp = (u.display_name || '').toLowerCase();
-        const uTag = (u.tag || '0001').toLowerCase();
+        const uName = (u.username || '').replace(/İ/g, 'i').toLowerCase();
+        const uDisp = (u.display_name || '').replace(/İ/g, 'i').toLowerCase();
+        const uTag = (u.tag || '0001').replace(/İ/g, 'i').toLowerCase();
 
         let matches = false;
         if (cleanTag && cleanName) {
@@ -2482,6 +2495,10 @@ export const dbService = {
       }
     });
 
+    if (foundMap.size === 0 && supabaseSearchError) {
+      throw new Error(supabaseSearchError.message || 'Kullanıcı araması sırasında sunucuya ulaşılamadı. Lütfen tekrar deneyin.');
+    }
+
     return Array.from(foundMap.values());
   },
 
@@ -2493,7 +2510,7 @@ export const dbService = {
 
     let targetUserId = targetQueryOrId;
 
-    if (!targetQueryOrId.includes('-') || targetQueryOrId.includes('@') || targetQueryOrId.includes('#')) {
+    if (!isUuidLike(String(targetQueryOrId))) {
       const found = await this.searchUsers(targetQueryOrId, currentUserId);
       if (!found || found.length === 0) {
         throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adını kontrol edin.');
