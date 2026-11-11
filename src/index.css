@@ -819,3 +819,62 @@ input[type="range"].voice-slider::-moz-range-thumb {
 input[type="range"].voice-slider::-moz-range-thumb:hover {
   transform: scale(1.15);
 }
+
+/* ============================================================
+   GAME PERFORMANCE MODE (CS2 / LOW GPU & COMPOSITOR OVERHEAD)
+   ============================================================ */
+html.voys-performance-mode *,
+html.voys-performance-mode *::before,
+html.voys-performance-mode *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.voys-performance-mode .speaking-ring {
+  animation: none !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.85) !important;
+}
+
+html.voys-performance-mode .speaking-card-glow {
+  animation: none !important;
+  border-color: rgba(34, 197, 94, 0.85) !important;
+  box-shadow: none !important;
+}
+
+html.voys-performance-mode .animate-pulse {
+  animation: none !important;
+}
+
+/* Disable desktop alpha/glass compositing overhead while a game or perf mode is active */
+html.voys-performance-mode.glass-mode .voys-glass-app,
+html.voys-performance-mode.glass-mode .voys-glass-sidebar {
+  background-color: #0c0c0e !important;
+}
+
+html.voys-performance-mode.glass-mode .voys-glass-header,
+html.voys-performance-mode.glass-mode .voys-glass-chat,
+html.voys-performance-mode.glass-mode .voys-chat-input-bar {
+  background-color: #08080a !important;
+}
+
+html.voys-performance-mode.glass-mode .sidebar-bottom-bar {
+  background-color: #0a0a0c !important;
+}
+
+html.voys-performance-mode.glass-mode .voys-chat-header,
+html.voys-performance-mode.glass-mode .voys-glass-right-panel {
+  background-color: #0c0c0e !important;
+}
+
+html.voys-performance-mode.theme-light.glass-mode .voys-glass-app,
+html.voys-performance-mode.theme-light.glass-mode .voys-glass-chat,
+html.voys-performance-mode.theme-light.glass-mode .voys-chat-input-bar {
+  background-color: #ffffff !important;
+}
+
+html.voys-performance-mode.theme-light.glass-mode .voys-glass-sidebar,
+html.voys-performance-mode.theme-light.glass-mode .voys-glass-header,
+html.voys-performance-mode.theme-light.glass-mode .voys-chat-header,
+html.voys-performance-mode.theme-light.glass-mode .voys-glass-right-panel {
+  background-color: #f2f3f5 !important;
+}

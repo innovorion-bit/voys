@@ -1,6 +1,50 @@
 import Peer from 'peerjs';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+export const SCREEN_SHARE_PRESETS = {
+  performance: {
+    id: 'performance',
+    label: 'Performans (720p · 15 FPS)',
+    desc: 'CS2 / FPS oyunlarında en düşük GPU ve ağ yükü',
+    maxWidth: 1280,
+    maxHeight: 720,
+    maxFrameRate: 15,
+    maxBitrate: 900_000,
+  },
+  balanced: {
+    id: 'balanced',
+    label: 'Dengeli (720p · 30 FPS)',
+    desc: 'Çoğu oyun ve ekran paylaşımı için ideal kalite/performans',
+    maxWidth: 1280,
+    maxHeight: 720,
+    maxFrameRate: 30,
+    maxBitrate: 1_800_000,
+  },
+  high: {
+    id: 'high',
+    label: 'Yüksek Kalite (1080p · 60 FPS)',
+    desc: 'Maksimum netlik (daha yüksek GPU / CPU ve upload gerektirir)',
+    maxWidth: 1920,
+    maxHeight: 1080,
+    maxFrameRate: 60,
+    maxBitrate: 4_000_000,
+  },
+};
+
+function readInitialScreenSharePreset() {
+  if (typeof window === 'undefined') return 'balanced';
+  try {
+    const saved = localStorage.getItem('standupp_chat_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed?.screenSharePreset && SCREEN_SHARE_PRESETS[parsed.screenSharePreset]) {
+        return parsed.screenSharePreset;
+      }
+    }
+  } catch {}
+  return 'balanced';
+}
+
 class MeshVoiceService {
   constructor() {
     this.peer = null;
@@ -21,6 +65,7 @@ class MeshVoiceService {
 
     // Screen sharing state
     this.screenStream = null;
+    this.screenSharePreset = readInitialScreenSharePreset();
     this.activeScreenCalls = new Map(); // peerId -> MediaConnection (outgoing)
     this.remoteScreenCalls = new Map(); // peerId -> MediaConnection (incoming)
     this.activeScreenShare = null; // { isLocal, peerId, userName, stream }
@@ -638,7 +683,34 @@ class MeshVoiceService {
   }
 
   // 5. Screen Sharing
-  async startScreenShare() {
+  setScreenSharePreset(preset) {
+    if (SCREEN_SHARE_PRESETS[preset]) {
+      this.screenSharePreset = preset;
+    }
+  }
+
+  getScreenSharePreset() {
+    return this.screenSharePreset;
+  }
+
+  applyScreenShareSenderLimits(peerConnection, presetConfig) {
+    if (!peerConnection || typeof peerConnection.getSenders !== 'function') return;
+    try {
+      const senders = peerConnection.getSenders();
+      const videoSender = senders.find((s) => s.track && s.track.kind === 'video');
+      if (!videoSender || typeof videoSender.getParameters !== 'function') return;
+
+      const params = videoSender.getParameters() || {};
+      if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      params.encodings[0].maxBitrate = presetConfig.maxBitrate;
+      params.encodings[0].maxFramerate = presetConfig.maxFrameRate;
+      videoSender.setParameters(params).catch(() => {});
+    } catch {}
+  }
+
+  async startScreenShare(presetOverride = null) {
     if (this.screenStream && this.screenStream.active) {
       return this.screenStream;
     }
@@ -647,18 +719,51 @@ class MeshVoiceService {
       throw new Error('Tarayıcınız ekran paylaşımını desteklemiyor.');
     }
 
+    const preset =
+      SCREEN_SHARE_PRESETS[presetOverride || this.screenSharePreset] ||
+      SCREEN_SHARE_PRESETS.balanced;
+
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          cursor: 'always',
-        },
-        audio: true,
-      });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            cursor: 'always',
+            width: { ideal: preset.maxWidth, max: preset.maxWidth },
+            height: { ideal: preset.maxHeight, max: preset.maxHeight },
+            frameRate: { ideal: preset.maxFrameRate, max: preset.maxFrameRate },
+          },
+          audio: true,
+        });
+      } catch (constraintErr) {
+        if (constraintErr?.name === 'OverconstrainedError' || constraintErr?.name === 'TypeError') {
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              cursor: 'always',
+              width: { ideal: preset.maxWidth },
+              height: { ideal: preset.maxHeight },
+              frameRate: { ideal: preset.maxFrameRate },
+            },
+            audio: true,
+          });
+        } else {
+          throw constraintErr;
+        }
+      }
 
       this.screenStream = stream;
 
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
+        if (typeof videoTrack.applyConstraints === 'function') {
+          videoTrack
+            .applyConstraints({
+              width: { max: preset.maxWidth },
+              height: { max: preset.maxHeight },
+              frameRate: { max: preset.maxFrameRate },
+            })
+            .catch(() => {});
+        }
         videoTrack.onended = () => {
           this.stopScreenShare();
         };
@@ -710,6 +815,13 @@ class MeshVoiceService {
 
       if (screenCall) {
         this.activeScreenCalls.set(peerId, screenCall);
+
+        const preset = SCREEN_SHARE_PRESETS[this.screenSharePreset] || SCREEN_SHARE_PRESETS.balanced;
+        if (screenCall.peerConnection) {
+          setTimeout(() => {
+            this.applyScreenShareSenderLimits(screenCall.peerConnection, preset);
+          }, 0);
+        }
 
         screenCall.on('close', () => {
           this.activeScreenCalls.delete(peerId);
@@ -774,7 +886,9 @@ class MeshVoiceService {
   startPingMonitoring() {
     this.stopPingMonitoring();
 
-    const sampleLatencies = async () => {
+    const sampleLatencies = async (force = false) => {
+      // Skip polling WebRTC stats while window is minimized/hidden behind fullscreen games
+      if (!force && typeof document !== 'undefined' && document.hidden) return;
       let totalRtt = 0;
       let count = 0;
 
@@ -841,8 +955,8 @@ class MeshVoiceService {
     };
 
     // Immediate first sample, then recurring timer
-    sampleLatencies();
-    this.pingInterval = setInterval(sampleLatencies, 2500);
+    sampleLatencies(true);
+    this.pingInterval = setInterval(() => sampleLatencies(false), 3000);
   }
 
   stopPingMonitoring() {

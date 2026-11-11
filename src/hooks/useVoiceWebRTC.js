@@ -46,7 +46,7 @@ export const useVoiceWebRTC = () => {
 
   const localAudioContextRef = useRef(null);
   const localAnalyserRef = useRef(null);
-  const localAnimFrameRef = useRef(null);
+  const localVadIntervalRef = useRef(null);
   const localLastSpokeRef = useRef(0);
   const localSpeakingRef = useRef(false);
 
@@ -55,9 +55,9 @@ export const useVoiceWebRTC = () => {
 
   // Clean up local VAD
   const cleanupLocalVAD = useCallback(() => {
-    if (localAnimFrameRef.current) {
-      cancelAnimationFrame(localAnimFrameRef.current);
-      localAnimFrameRef.current = null;
+    if (localVadIntervalRef.current) {
+      clearInterval(localVadIntervalRef.current);
+      localVadIntervalRef.current = null;
     }
     if (localAudioContextRef.current) {
       localAudioContextRef.current.close().catch(() => {});
@@ -96,6 +96,15 @@ export const useVoiceWebRTC = () => {
       const checkVolume = () => {
         if (!localAnalyserRef.current) return;
 
+        // Pause local visual VAD analysis while window is hidden/minimized behind a game
+        if (typeof document !== 'undefined' && document.hidden) {
+          if (localSpeakingRef.current) {
+            localSpeakingRef.current = false;
+            setIsSpeaking(false);
+          }
+          return;
+        }
+
         let speakingNow = false;
         if (!isMutedRef.current) {
           const rms = measureSpeechLevel(localAnalyserRef.current, dataArray);
@@ -112,11 +121,10 @@ export const useVoiceWebRTC = () => {
           localSpeakingRef.current = speakingNow;
           setIsSpeaking(speakingNow);
         }
-
-        localAnimFrameRef.current = requestAnimationFrame(checkVolume);
       };
 
       checkVolume();
+      localVadIntervalRef.current = setInterval(checkVolume, 90);
     } catch (err) {
       console.warn('Could not setup local audio activity detector:', err);
     }
@@ -365,6 +373,29 @@ export const useVoiceWebRTC = () => {
     // Poll remote peer audio analysers for real-time Voice Activity Detection (green speaking ring)
     const remoteVadInterval = setInterval(() => {
       if (remoteAnalysersRef.current.size === 0) return;
+
+      // Pause remote visual VAD polling while window is minimized/hidden behind fullscreen games
+      if (typeof document !== 'undefined' && document.hidden) {
+        let resetAny = false;
+        const resetUpdates = {};
+        remoteAnalysersRef.current.forEach((entry, peerId) => {
+          if (entry?.isSpeaking) {
+            entry.isSpeaking = false;
+            resetUpdates[peerId] = false;
+            resetAny = true;
+          }
+        });
+        if (resetAny) {
+          setRemotePeers((prev) =>
+            prev.map((p) =>
+              resetUpdates[p.peerId] !== undefined && p.isSpeaking
+                ? { ...p, isSpeaking: false }
+                : p
+            )
+          );
+        }
+        return;
+      }
 
       const now = Date.now();
       let changed = false;

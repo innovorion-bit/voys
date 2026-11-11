@@ -232,6 +232,8 @@ export const SettingsProvider = ({ children }) => {
       fontSize: 'normal',
       timeFormat24h: false,
       showTyping: true,
+      gamePerformanceMode: 'auto', // 'auto' | 'on' | 'off'
+      screenSharePreset: 'balanced', // 'performance' | 'balanced' | 'high'
     };
     try {
       const saved = localStorage.getItem('standupp_chat_settings');
@@ -292,6 +294,28 @@ export const SettingsProvider = ({ children }) => {
 
     applyWindowTransparency(clampedOpacity);
   }, [chatSettings?.windowOpacity]);
+
+  // Sync Screen Share quality preset with PeerService
+  useEffect(() => {
+    peerService.setScreenSharePreset(chatSettings?.screenSharePreset || 'balanced');
+  }, [chatSettings?.screenSharePreset]);
+
+  // Game Performance Mode: Auto (when game detected in profile.game), Always On, or Off
+  const gamePerformanceMode = chatSettings?.gamePerformanceMode || 'auto';
+  const isGameDetected = Boolean((profile?.game || '').trim());
+  const isPerformanceModeActive =
+    gamePerformanceMode === 'on' || (gamePerformanceMode === 'auto' && isGameDetected);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (isPerformanceModeActive) {
+      document.documentElement.classList.add('voys-performance-mode');
+      document.documentElement.setAttribute('data-performance-mode', 'true');
+    } else {
+      document.documentElement.classList.remove('voys-performance-mode');
+      document.documentElement.setAttribute('data-performance-mode', 'false');
+    }
+  }, [isPerformanceModeActive]);
 
   // UI Sound Effects Callbacks
   const changeSoundEffectsEnabled = useCallback((enabled) => {
@@ -540,6 +564,7 @@ export const SettingsProvider = ({ children }) => {
         closeChatSettings,
         chatSettings,
         updateChatSetting,
+        isPerformanceModeActive,
       }}
     >
       {children}

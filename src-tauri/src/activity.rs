@@ -31,41 +31,7 @@ pub fn detect_running_game() -> Option<String> {
         fn GetWindowTextW(hWnd: isize, lpString: *mut u16, nMaxCount: i32) -> i32;
     }
 
-    let mut running_processes = HashSet::new();
-
-    unsafe {
-        let handle = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
-        if handle != -1 && handle != 0 {
-            let mut entry = PROCESSENTRY32W {
-                dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
-                cntUsage: 0,
-                th32ProcessID: 0,
-                th32DefaultHeapID: 0,
-                th32ModuleID: 0,
-                cntThreads: 0,
-                th32ParentProcessID: 0,
-                pcPriClassBase: 0,
-                dwFlags: 0,
-                szExeFile: [0u16; 260],
-            };
-
-            if Process32FirstW(handle, &mut entry) != 0 {
-                loop {
-                    let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
-                    let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
-                    running_processes.insert(name);
-
-                    if Process32NextW(handle, &mut entry) == 0 {
-                        break;
-                    }
-                }
-            }
-
-            CloseHandle(handle);
-        }
-    }
-
-    // 1. Check Active Window Title first
+    // 1. Fast path: Check Active Foreground Window Title first (zero process snapshot overhead when gaming)
     unsafe {
         let hwnd = GetForegroundWindow();
         if hwnd != 0 {
@@ -101,7 +67,42 @@ pub fn detect_running_game() -> Option<String> {
         }
     }
 
-    // 2. Comprehensive Game Process Lookup Table (ordered by priority)
+    // 2. Fallback: Enumerate running processes only when foreground window title didn't match a game
+    let mut running_processes = HashSet::new();
+
+    unsafe {
+        let handle = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
+        if handle != -1 && handle != 0 {
+            let mut entry = PROCESSENTRY32W {
+                dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+                cntUsage: 0,
+                th32ProcessID: 0,
+                th32DefaultHeapID: 0,
+                th32ModuleID: 0,
+                cntThreads: 0,
+                th32ParentProcessID: 0,
+                pcPriClassBase: 0,
+                dwFlags: 0,
+                szExeFile: [0u16; 260],
+            };
+
+            if Process32FirstW(handle, &mut entry) != 0 {
+                loop {
+                    let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+                    let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
+                    running_processes.insert(name);
+
+                    if Process32NextW(handle, &mut entry) == 0 {
+                        break;
+                    }
+                }
+            }
+
+            CloseHandle(handle);
+        }
+    }
+
+    // Comprehensive Game Process Lookup Table (ordered by priority)
     let games = [
         ("cs2.exe", "Counter-Strike 2"),
         ("csgo.exe", "Counter-Strike: Global Offensive"),

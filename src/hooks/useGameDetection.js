@@ -43,8 +43,8 @@ export function useGameDetection({ currentGame, updateProfile, enabled = true })
     // Run first check after 3 seconds
     const initialTimer = setTimeout(checkGame, 3000);
 
-    // Poll every 12 seconds
-    const interval = setInterval(checkGame, 12000);
+    // Poll every 15 seconds (lightweight foreground check first in Rust)
+    const interval = setInterval(checkGame, 15000);
 
     return () => {
       isMounted = false;
