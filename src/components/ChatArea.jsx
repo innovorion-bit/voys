@@ -2247,11 +2247,11 @@ export const ChatArea = ({
                 </div>
 
                 <div className="space-y-1">
-                  {(callMembers && callMembers.length > 0 ? callMembers : (currentUser ? [currentUser] : [])).map((m) => {
+                  {(callMembers && callMembers.length > 0 ? callMembers : (currentUser ? [currentUser] : [])).map((m, idx) => {
                     const isMe = m.id === currentUser?.id;
                     return (
                       <div
-                        key={m.id || Math.random()}
+                        key={m.peerId || m.id || `call-member-${idx}`}
                         className="flex items-center space-x-2.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
                       >
                         <div className="relative flex-shrink-0">

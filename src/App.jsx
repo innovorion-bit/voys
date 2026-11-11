@@ -483,6 +483,7 @@ function StanduppApp() {
     activeScreenShare,
     myPeerId,
     remotePeers,
+    peerMetadata,
     peerLatencies,
     myPing,
     audioError,
@@ -718,7 +719,7 @@ function StanduppApp() {
       sounds.playJoin();
       const callRoom = `standupp-call-${targetChannelId}`;
       switchVoiceRoom(callRoom);
-      await connectVoice(null, activeUserProfile.name);
+      await connectVoice(null, activeUserProfile.name, activeUserProfile);
       setActiveCallChannelId(targetChannelId);
 
       const targetFriend = isDm ? activeDmFriend : null;
@@ -799,40 +800,147 @@ function StanduppApp() {
     await logout();
   }, [activeCallChannelId, isConnected, handleLeaveCall, logout]);
 
-  // Voice Members State with Current Authenticated User & Mesh Peers
-  const voiceMembers = [
-    ...(isConnected
-      ? [
-          {
-            id: activeUserProfile.id,
-            name: activeUserProfile.name,
-            avatar: activeUserProfile.avatar || null,
-            avatarBg: '#3d9921',
-            isSpeaking: isSpeaking,
-            status: activeUserProfile.status || 'online',
-            game: activeUserProfile.game || '',
-            substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
-            statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
-            isAway: activeUserProfile.status === 'idle',
-            ping: myPing || 24,
-          },
-        ]
-      : []),
-    ...remotePeers.map(({ peerId, isSpeaking: peerSpeaking }) => ({
-      id: peerId,
-      peerId: peerId,
-      name: `Peer-${peerId.slice(0, 5)}`,
-      avatar: null,
-      avatarBg: '#1e3a5f',
-      isSpeaking: Boolean(peerSpeaking),
-      status: 'online',
-      game: '',
-      substatus: 'P2P Mesh Voice',
-      statusColor: 'text-[#57cbde]',
-      isAway: false,
-      ping: peerLatencies[peerId] || myPing || 28,
-    })),
-  ];
+  // Voice Members State with Current Authenticated User & Mesh Peers (with resolved real profiles)
+  const voiceMembers = useMemo(() => {
+    const knownProfiles = [
+      ...(activeCallChannelId && channelCalls[activeCallChannelId]?.members
+        ? channelCalls[activeCallChannelId].members
+        : []),
+      ...(liveChannelMembers || []),
+      ...(friends || []),
+      ...(isDm && activeDmFriend ? [activeDmFriend] : []),
+      ...(dmUserProfile ? [dmUserProfile] : []),
+      ...Object.values(presences || {}),
+    ];
+
+    const nonSelfCallMembers = (activeCallChannelId && channelCalls[activeCallChannelId]?.members
+      ? channelCalls[activeCallChannelId].members
+      : []
+    ).filter((m) => m && m.id && m.id !== activeUserProfile.id);
+
+    // Union of active audio-streaming peers and presence/metadata-discovered peers
+    const remotePeerMap = new Map();
+    remotePeers.forEach((p) => {
+      if (p?.peerId && p.peerId !== myPeerId) {
+        remotePeerMap.set(p.peerId, p);
+      }
+    });
+    Object.keys(peerMetadata || {}).forEach((peerId) => {
+      if (peerId && peerId !== myPeerId && !remotePeerMap.has(peerId)) {
+        remotePeerMap.set(peerId, { peerId, stream: null, isSpeaking: false });
+      }
+    });
+
+    const uniqueRemotePeers = Array.from(remotePeerMap.values());
+
+    const resolvedRemotes = uniqueRemotePeers
+      .map(({ peerId, isSpeaking: peerSpeaking }) => {
+        const meta = peerMetadata?.[peerId] || {};
+
+        // Avoid showing own stale peer entry
+        if (meta.userId && activeUserProfile?.id && meta.userId === activeUserProfile.id) {
+          return null;
+        }
+
+        let matchedProfile = null;
+        if (meta.userId) {
+          matchedProfile =
+            presences?.[meta.userId] ||
+            knownProfiles.find((p) => p && (p.id === meta.userId || p.user_id === meta.userId));
+        }
+
+        if (!matchedProfile && (meta.name || meta.userName)) {
+          const targetName = (meta.name || meta.userName).trim().toLowerCase();
+          matchedProfile = knownProfiles.find(
+            (p) =>
+              p &&
+              ((p.display_name || '').trim().toLowerCase() === targetName ||
+                (p.name || '').trim().toLowerCase() === targetName ||
+                (p.username || '').trim().toLowerCase() === targetName)
+          );
+        }
+
+        // 1-on-1 call fallback (e.g. before metadata finishes arriving over network)
+        if (!matchedProfile && uniqueRemotePeers.length === 1) {
+          if (isDm && activeDmFriend) {
+            matchedProfile = activeDmFriend;
+          } else if (nonSelfCallMembers.length === 1) {
+            matchedProfile = nonSelfCallMembers[0];
+          }
+        }
+
+        const resolvedName =
+          matchedProfile?.display_name ||
+          matchedProfile?.name ||
+          meta.name ||
+          meta.userName ||
+          `Katılımcı-${peerId.slice(0, 5)}`;
+
+        const resolvedAvatar =
+          matchedProfile?.avatar_url ||
+          matchedProfile?.avatar ||
+          meta.avatar ||
+          null;
+
+        const resolvedId = matchedProfile?.id || matchedProfile?.userId || meta.userId || peerId;
+
+        return {
+          id: resolvedId,
+          peerId: peerId,
+          name: resolvedName,
+          avatar: resolvedAvatar,
+          avatar_url: resolvedAvatar,
+          avatarBg: '#1e3a5f',
+          isSpeaking: Boolean(peerSpeaking),
+          status: matchedProfile?.status || 'online',
+          game: matchedProfile?.game || '',
+          substatus: matchedProfile?.substatus || 'Seste',
+          statusColor: 'text-[#57cbde]',
+          isAway: matchedProfile?.status === 'idle',
+          ping: peerLatencies[peerId] || myPing || 28,
+        };
+      })
+      .filter(Boolean);
+
+    return [
+      ...(isConnected
+        ? [
+            {
+              id: activeUserProfile.id,
+              name: activeUserProfile.name,
+              avatar: activeUserProfile.avatar || null,
+              avatarBg: '#3d9921',
+              isSpeaking: isSpeaking,
+              status: activeUserProfile.status || 'online',
+              game: activeUserProfile.game || '',
+              substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
+              statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
+              isAway: activeUserProfile.status === 'idle',
+              ping: myPing || 24,
+            },
+          ]
+        : []),
+      ...resolvedRemotes,
+    ];
+  }, [
+    isConnected,
+    activeUserProfile,
+    isSpeaking,
+    isMuted,
+    myPing,
+    remotePeers,
+    peerMetadata,
+    myPeerId,
+    peerLatencies,
+    activeCallChannelId,
+    channelCalls,
+    liveChannelMembers,
+    friends,
+    isDm,
+    activeDmFriend,
+    dmUserProfile,
+    presences,
+  ]);
 
   // Channel Creation Handler with database persistence
   const handleCreateChannel = async ({ name, members = [] }) => {
@@ -994,7 +1102,7 @@ function StanduppApp() {
           <span>{audioError}</span>
           <button 
             type="button" 
-            onClick={() => connectVoice()} 
+            onClick={() => connectVoice(null, activeUserProfile.name, activeUserProfile)} 
             className="underline font-bold hover:text-white transition"
           >
             İzin Ver / Yeniden Dene

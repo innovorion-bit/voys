@@ -14,6 +14,9 @@ export const useVoiceWebRTC = () => {
   // Array of remote connected peers: [{ peerId, stream, isSpeaking }]
   const [remotePeers, setRemotePeers] = useState([]);
   
+  // Remote peer profile metadata: { [peerId]: { userId, name, userName, avatar } }
+  const [peerMetadata, setPeerMetadata] = useState({});
+  
   // Real-Time WebRTC Latencies (RTT in ms)
   const [peerLatencies, setPeerLatencies] = useState({});
   const [myPing, setMyPing] = useState(24);
@@ -83,7 +86,7 @@ export const useVoiceWebRTC = () => {
   }, []);
 
   // Connect to voice mesh
-  const connectVoice = useCallback(async (customPeerId = null, userName = 'Sen (You)') => {
+  const connectVoice = useCallback(async (customPeerId = null, userName = 'Sen (You)', userMeta = null) => {
     setAudioError(null);
     try {
       sounds.playJoin();
@@ -108,7 +111,7 @@ export const useVoiceWebRTC = () => {
       }
 
       // 2. Initialize PeerJS mesh network
-      const id = await peerService.init(customPeerId, userName);
+      const id = await peerService.init(customPeerId, userName, userMeta);
       setMyPeerId(id);
       setIsConnected(true);
       setIsMuted(false);
@@ -132,6 +135,7 @@ export const useVoiceWebRTC = () => {
     peerService.disconnect();
     setIsConnected(false);
     setRemotePeers([]);
+    setPeerMetadata({});
     setIsSpeaking(false);
   }, [cleanupLocalVAD]);
 
@@ -192,6 +196,7 @@ export const useVoiceWebRTC = () => {
   const switchVoiceRoom = useCallback((roomName) => {
     peerService.setVoiceRoom(roomName);
     setRemotePeers([]);
+    setPeerMetadata({});
   }, []);
 
   // Call another peer directly
@@ -206,6 +211,7 @@ export const useVoiceWebRTC = () => {
   // Listen to incoming remote streams and peer leaves
   useEffect(() => {
     const handleStream = ({ peerId, stream }) => {
+      setPeerMetadata(peerService.getAllPeerMetadata());
       setRemotePeers((prev) => {
         const existingIdx = prev.findIndex((p) => p.peerId === peerId);
         if (existingIdx >= 0) {
@@ -221,10 +227,16 @@ export const useVoiceWebRTC = () => {
     const handlePeerLeft = (peerId) => {
       sounds.playLeave();
       setRemotePeers((prev) => prev.filter((p) => p.peerId !== peerId));
+      setPeerMetadata(peerService.getAllPeerMetadata());
+    };
+
+    const handlePeerMetadataUpdated = (metaMap) => {
+      setPeerMetadata(metaMap || {});
     };
 
     peerService.on('stream', handleStream);
     peerService.on('peerLeft', handlePeerLeft);
+    peerService.on('peerMetadataUpdated', handlePeerMetadataUpdated);
 
     const handleScreenShareStarted = (info) => {
       setActiveScreenShare(info);
@@ -266,6 +278,7 @@ export const useVoiceWebRTC = () => {
     return () => {
       peerService.off('stream', handleStream);
       peerService.off('peerLeft', handlePeerLeft);
+      peerService.off('peerMetadataUpdated', handlePeerMetadataUpdated);
       peerService.off('screenShareStarted', handleScreenShareStarted);
       peerService.off('screenShareStopped', handleScreenShareStopped);
       peerService.off('latenciesUpdated', handleLatencies);
@@ -322,6 +335,7 @@ export const useVoiceWebRTC = () => {
     activeScreenShare,
     myPeerId,
     remotePeers, // Array of { peerId, stream, isSpeaking }
+    peerMetadata,
     peerLatencies,
     myPing,
     audioError,

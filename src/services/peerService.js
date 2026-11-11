@@ -6,10 +6,12 @@ class MeshVoiceService {
     this.peer = null;
     this.myPeerId = null;
     this.userName = 'Sen (You)';
+    this.userMeta = { userId: null, name: 'Sen (You)', avatar: null };
     this.localStream = null;
     this.activeCalls = new Map(); // peerId -> MediaConnection
     this.activeDataConns = new Map(); // peerId -> DataConnection
     this.remoteStreams = new Map(); // peerId -> MediaStream
+    this.peerMetadata = new Map(); // peerId -> { userId, name, userName, avatar }
     this.broadcastChannel = null;
     this.supabaseVoiceChannel = null;
     this.roomName = 'sesli-sohbet-mesh-v1';
@@ -34,6 +36,7 @@ class MeshVoiceService {
       peerLeft: [],
       error: [],
       peersUpdated: [],
+      peerMetadataUpdated: [],
       localStreamChanged: [],
       screenShareStarted: [],
       screenShareStopped: [],
@@ -58,6 +61,27 @@ class MeshVoiceService {
     if (this.eventListeners[event]) {
       this.eventListeners[event].forEach(cb => cb(data));
     }
+  }
+
+  // Store & broadcast remote peer profile metadata
+  setPeerMetadata(peerId, meta = {}) {
+    if (!peerId || peerId === this.myPeerId) return;
+    const prev = this.peerMetadata.get(peerId) || {};
+    const nextName = meta.userName || meta.name || meta.display_name || prev.name || null;
+    const nextUserId = meta.userId || meta.id || prev.userId || null;
+    const nextAvatar = meta.avatar || meta.avatar_url || prev.avatar || null;
+    const next = {
+      ...prev,
+      ...(nextUserId ? { userId: nextUserId } : {}),
+      ...(nextName ? { name: nextName, userName: nextName } : {}),
+      ...(nextAvatar ? { avatar: nextAvatar } : {}),
+    };
+    this.peerMetadata.set(peerId, next);
+    this.emit('peerMetadataUpdated', Object.fromEntries(this.peerMetadata));
+  }
+
+  getAllPeerMetadata() {
+    return Object.fromEntries(this.peerMetadata);
   }
 
   // Set advanced audio filtering state
@@ -186,10 +210,34 @@ class MeshVoiceService {
   }
 
   // 2. Initialize PeerJS connection and mesh discovery
-  async init(customId = null, userName = 'Sen (You)') {
-    this.userName = userName;
+  async init(customId = null, userName = 'Sen (You)', userMeta = null) {
+    if (userMeta && typeof userMeta === 'object') {
+      const resolvedName = userMeta.display_name || userMeta.name || userName || 'Sen (You)';
+      this.userName = resolvedName;
+      this.userMeta = {
+        userId: userMeta.id || userMeta.userId || null,
+        name: resolvedName,
+        avatar: userMeta.avatar_url || userMeta.avatar || null,
+      };
+    } else {
+      this.userName = userName || 'Sen (You)';
+      this.userMeta = {
+        userId: null,
+        name: this.userName,
+        avatar: null,
+      };
+    }
 
     if (this.peer && !this.peer.destroyed) {
+      if (this.supabaseVoiceChannel && this.myPeerId) {
+        this.supabaseVoiceChannel.track({
+          peerId: this.myPeerId,
+          userName: this.userName,
+          userId: this.userMeta?.userId || null,
+          avatar: this.userMeta?.avatar || null,
+          joinedAt: Date.now(),
+        }).catch(() => {});
+      }
       return this.myPeerId;
     }
 
@@ -230,6 +278,10 @@ class MeshVoiceService {
         // Handle incoming calls (Answer in mesh)
         this.peer.on('call', async (call) => {
           const incomingPeerId = call.peer;
+
+          if (call.metadata && (call.metadata.userName || call.metadata.name || call.metadata.userId)) {
+            this.setPeerMetadata(incomingPeerId, call.metadata);
+          }
 
           // Check if this is a dedicated screen sharing call
           if (call.metadata?.type === 'screen-share') {
@@ -326,6 +378,11 @@ class MeshVoiceService {
 
         switch (data.type) {
           case 'JOIN_ROOM':
+            this.setPeerMetadata(data.peerId, {
+              name: data.name,
+              userId: data.userId,
+              avatar: data.avatar,
+            });
             // A new peer joined the room: Call them to establish P2P audio
             this.callPeer(data.peerId);
             // Announce ourselves and our known mesh peers to the new peer
@@ -333,11 +390,18 @@ class MeshVoiceService {
               type: 'ROOM_ANNOUNCE',
               peerId: this.myPeerId,
               name: this.userName,
+              userId: this.userMeta?.userId || null,
+              avatar: this.userMeta?.avatar || null,
               knownPeers: Array.from(this.remoteStreams.keys()),
             });
             break;
 
           case 'ROOM_ANNOUNCE':
+            this.setPeerMetadata(data.peerId, {
+              name: data.name,
+              userId: data.userId,
+              avatar: data.avatar,
+            });
             // Existing peer announced itself
             if (!this.activeCalls.has(data.peerId)) {
               this.callPeer(data.peerId);
@@ -375,6 +439,8 @@ class MeshVoiceService {
         type: 'JOIN_ROOM',
         peerId: this.myPeerId,
         name: this.userName,
+        userId: this.userMeta?.userId || null,
+        avatar: this.userMeta?.avatar || null,
       });
     }
 
@@ -407,6 +473,9 @@ class MeshVoiceService {
               const remoteInfo = state[peerKey]?.[0];
               const remotePeerId = remoteInfo?.peerId || peerKey;
               if (remotePeerId && remotePeerId !== this.myPeerId) {
+                if (remoteInfo) {
+                  this.setPeerMetadata(remotePeerId, remoteInfo);
+                }
                 // If not already connected or calling
                 if (!this.activeCalls.has(remotePeerId)) {
                   // Deterministic caller priority: higher peerId initiates the call
@@ -422,6 +491,9 @@ class MeshVoiceService {
             const remoteInfo = newPresences?.[0];
             const remotePeerId = remoteInfo?.peerId || key;
             if (remotePeerId && remotePeerId !== this.myPeerId) {
+              if (remoteInfo) {
+                this.setPeerMetadata(remotePeerId, remoteInfo);
+              }
               if (!this.activeCalls.has(remotePeerId)) {
                 this.callPeer(remotePeerId);
               }
@@ -443,6 +515,8 @@ class MeshVoiceService {
               await this.supabaseVoiceChannel.track({
                 peerId: this.myPeerId,
                 userName: this.userName,
+                userId: this.userMeta?.userId || null,
+                avatar: this.userMeta?.avatar || null,
                 joinedAt: Date.now(),
               }).catch(() => {});
             }
@@ -453,21 +527,37 @@ class MeshVoiceService {
     }
   }
 
-  // Handle data connection for mesh discovery
+  // Handle data connection for mesh discovery & user metadata exchange
   handleDataConnection(conn) {
     const peerId = conn.peer;
     this.activeDataConns.set(peerId, conn);
 
-    conn.on('open', () => {
-      // Send known peers to incoming connection
-      conn.send({
-        type: 'MESH_SYNC',
-        knownPeers: Array.from(this.remoteStreams.keys()),
-      });
-    });
+    const sendInitialSync = () => {
+      try {
+        conn.send({
+          type: 'PEER_INFO',
+          peerId: this.myPeerId,
+          userName: this.userName,
+          userId: this.userMeta?.userId || null,
+          avatar: this.userMeta?.avatar || null,
+        });
+        conn.send({
+          type: 'MESH_SYNC',
+          knownPeers: Array.from(this.remoteStreams.keys()),
+        });
+      } catch {}
+    };
+
+    if (conn.open) {
+      sendInitialSync();
+    } else {
+      conn.on('open', sendInitialSync);
+    }
 
     conn.on('data', (data) => {
-      if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
+      if (data?.type === 'PEER_INFO') {
+        this.setPeerMetadata(peerId, data);
+      } else if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
         data.knownPeers.forEach((pId) => {
           if (pId !== this.myPeerId && !this.activeCalls.has(pId)) {
             this.callPeer(pId);
@@ -501,7 +591,14 @@ class MeshVoiceService {
 
     try {
       const stream = this.localStream || await this.getLocalAudioStream().catch(() => null);
-      const call = this.peer.call(targetPeerId, stream || undefined);
+      const call = this.peer.call(targetPeerId, stream || undefined, {
+        metadata: {
+          type: 'voice',
+          userName: this.userName,
+          userId: this.userMeta?.userId || null,
+          avatar: this.userMeta?.avatar || null,
+        },
+      });
 
       if (!call) return null;
 
@@ -786,8 +883,10 @@ class MeshVoiceService {
 
     this.remoteStreams.delete(peerId);
     this.peerLatencies.delete(peerId);
+    this.peerMetadata.delete(peerId);
     this.emit('peerLeft', peerId);
     this.emit('peersUpdated', Array.from(this.remoteStreams.keys()));
+    this.emit('peerMetadataUpdated', Object.fromEntries(this.peerMetadata));
     this.emit('latenciesUpdated', {
       peerLatencies: Object.fromEntries(this.peerLatencies),
       myPing: this.myPing,
@@ -825,7 +924,9 @@ class MeshVoiceService {
     this.activeDataConns.clear();
     this.remoteStreams.clear();
     this.peerLatencies.clear();
+    this.peerMetadata.clear();
     this.emit('peersUpdated', []);
+    this.emit('peerMetadataUpdated', {});
 
     this.roomName = newRoomName;
     if (this.peer && !this.peer.destroyed) {
@@ -838,6 +939,7 @@ class MeshVoiceService {
     this.stopScreenShare();
     this.stopPingMonitoring();
     this.peerLatencies.clear();
+    this.peerMetadata.clear();
 
     if (this.broadcastChannel) {
       this.broadcastChannel.postMessage({
@@ -878,6 +980,7 @@ class MeshVoiceService {
     }
 
     this.emit('peersUpdated', []);
+    this.emit('peerMetadataUpdated', {});
     this.emit('latenciesUpdated', { peerLatencies: {}, myPing: 0 });
   }
 }
