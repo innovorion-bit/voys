@@ -373,6 +373,16 @@ function StanduppApp() {
     loadChannelMembers();
   }, [activeChannel, isDm, loadChannelMembers]);
 
+  const handleMemberRemoved = useCallback((removedUserId) => {
+    if (activeChannel && !isDm && removedUserId) {
+      const targetId = String(removedUserId);
+      setChannelMembers((prev) =>
+        (Array.isArray(prev) ? prev : []).filter((m) => String(m.user_id || m.id) !== targetId)
+      );
+    }
+    loadChannelMembers();
+  }, [activeChannel, isDm, loadChannelMembers]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -427,6 +437,9 @@ function StanduppApp() {
         name: isSelf
           ? pickDisplayName([activeUserProfile?.name, activeUserProfile?.display_name, activeUserProfile?.username], 'Sen (You)')
           : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Kullanıcı'),
+        username: isSelf
+          ? (activeUserProfile?.username || '')
+          : ([p?.username, profile.username, m.username].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u)) || ''),
         avatar: isSelf
           ? (activeUserProfile?.avatar || activeUserProfile?.avatar_url)
           : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
@@ -1418,7 +1431,11 @@ function StanduppApp() {
             onOpenAddMember={null}
             onOpenGroupAddMember={() => setIsAddMemberModalOpen(true)}
             friends={friends}
+            incomingRequests={friendshipsData.incoming || []}
+            outgoingRequests={friendshipsData.outgoing || []}
+            onFriendshipUpdated={loadFriendships}
             onMemberAdded={handleMemberAdded}
+            onMemberRemoved={handleMemberRemoved}
             isDmMode={isDm}
             activeDmFriend={activeDmFriend}
             onBackToChannels={handleBackToChannels}

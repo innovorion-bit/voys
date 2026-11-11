@@ -28,6 +28,10 @@ import {
   Trash2,
   Users,
   UserPlus,
+  UserCheck,
+  UserMinus,
+  UserX,
+  Clock,
   Gamepad2,
   Volume2,
   Volume1,
@@ -114,7 +118,7 @@ import { VoiceControls } from './VoiceControls';
 import { ScreenShareStage } from './ScreenShareStage';
 import { InChatCallStage } from './InChatCallStage';
 import { dbService } from '../lib/supabase';
-import { pickDisplayName, isRealDisplayName, getCachedUserProfile } from '../utils/userDisplay';
+import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike } from '../utils/userDisplay';
 
 // Helper to format file sizes nicely
 function formatFileSize(bytes) {
@@ -212,7 +216,11 @@ export const ChatArea = ({
   onOpenAddMember = null,
   onOpenGroupAddMember = null,
   friends = [],
+  incomingRequests = [],
+  outgoingRequests = [],
+  onFriendshipUpdated = null,
   onMemberAdded = null,
+  onMemberRemoved = null,
   isDmMode = false,
   activeDmFriend: rawActiveDmFriend = null,
   onBackToChannels,
@@ -297,38 +305,53 @@ export const ChatArea = ({
     }
   }, [markMediaExpired]);
 
-  // Voice participant right-click context menu state
-  const [voiceContextMenu, setVoiceContextMenu] = useState(null); // { x, y, member }
+  // Unified member & voice participant right-click context menu state
+  const [voiceContextMenu, setVoiceContextMenu] = useState(null); // { x, y, member, source }
+  const [contextActionLoading, setContextActionLoading] = useState(null);
+  const [confirmContextAction, setConfirmContextAction] = useState(null); // 'unfriend' | 'kick'
   const voiceContextMenuRef = useRef(null);
 
-  const openVoiceContextMenu = useCallback((e, member) => {
+  const closeContextMenu = useCallback(() => {
+    setVoiceContextMenu(null);
+    setConfirmContextAction(null);
+    setContextActionLoading(null);
+  }, []);
+
+  const openVoiceContextMenu = useCallback((e, member, { source = 'voice' } = {}) => {
     if (!member) return;
     e.preventDefault();
     e.stopPropagation();
-    const menuW = 256;
-    const menuH = 260;
+    const menuW = 268;
+    const menuH = 380;
     const x = Math.min(e.clientX, Math.max(8, window.innerWidth - menuW - 12));
     const y = Math.min(e.clientY, Math.max(8, window.innerHeight - menuH - 12));
-    setVoiceContextMenu({ x, y, member });
+    setConfirmContextAction(null);
+    setContextActionLoading(null);
+    setVoiceContextMenu({ x, y, member, source });
   }, []);
 
   useEffect(() => {
     if (!voiceContextMenu) return;
     const handleOutside = (e) => {
       if (voiceContextMenuRef.current && !voiceContextMenuRef.current.contains(e.target)) {
-        setVoiceContextMenu(null);
+        closeContextMenu();
       }
     };
     const handleEsc = (e) => {
-      if (e.key === 'Escape') setVoiceContextMenu(null);
+      if (e.key === 'Escape') closeContextMenu();
+    };
+    const handleResize = () => {
+      closeContextMenu();
     };
     document.addEventListener('mousedown', handleOutside);
     document.addEventListener('keydown', handleEsc);
+    window.addEventListener('resize', handleResize);
     return () => {
       document.removeEventListener('mousedown', handleOutside);
       document.removeEventListener('keydown', handleEsc);
+      window.removeEventListener('resize', handleResize);
     };
-  }, [voiceContextMenu]);
+  }, [voiceContextMenu, closeContextMenu]);
 
   // Chat Settings Context
   const { chatSettings, updateChatSetting, inputMode, pttKey, isPttActive } = useSettings();
@@ -509,6 +532,9 @@ export const ChatArea = ({
       name: isSelf
         ? pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)')
         : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Üye'),
+      username: isSelf
+        ? (currentUser?.username || '')
+        : ([p?.username, profile.username, m.username].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u)) || ''),
       avatar: isSelf ? (currentUser?.avatar || currentUser?.avatar_url) : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
       game: isOnline ? (isSelf ? currentUser?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
       substatus: isOnline ? (isSelf ? currentUser?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
@@ -1718,7 +1744,12 @@ export const ChatArea = ({
                   </div>
                   <div className="divide-y divide-white/5 max-h-60 overflow-y-auto custom-scrollbar">
                     {liveMembers.map((member) => (
-                      <div key={member.id} className="py-2.5 flex items-center space-x-3">
+                      <div
+                        key={member.id}
+                        onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                        title="Seçenekler için sağ tıklayın"
+                        className="py-2.5 px-2 -mx-2 rounded-lg hover:bg-white/[0.04] transition flex items-center space-x-3 cursor-context-menu"
+                      >
                         <UserAvatar user={member} size="sm" showStatus={true} status={member.isOnline ? member.status : 'offline'} />
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
@@ -2799,26 +2830,22 @@ export const ChatArea = ({
 
                 {/* Tüm Grup Üyeleri (Tek Liste) */}
                 <div className="space-y-1">
-                  {[...onlineMembers, ...offlineMembers].map((member) => {
-                    const callMatch = (callMembers || []).find((cm) => cm?.id === member.id);
-
-                    return (
-                      <div
-                        key={member.id}
-                        onContextMenu={(e) => {
-                          if (callMatch) openVoiceContextMenu(e, callMatch);
-                        }}
-                        className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
-                          !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
-                        }`}
-                      >
-                        <UserAvatar
-                          user={member}
-                          size="sm"
-                          isSpeaking={false}
-                          showStatus={true}
-                          status={member.isOnline ? member.status : 'offline'}
-                        />
+                  {[...onlineMembers, ...offlineMembers].map((member) => (
+                    <div
+                      key={member.id}
+                      onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                      title="Seçenekler için sağ tıklayın"
+                      className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
+                        !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
+                      }`}
+                    >
+                      <UserAvatar
+                        user={member}
+                        size="sm"
+                        isSpeaking={false}
+                        showStatus={true}
+                        status={member.isOnline ? member.status : 'offline'}
+                      />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-1">
                             <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
@@ -2849,8 +2876,7 @@ export const ChatArea = ({
                           )}
                         </div>
                       </div>
-                    );
-                  })}
+                  ))}
                 </div>
               </>
             )}
@@ -2859,179 +2885,494 @@ export const ChatArea = ({
       </div>
       )}
 
-      {/* Voice Participant Right-Click Context Menu */}
+      {/* Unified Member & Voice Participant Right-Click Context Menu */}
       {voiceContextMenu?.member && (() => {
         const targetMember = voiceContextMenu.member;
-        const liveTarget = (callMembers || []).find((cm) =>
+        const targetId = targetMember.id || targetMember.user_id;
+        const liveCallMember = (callMembers || []).find((cm) =>
           (targetMember.peerId && cm.peerId === targetMember.peerId) ||
-          (targetMember.id && cm.id === targetMember.id)
-        ) || targetMember;
-        const isMeTarget = Boolean(liveTarget.isMe || (currentUser?.id && liveTarget.id === currentUser.id));
+          (targetId && cm.id === targetId)
+        ) || null;
+        const groupMemberMatch = liveMembers.find((m) => String(m.id) === String(targetId)) || null;
+        const friendMatch = (friends || []).find((f) => String(f.id) === String(targetId)) || null;
+        const incomingMatch = (incomingRequests || []).find((r) => String(r.id) === String(targetId)) || null;
+        const outgoingMatch = (outgoingRequests || []).find((r) => String(r.id) === String(targetId)) || null;
+
+        const baseTarget = liveCallMember || groupMemberMatch || targetMember;
+        const liveTarget = {
+          ...groupMemberMatch,
+          ...friendMatch,
+          ...baseTarget,
+          id: targetId || baseTarget.id,
+          name: pickDisplayName(
+            [groupMemberMatch?.name, friendMatch?.name, baseTarget?.name, baseTarget?.display_name, baseTarget?.username],
+            'Kullanıcı'
+          ),
+          username: [groupMemberMatch?.username, friendMatch?.username, baseTarget?.username].find(
+            (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
+          ) || '',
+          avatar: baseTarget?.avatar || groupMemberMatch?.avatar || friendMatch?.avatar || baseTarget?.avatar_url || '',
+        };
+
+        const isMeTarget = Boolean(liveTarget.isMe || (currentUser?.id && String(liveTarget.id) === String(currentUser.id)));
+        const isValidRealUser = Boolean(
+          liveTarget.id &&
+          liveTarget.id !== 'you' &&
+          (!liveTarget.peerId || liveTarget.id !== liveTarget.peerId) &&
+          !String(liveTarget.id).startsWith('peer-')
+        );
+        const isTargetInVoice = Boolean(liveCallMember || voiceContextMenu.source === 'voice');
         const pref = (liveTarget.id && peerAudioPrefs[liveTarget.id])
           || (liveTarget.peerId && peerAudioPrefs[liveTarget.peerId])
           || { volume: 100, muted: false };
         const targetVolume = typeof pref.volume === 'number' ? pref.volume : 100;
         const targetMuted = Boolean(pref.muted);
-        const targetSpeaking = isMeTarget
+        const targetSpeaking = isTargetInVoice && (isMeTarget
           ? Boolean(isSpeaking && !isMuted)
-          : Boolean(liveTarget.isSpeaking && !isDeafened && !targetMuted && targetVolume > 0);
-        const canSendDm = Boolean(
-          !isMeTarget &&
-          onSelectDm &&
-          liveTarget.id &&
-          (!liveTarget.peerId || liveTarget.id !== liveTarget.peerId) &&
-          !String(liveTarget.id).startsWith('peer-')
-        );
+          : Boolean(liveTarget.isSpeaking && !isDeafened && !targetMuted && targetVolume > 0));
+        const canSendDm = Boolean(!isMeTarget && onSelectDm && isValidRealUser);
         const isVolumeModified = targetMuted || targetVolume !== 100;
+        const isCurrentUserGroupAdmin = Boolean(
+          liveMembers.some((m) => String(m.id) === String(currentUser?.id) && m.role === 'admin') ||
+          (channelData?.created_by && currentUser?.id && String(channelData.created_by) === String(currentUser.id))
+        );
+        const canRemoveFromGroup = Boolean(
+          !isMeTarget &&
+          isValidRealUser &&
+          !isDmMode &&
+          activeChannel &&
+          activeChannel !== 'home' &&
+          !channelData?.is_home &&
+          isCurrentUserGroupAdmin &&
+          groupMemberMatch &&
+          !(channelData?.created_by && String(channelData.created_by) === String(liveTarget.id))
+        );
+
+        const copyValue = liveTarget.username ? `@${liveTarget.username}` : liveTarget.name;
+        const avatarPreviewUrl = liveTarget.avatar || liveTarget.avatar_url || null;
+
+        const handleCopyUsername = async () => {
+          try {
+            await navigator.clipboard.writeText(copyValue);
+            toast.success('Kopyalandı', { description: `${copyValue} panoya kopyalandı.` });
+          } catch {
+            toast.error('Kopyalanamadı');
+          }
+          closeContextMenu();
+        };
+
+        const handleOpenAvatarModal = () => {
+          setActiveMediaModal({
+            url: avatarPreviewUrl,
+            name: `${liveTarget.name || 'Kullanıcı'} - Profil Fotoğrafı`,
+            fallbackUser: liveTarget,
+          });
+          closeContextMenu();
+        };
+
+        const handleSendFriendReq = async () => {
+          if (!currentUser?.id || currentUser.id === 'you' || !isValidRealUser || contextActionLoading) return;
+          try {
+            setContextActionLoading('friend');
+            await dbService.sendFriendRequest(currentUser.id, liveTarget.id);
+            toast.success('Arkadaşlık İsteği Gönderildi', {
+              description: `${liveTarget.name} kullanıcısına istek gönderildi.`,
+            });
+            await onFriendshipUpdated?.();
+            closeContextMenu();
+          } catch (err) {
+            toast.error('İstek Gönderilemedi', {
+              description: err?.message || 'Lütfen tekrar deneyin.',
+            });
+            if (err?.code === 'ALREADY_FRIENDS' || err?.code === 'PENDING_INCOMING' || err?.code === 'PENDING_OUTGOING') {
+              onFriendshipUpdated?.();
+            }
+            setContextActionLoading(null);
+          }
+        };
+
+        const handleAcceptFriendReq = async () => {
+          if (!incomingMatch?.friendshipId || contextActionLoading) return;
+          try {
+            setContextActionLoading('accept');
+            await dbService.acceptFriendRequest(incomingMatch.friendshipId);
+            toast.success('Arkadaş Eklendi', {
+              description: `${liveTarget.name} ile artık arkadaşsınız.`,
+            });
+            await onFriendshipUpdated?.();
+            closeContextMenu();
+          } catch (err) {
+            toast.error('İstek Kabul Edilemedi', { description: err?.message || 'Lütfen tekrar deneyin.' });
+            setContextActionLoading(null);
+          }
+        };
+
+        const handleRemoveOrCancelFriendship = async (friendshipId, successMsg) => {
+          if (!friendshipId || contextActionLoading) return;
+          try {
+            setContextActionLoading('removeFriend');
+            await dbService.rejectFriendRequest(friendshipId);
+            toast.info(successMsg);
+            await onFriendshipUpdated?.();
+            closeContextMenu();
+          } catch (err) {
+            toast.error('İşlem Tamamlanamadı', { description: err?.message || 'Lütfen tekrar deneyin.' });
+            setContextActionLoading(null);
+          }
+        };
+
+        const handleKickFromGroup = async () => {
+          if (!canRemoveFromGroup || contextActionLoading) return;
+          if (confirmContextAction !== 'kick') {
+            setConfirmContextAction('kick');
+            return;
+          }
+          try {
+            setContextActionLoading('kick');
+            await dbService.removeChannelMember(activeChannel, liveTarget.id);
+            onMemberRemoved?.(liveTarget.id);
+            toast.success('Üye Gruptan Çıkarıldı', {
+              description: `${liveTarget.name} bu gruptan çıkarıldı.`,
+            });
+            closeContextMenu();
+          } catch (err) {
+            toast.error('Üye Çıkarılamadı', { description: err?.message || 'Lütfen tekrar deneyin.' });
+            setContextActionLoading(null);
+          }
+        };
 
         return (
           <div
             ref={voiceContextMenuRef}
             style={{ top: voiceContextMenu.y, left: voiceContextMenu.x }}
             onContextMenu={(e) => e.preventDefault()}
-            className="fixed z-50 w-64 rounded-2xl bg-[#131418]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/75 p-2 text-xs text-gray-200 select-none"
+            className="fixed z-50 w-[268px] max-h-[calc(100vh-24px)] overflow-y-auto custom-scrollbar rounded-2xl bg-[#131418]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/75 p-2 text-xs text-gray-200 select-none animate-in fade-in zoom-in-95 duration-100"
           >
+            {/* Header Info */}
             <div className="flex items-center space-x-2.5 px-2 py-1.5 mb-1 border-b border-white/5">
               <UserAvatar
                 user={liveTarget}
                 size="sm"
                 isSpeaking={targetSpeaking}
-                showStatus={false}
+                showStatus={!isTargetInVoice}
+                status={liveTarget.isOnline ? liveTarget.status : 'offline'}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-white truncate">
-                  {liveTarget.name || 'Kullanıcı'}{isMeTarget ? ' (Sen)' : ''}
-                </p>
-                <p className="text-[10px] text-emerald-400/90 truncate">
-                  {targetSpeaking ? 'Konuşuyor' : 'Sesli Sohbette'}
+                <div className="flex items-center space-x-1">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {liveTarget.name || 'Kullanıcı'}{isMeTarget ? ' (Sen)' : ''}
+                  </p>
+                  {liveTarget.role === 'admin' && (
+                    <Crown size={11} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                  )}
+                </div>
+                <p className={`text-[10px] truncate ${
+                  isTargetInVoice
+                    ? 'text-emerald-400/90'
+                    : liveTarget.isOnline
+                      ? 'text-gray-400'
+                      : 'text-gray-500'
+                }`}>
+                  {isTargetInVoice
+                    ? (targetSpeaking ? 'Konuşuyor' : 'Sesli Sohbette')
+                    : (liveTarget.username ? `@${liveTarget.username} • ` : '') + getMemberStatusDisplay(liveTarget)}
                 </p>
               </div>
             </div>
 
             {!isMeTarget ? (
               <div className="space-y-1">
-                <div className="px-2 py-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="flex items-center space-x-1.5 text-[11px] font-medium text-gray-300">
-                      <Volume1 size={14} className="text-emerald-400" />
-                      <span>Kullanıcı Ses Seviyesi</span>
-                    </span>
-                    <span className={`text-[11px] font-semibold tabular-nums ${
-                      targetMuted ? 'text-rose-400' : 'text-emerald-400'
-                    }`}>
-                      {targetMuted ? 'Kapalı' : `%${targetVolume}`}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={targetMuted ? 0 : targetVolume}
-                    onChange={(e) => onSetPeerVolume?.(liveTarget, Number(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    onTogglePeerMute?.(liveTarget);
-                    setVoiceContextMenu(null);
-                  }}
-                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
-                >
-                  {targetMuted ? (
-                    <Volume1 size={14} className="text-emerald-400 flex-shrink-0" />
-                  ) : (
-                    <VolumeX size={14} className="text-rose-400 flex-shrink-0" />
-                  )}
-                  <span className={targetMuted ? 'text-emerald-300 font-medium' : 'text-gray-200'}>
-                    {targetMuted ? 'Kişinin Sesini Aç' : 'Kişinin Sesini Kapat'}
-                  </span>
-                </button>
-
-                {isVolumeModified && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (targetMuted) onTogglePeerMute?.(liveTarget);
-                      if (targetVolume !== 100) onSetPeerVolume?.(liveTarget, 100);
-                      setVoiceContextMenu(null);
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-300"
-                  >
-                    <RotateCcw size={14} className="text-gray-400 flex-shrink-0" />
-                    <span>Sesi Sıfırla (%100)</span>
-                  </button>
-                )}
-
+                {/* Primary Social Actions */}
                 {canSendDm && (
                   <button
                     type="button"
                     onClick={() => {
                       onSelectDm(liveTarget.id);
-                      setVoiceContextMenu(null);
+                      closeContextMenu();
                     }}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 border-t border-white/5 mt-1 pt-2"
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-indigo-500/15 hover:text-white transition text-left text-gray-100 cursor-pointer font-medium"
                   >
                     <MessageSquare size={14} className="text-indigo-400 flex-shrink-0" />
                     <span>Mesaj Gönder</span>
                   </button>
                 )}
+
+                {isValidRealUser && (
+                  incomingMatch ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={Boolean(contextActionLoading)}
+                        onClick={handleAcceptFriendReq}
+                        className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition text-left cursor-pointer font-medium disabled:opacity-50"
+                      >
+                        {contextActionLoading === 'accept' ? (
+                          <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                        ) : (
+                          <UserCheck size={14} className="text-emerald-400 flex-shrink-0" />
+                        )}
+                        <span>Arkadaşlık İsteğini Kabul Et</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(contextActionLoading)}
+                        onClick={() => handleRemoveOrCancelFriendship(incomingMatch.friendshipId, 'Arkadaşlık isteği reddedildi')}
+                        className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-rose-500/15 text-rose-300 transition text-left cursor-pointer disabled:opacity-50"
+                      >
+                        <X size={14} className="text-rose-400 flex-shrink-0" />
+                        <span>İsteği Reddet</span>
+                      </button>
+                    </>
+                  ) : outgoingMatch ? (
+                    <button
+                      type="button"
+                      disabled={Boolean(contextActionLoading)}
+                      onClick={() => handleRemoveOrCancelFriendship(outgoingMatch.friendshipId, 'Arkadaşlık isteği iptal edildi')}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-amber-500/15 text-amber-300 transition text-left cursor-pointer disabled:opacity-50"
+                    >
+                      {contextActionLoading === 'removeFriend' ? (
+                        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                      ) : (
+                        <Clock size={14} className="text-amber-400 flex-shrink-0" />
+                      )}
+                      <span>İstek Gönderildi (İptal Et)</span>
+                    </button>
+                  ) : friendMatch ? (
+                    <button
+                      type="button"
+                      disabled={Boolean(contextActionLoading)}
+                      onClick={() => {
+                        if (confirmContextAction !== 'unfriend') {
+                          setConfirmContextAction('unfriend');
+                          return;
+                        }
+                        handleRemoveOrCancelFriendship(friendMatch.friendshipId, `${liveTarget.name} arkadaş listenizden çıkarıldı`);
+                      }}
+                      className={`w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl transition text-left cursor-pointer disabled:opacity-50 ${
+                        confirmContextAction === 'unfriend'
+                          ? 'bg-rose-500/20 text-rose-300 font-semibold'
+                          : 'hover:bg-rose-500/10 text-gray-300 hover:text-rose-300'
+                      }`}
+                    >
+                      {contextActionLoading === 'removeFriend' ? (
+                        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                      ) : (
+                        <UserMinus size={14} className={confirmContextAction === 'unfriend' ? 'text-rose-400 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
+                      )}
+                      <span>
+                        {confirmContextAction === 'unfriend' ? 'Çıkarmayı Onayla' : 'Arkadaşlıktan Çıkar'}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={Boolean(contextActionLoading)}
+                      onClick={handleSendFriendReq}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-emerald-500/15 text-emerald-300 hover:text-emerald-200 transition text-left cursor-pointer font-medium disabled:opacity-50"
+                    >
+                      {contextActionLoading === 'friend' ? (
+                        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                      ) : (
+                        <UserPlus size={14} className="text-emerald-400 flex-shrink-0" />
+                      )}
+                      <span>Arkadaş Ekle</span>
+                    </button>
+                  )
+                )}
+
+                {/* Profile & Copy Actions */}
+                <div className="border-t border-white/5 pt-1 mt-1 space-y-1">
+                  <button
+                    type="button"
+                    onClick={handleOpenAvatarModal}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
+                  >
+                    <Eye size={14} className="text-gray-400 flex-shrink-0" />
+                    <span>Profil Fotoğrafını Görüntüle</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyUsername}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
+                  >
+                    <Copy size={14} className="text-gray-400 flex-shrink-0" />
+                    <span className="truncate">Kullanıcı Adını Kopyala</span>
+                  </button>
+                </div>
+
+                {/* Voice Call Volume Controls (if target is in active voice session) */}
+                {isTargetInVoice && (
+                  <div className="border-t border-white/5 pt-1.5 mt-1 space-y-1">
+                    <div className="px-2 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="flex items-center space-x-1.5 text-[11px] font-medium text-gray-300">
+                          <Volume1 size={14} className="text-emerald-400" />
+                          <span>Kullanıcı Ses Seviyesi</span>
+                        </span>
+                        <span className={`text-[11px] font-semibold tabular-nums ${
+                          targetMuted ? 'text-rose-400' : 'text-emerald-400'
+                        }`}>
+                          {targetMuted ? 'Kapalı' : `%${targetVolume}`}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={targetMuted ? 0 : targetVolume}
+                        onChange={(e) => onSetPeerVolume?.(liveTarget, Number(e.target.value))}
+                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onTogglePeerMute?.(liveTarget);
+                        closeContextMenu();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      {targetMuted ? (
+                        <Volume1 size={14} className="text-emerald-400 flex-shrink-0" />
+                      ) : (
+                        <VolumeX size={14} className="text-rose-400 flex-shrink-0" />
+                      )}
+                      <span className={targetMuted ? 'text-emerald-300 font-medium' : 'text-gray-200'}>
+                        {targetMuted ? 'Kişinin Sesini Aç' : 'Kişinin Sesini Kapat'}
+                      </span>
+                    </button>
+
+                    {isVolumeModified && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (targetMuted) onTogglePeerMute?.(liveTarget);
+                          if (targetVolume !== 100) onSetPeerVolume?.(liveTarget, 100);
+                          closeContextMenu();
+                        }}
+                        className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-300 cursor-pointer"
+                      >
+                        <RotateCcw size={14} className="text-gray-400 flex-shrink-0" />
+                        <span>Sesi Sıfırla (%100)</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Group Admin Remove Action */}
+                {canRemoveFromGroup && (
+                  <div className="border-t border-white/5 pt-1 mt-1">
+                    <button
+                      type="button"
+                      disabled={Boolean(contextActionLoading)}
+                      onClick={handleKickFromGroup}
+                      className={`w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl transition text-left cursor-pointer disabled:opacity-50 ${
+                        confirmContextAction === 'kick'
+                          ? 'bg-rose-500/25 text-rose-200 font-semibold'
+                          : 'hover:bg-rose-500/15 text-rose-400'
+                      }`}
+                    >
+                      {contextActionLoading === 'kick' ? (
+                        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                      ) : (
+                        <UserX size={14} className="flex-shrink-0" />
+                      )}
+                      <span>
+                        {confirmContextAction === 'kick' ? 'Gruptan Çıkarmayı Onayla' : 'Gruptan Çıkar'}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleMute?.();
-                    setVoiceContextMenu(null);
-                  }}
-                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
-                >
-                  {isMuted ? (
-                    <Mic size={14} className="text-emerald-400 flex-shrink-0" />
-                  ) : (
-                    <MicOff size={14} className="text-rose-400 flex-shrink-0" />
-                  )}
-                  <span>{isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}</span>
-                </button>
+                {isInCall && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onToggleMute?.();
+                        closeContextMenu();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      {isMuted ? (
+                        <Mic size={14} className="text-emerald-400 flex-shrink-0" />
+                      ) : (
+                        <MicOff size={14} className="text-rose-400 flex-shrink-0" />
+                      )}
+                      <span>{isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}</span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleDeafen?.();
-                    setVoiceContextMenu(null);
-                  }}
-                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
-                >
-                  <Headphones size={14} className={isDeafened ? 'text-emerald-400 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
-                  <span>{isDeafened ? 'Sağırlaştırmayı Kapat' : 'Sağırlaştır'}</span>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onToggleDeafen?.();
+                        closeContextMenu();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      <Headphones size={14} className={isDeafened ? 'text-emerald-400 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
+                      <span>{isDeafened ? 'Sağırlaştırmayı Kapat' : 'Sağırlaştır'}</span>
+                    </button>
+                  </>
+                )}
 
                 {onOpenSettings && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onOpenSettings('devices');
-                      setVoiceContextMenu(null);
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
-                  >
-                    <Settings2 size={14} className="text-gray-400 flex-shrink-0" />
-                    <span>Ses ve Aygıt Ayarları</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenSettings('account');
+                        closeContextMenu();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      <User size={14} className="text-indigo-400 flex-shrink-0" />
+                      <span>Profili Düzenle</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenSettings('devices');
+                        closeContextMenu();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      <Settings2 size={14} className="text-gray-400 flex-shrink-0" />
+                      <span>Ses ve Aygıt Ayarları</span>
+                    </button>
+                  </>
                 )}
+
+                <button
+                  type="button"
+                  onClick={handleOpenAvatarModal}
+                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
+                >
+                  <Eye size={14} className="text-gray-400 flex-shrink-0" />
+                  <span>Profil Fotoğrafını Görüntüle</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyUsername}
+                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
+                >
+                  <Copy size={14} className="text-gray-400 flex-shrink-0" />
+                  <span>Kullanıcı Adını Kopyala</span>
+                </button>
 
                 {isInCall && (onLeaveCall || onDisconnect) && (
                   <button
                     type="button"
                     onClick={() => {
                       (onLeaveCall || onDisconnect)?.();
-                      setVoiceContextMenu(null);
+                      closeContextMenu();
                     }}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-rose-500/15 text-rose-400 transition text-left border-t border-white/5 mt-1 pt-2"
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-rose-500/15 text-rose-400 transition text-left border-t border-white/5 mt-1 pt-2 cursor-pointer"
                   >
                     <PhoneOff size={14} className="flex-shrink-0" />
                     <span>Sesli Sohbetten Ayrıl</span>

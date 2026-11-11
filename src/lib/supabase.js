@@ -1422,6 +1422,33 @@ export const dbService = {
     return existing;
   },
 
+  async removeChannelMember(channelId, userId) {
+    if (!channelId || !userId) {
+      throw new Error('Eksik grup veya kullanıcı bilgisi.');
+    }
+
+    if (isSupabaseConfigured) {
+      const { error } = await withTimeout(
+        supabase
+          .from('channel_members')
+          .delete()
+          .eq('channel_id', channelId)
+          .eq('user_id', userId),
+        10000,
+        'Üye gruptan çıkarılırken zaman aşımı oluştu.'
+      );
+      if (error) {
+        throw new Error(error.message || 'Üye gruptan çıkarılamadı.');
+      }
+    }
+
+    const list = localDb.getChannelMembers();
+    localDb.saveChannelMembers(
+      list.filter((m) => !(String(m.channel_id) === String(channelId) && String(m.user_id) === String(userId)))
+    );
+    return true;
+  },
+
   // Channel Messages Operations
   async fetchMessages(channelId) {
     return this.fetchChannelMessages(channelId);
