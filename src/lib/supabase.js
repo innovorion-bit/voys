@@ -240,9 +240,15 @@ class StanduppLocalEngine {
     };
   }
 
-  getChannels() {
+  getChannels(userId = null) {
     const list = this.getItem('standupp_db_channels', []);
-    return list.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home);
+    const filtered = list.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home);
+    if (!userId) return filtered;
+    const members = this.getChannelMembers();
+    const memberChanIds = new Set(
+      members.filter((m) => m && m.user_id === userId).map((m) => m.channel_id)
+    );
+    return filtered.filter((c) => memberChanIds.has(c.id));
   }
 
   saveChannels(channels) {
@@ -747,17 +753,38 @@ export const dbService = {
     return localDb.onAuthStateChange(callback);
   },
 
-  // Channels Operations (Only user-created channels)
-  async fetchChannels() {
+  // Channels Operations (Strictly filtered to channels where the user is an explicit member)
+  async fetchChannels(userId) {
+    if (!userId) return [];
     if (isSupabaseConfigured) {
       try {
+        const { data: memberships, error: memError } = await supabase
+          .from('channel_members')
+          .select('channel_id')
+          .eq('user_id', userId);
+
+        if (memError) {
+          console.warn('Supabase fetchChannels memberships error:', memError);
+          return [];
+        }
+
+        const memberChannelIds = Array.from(
+          new Set((memberships || []).map((m) => m.channel_id).filter(Boolean))
+        ).filter((id) => id !== 'home' && id !== 'voice-sesli-sohbet');
+
+        if (memberChannelIds.length === 0) {
+          return [];
+        }
+
         const { data, error } = await supabase
           .from('channels')
           .select('*')
+          .in('id', memberChannelIds)
           .neq('id', 'home')
           .neq('id', 'voice-sesli-sohbet')
           .neq('is_home', true)
           .order('created_at', { ascending: true });
+
         if (!error && Array.isArray(data)) {
           return data
             .filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home)
@@ -767,11 +794,13 @@ export const dbService = {
               avatar_url: c.avatar_url || c.avatar || '',
             }));
         }
+        return [];
       } catch (err) {
         console.warn('Supabase fetchChannels error:', err);
+        return [];
       }
     }
-    return localDb.getChannels();
+    return localDb.getChannels(userId);
   },
 
   async createChannel(channel) {
@@ -798,17 +827,9 @@ export const dbService = {
 
         // Automatically assign creator as admin in channel_members
         if (channel.created_by && channel.id) {
-          try {
-            await supabase.from('channel_members').insert([
-              {
-                channel_id: channel.id,
-                user_id: channel.created_by,
-                role: 'admin',
-              },
-            ]);
-          } catch (memErr) {
+          await this.addChannelMember(channel.id, channel.created_by, 'admin').catch((memErr) => {
             console.warn('Channel member admin insert warning:', memErr);
-          }
+          });
         }
       } catch (err) {
         console.warn('Supabase channel insert error:', err);
@@ -921,7 +942,8 @@ export const dbService = {
           .select('*')
           .eq('channel_id', channelId);
 
-        if (!error && Array.isArray(memberRows) && memberRows.length > 0) {
+        if (!error && Array.isArray(memberRows)) {
+          if (memberRows.length === 0) return [];
           const userIds = memberRows.map((m) => m.user_id);
           const { data: profiles } = await supabase
             .from('profiles')
@@ -947,8 +969,10 @@ export const dbService = {
             };
           });
         }
+        return [];
       } catch (err) {
         console.warn('Supabase fetchChannelMembers error:', err);
+        return [];
       }
     }
     const members = localDb.getChannelMembers().filter((m) => m.channel_id === channelId);
@@ -972,24 +996,52 @@ export const dbService = {
   },
 
   async addChannelMember(channelId, userId, role = 'member') {
+    if (!channelId || !userId) return null;
     if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('channel_members')
-          .insert([
-            {
-              channel_id: channelId,
-              user_id: userId,
-              role,
-            },
-          ])
-          .select()
-          .single();
+      const { data: existing } = await supabase
+        .from('channel_members')
+        .select('*')
+        .eq('channel_id', channelId)
+        .eq('user_id', userId)
+        .maybeSingle();
 
-        if (!error && data) return data;
-      } catch (err) {
-        console.warn('Supabase addChannelMember error:', err);
+      if (existing) {
+        return existing;
       }
+
+      const { data, error } = await supabase
+        .from('channel_members')
+        .insert([
+          {
+            channel_id: channelId,
+            user_id: userId,
+            role,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          const { data: dupRow } = await supabase
+            .from('channel_members')
+            .select('*')
+            .eq('channel_id', channelId)
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (dupRow) return dupRow;
+        }
+        throw error;
+      }
+
+      if (data) {
+        const list = localDb.getChannelMembers();
+        if (!list.some((m) => m.channel_id === channelId && m.user_id === userId)) {
+          localDb.saveChannelMembers([...list, data]);
+        }
+        return data;
+      }
+      return null;
     }
     const list = localDb.getChannelMembers();
     const existing = list.find((m) => m.channel_id === channelId && m.user_id === userId);

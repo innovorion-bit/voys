@@ -21,8 +21,10 @@ import { useSettings } from './context/useSettings';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import { chatService } from './services/chatService';
-import { dbService, getDmRoomId } from './lib/supabase';
+import { dbService, getDmRoomId, isSupabaseConfigured } from './lib/supabase';
 import { sounds } from './utils/audio';
+
+const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
 function StanduppApp() {
   const navigate = useNavigate();
@@ -110,20 +112,22 @@ function StanduppApp() {
   const pathParts = useMemo(() => location.pathname.split('/'), [location.pathname]);
   const activeDmUserId = isDm ? pathParts[2] : null;
 
-  // Channels state with database fetch & localStorage persistence (only user-created channels)
+  // Channels state with database fetch & per-user localStorage cache (only channels the user belongs to)
   const [textChannels, setTextChannels] = useState(() => {
     try {
-      const saved = localStorage.getItem('standupp_db_channels') || localStorage.getItem('standupp_text_channels');
+      const cacheKey = getUserChannelsCacheKey(user?.id);
+      if (!cacheKey) return [];
+      const saved = localStorage.getItem(cacheKey);
       const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) 
-        ? parsed.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home) 
+      return Array.isArray(parsed)
+        ? parsed.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home)
         : [];
     } catch {
       return [];
     }
   });
 
-  const [isChannelsLoading, setIsChannelsLoading] = useState(() => textChannels.length === 0);
+  const [isChannelsLoading, setIsChannelsLoading] = useState(true);
 
   // Resiliently match active channel from textChannels
   const matchedChannel = useMemo(() => {
@@ -156,7 +160,7 @@ function StanduppApp() {
       return getDmRoomId(activeUserProfile?.id, activeDmUserId);
     }
     if (pathParts[1] === 'channel' && pathParts[2] && pathParts[2] !== 'home') {
-      return matchedChannel ? matchedChannel.id : pathParts[2];
+      return matchedChannel ? matchedChannel.id : null;
     }
     return null;
   }, [isDm, activeDmUserId, activeUserProfile?.id, pathParts, matchedChannel]);
@@ -545,15 +549,30 @@ function StanduppApp() {
     };
   }, [activeUserProfile?.id, activeCallChannelId, disconnectVoice]);
 
-  // Fetch channels from database and subscribe to realtime changes
+  // Fetch only channels where the active user is an explicit member and subscribe to realtime updates
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = getUserChannelsCacheKey(currentUserId);
+
+    if (isSupabaseConfigured) {
+      try {
+        localStorage.removeItem('standupp_text_channels');
+        localStorage.removeItem('standupp_db_channels');
+      } catch {}
+    }
 
     async function loadDbChannels() {
+      if (!currentUserId) {
+        if (!cancelled) {
+          setTextChannels([]);
+          setIsChannelsLoading(false);
+        }
+        return;
+      }
+
       try {
-        const dbChans = await dbService.fetchChannels();
+        const dbChans = await dbService.fetchChannels(currentUserId);
         if (!cancelled && Array.isArray(dbChans)) {
-          // Keep only user-created channels (no home / no voice-sesli-sohbet)
           const texts = dbChans
             .filter((c) => c && c.type !== 'voice' && c.id !== 'home' && !c.is_home)
             .map((c) => ({
@@ -562,10 +581,11 @@ function StanduppApp() {
               avatar_url: c.avatar_url || c.avatar || '',
             }));
           setTextChannels(texts);
-          try {
-            localStorage.setItem('standupp_text_channels', JSON.stringify(texts));
-            localStorage.setItem('standupp_db_channels', JSON.stringify(texts));
-          } catch {}
+          if (cacheKey) {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(texts));
+            } catch {}
+          }
         }
       } catch (err) {
         console.warn('Channel fetch warning:', err);
@@ -588,37 +608,52 @@ function StanduppApp() {
         }
         return;
       }
-      if (payload?.new) {
-        const newChan = payload.new;
-        if (newChan && newChan.type !== 'voice' && newChan.id !== 'home' && !newChan.is_home) {
+      // Update metadata (name, avatar, etc.) only for channels the user is already a member of
+      if (payload?.eventType === 'UPDATE' && payload?.new) {
+        const updatedChan = payload.new;
+        if (updatedChan && updatedChan.type !== 'voice' && updatedChan.id !== 'home' && !updatedChan.is_home) {
           const normalizedChan = {
-            ...newChan,
-            avatar: newChan.avatar_url || newChan.avatar || '',
-            avatar_url: newChan.avatar_url || newChan.avatar || '',
+            ...updatedChan,
+            avatar: updatedChan.avatar_url || updatedChan.avatar || '',
+            avatar_url: updatedChan.avatar_url || updatedChan.avatar || '',
           };
           setTextChannels((prev) => {
-            const exists = prev.some((c) => c.id === normalizedChan.id);
-            if (exists) {
-              return prev.map((c) => (c.id === normalizedChan.id ? { ...c, ...normalizedChan } : c));
-            }
-            return [...prev, normalizedChan];
+            if (!prev.some((c) => c.id === normalizedChan.id)) return prev;
+            return prev.map((c) => (c.id === normalizedChan.id ? { ...c, ...normalizedChan } : c));
           });
         }
+      }
+    });
+
+    // React immediately when current user is added to or removed from a group
+    const unsubChannelMemberships = dbService.subscribeToTable('channel_members', (payload) => {
+      if (!currentUserId) return;
+      if (payload?.eventType === 'DELETE') {
+        if (!payload?.old?.user_id || payload.old.user_id === currentUserId) {
+          loadDbChannels();
+        }
+        return;
+      }
+      if (payload?.new?.user_id === currentUserId) {
+        loadDbChannels();
       }
     });
 
     return () => {
       cancelled = true;
       unsubChannels?.();
+      unsubChannelMemberships?.();
     };
-  }, []);
+  }, [currentUserId]);
 
-  // Save channels to localStorage
+  // Save channels to per-user localStorage cache
   useEffect(() => {
+    const cacheKey = getUserChannelsCacheKey(currentUserId);
+    if (!cacheKey) return;
     try {
-      localStorage.setItem('standupp_text_channels', JSON.stringify(textChannels));
+      localStorage.setItem(cacheKey, JSON.stringify(textChannels));
     } catch {}
-  }, [textChannels]);
+  }, [textChannels, currentUserId]);
 
   // Monitor network connection (online / offline)
   useEffect(() => {
@@ -1024,7 +1059,7 @@ function StanduppApp() {
       created_by: user?.id || null 
     };
 
-    setTextChannels((prev) => [...prev, newChan]);
+    setTextChannels((prev) => (prev.some((c) => c.id === newChan.id) ? prev : [...prev, newChan]));
 
     // Persist to database
     try {
@@ -1060,17 +1095,19 @@ function StanduppApp() {
             ...(normalizedAvatar !== undefined ? { avatar: normalizedAvatar, avatar_url: normalizedAvatar } : {}),
           };
         });
-        try {
-          localStorage.setItem('standupp_text_channels', JSON.stringify(next));
-          localStorage.setItem('standupp_db_channels', JSON.stringify(next));
-        } catch {}
+        const cacheKey = getUserChannelsCacheKey(currentUserId);
+        if (cacheKey) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(next));
+          } catch {}
+        }
         return next;
       });
       await dbService.updateChannel(channelId, updates);
     } catch (err) {
       console.warn('Update channel error:', err);
     }
-  }, []);
+  }, [currentUserId]);
 
   const handleDeleteChannel = useCallback(async (channelId) => {
     if (!channelId) return;
@@ -1080,10 +1117,12 @@ function StanduppApp() {
 
       setTextChannels((prev) => {
         const next = prev.filter((c) => c && !targetIds.includes(c.id));
-        try {
-          localStorage.setItem('standupp_text_channels', JSON.stringify(next));
-          localStorage.setItem('standupp_db_channels', JSON.stringify(next));
-        } catch {}
+        const cacheKey = getUserChannelsCacheKey(currentUserId);
+        if (cacheKey) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(next));
+          } catch {}
+        }
         return next;
       });
 
@@ -1099,7 +1138,7 @@ function StanduppApp() {
       console.error('Delete channel error:', err);
       throw err;
     }
-  }, [activeCallChannelId, disconnectVoice, navigate]);
+  }, [activeCallChannelId, currentUserId, disconnectVoice, navigate]);
 
   const handleSelectChannel = (channelId) => {
     navigate(`/channel/${channelId}`);
@@ -1113,21 +1152,40 @@ function StanduppApp() {
     navigate('/');
   };
 
-  // Auto-redirect from root or /channel/home to first available channel if any
+  // Auto-redirect only after membership load: stay on '/' if 0 channels, and guard unjoined '/channel/:id' URLs
   useEffect(() => {
+    if (isChannelsLoading || !currentUserId) return;
     if (location.pathname === '/' || location.pathname === '/channel/home') {
       if (textChannels.length > 0) {
         navigate(`/channel/${textChannels[0].id}`, { replace: true });
       }
+      return;
     }
-  }, [location.pathname, textChannels, navigate]);
+    if (pathParts[1] === 'channel' && pathParts[2] && pathParts[2] !== 'home' && !matchedChannel) {
+      if (activeCallChannelId === pathParts[2]) {
+        queueMicrotask(() => {
+          disconnectVoice();
+          setActiveCallChannelId(null);
+        });
+      }
+      navigate(textChannels.length > 0 ? `/channel/${textChannels[0].id}` : '/', { replace: true });
+    }
+  }, [
+    isChannelsLoading,
+    currentUserId,
+    location.pathname,
+    pathParts,
+    matchedChannel,
+    textChannels,
+    navigate,
+    activeCallChannelId,
+    disconnectVoice,
+  ]);
 
-  // Check if active channel or DM actually exists
+  // Check if active channel or DM actually exists (membership verified)
   const channelExists = isDm
     ? Boolean(activeDmFriend || activeDmUserId)
-    : isChannelsLoading
-      ? true
-      : Boolean(matchedChannel || activeChannel === 'home');
+    : Boolean(matchedChannel);
 
   // Current page title shown at the center of top WindowHeader
   const currentPageTitle = useMemo(() => {

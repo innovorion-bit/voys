@@ -939,30 +939,50 @@ export const ChatArea = ({
     )
     : messages;
 
-  // Determine if a chat or DM is currently active
+  // Determine if a chat, DM, or verified group channel is currently active
   const hasActiveChat = Boolean(
     (isDmMode && (activeDmFriend || (activeChannel && activeChannel.startsWith('dm-')))) ||
-    (!isDmMode && activeChannel && activeChannel !== 'home')
+    (!isDmMode && channelExists && channelData && activeChannel && activeChannel !== 'home')
   );
 
   if (!hasActiveChat) {
     return (
       <main className="flex-1 flex flex-col h-full bg-[#08080a] voys-glass-chat select-none relative overflow-hidden items-center justify-center p-6 text-center border-l border-white/5">
         <div className="max-w-md flex flex-col items-center space-y-4 animate-in fade-in duration-200">
-          <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
-            Sohbet başlatmak için soldaki listeden bir arkadaşınızı seçin.
-          </p>
+          <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-xl">
+            <Users size={24} />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-bold text-gray-100 tracking-wide">
+              Henüz Aktif Bir Sohbet Yok
+            </h3>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
+              Soldaki listeden bir arkadaşınızı seçebilir, bir grup yöneticisinin sizi gruba eklemesini bekleyebilir veya yeni bir grup oluşturabilirsiniz.
+            </p>
+          </div>
 
-          {onOpenAddMember && (
-            <button
-              type="button"
-              onClick={onOpenAddMember}
-              className="mt-2 px-4 py-2 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-xl text-xs transition shadow-lg flex items-center space-x-2"
-            >
-              <UserPlus size={15} />
-              <span>Arkadaş Ekle</span>
-            </button>
-          )}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {onOpenAddMember && (
+              <button
+                type="button"
+                onClick={onOpenAddMember}
+                className="px-4 py-2 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-xl text-xs transition shadow-lg flex items-center space-x-2 cursor-pointer"
+              >
+                <UserPlus size={15} />
+                <span>Arkadaş Ekle</span>
+              </button>
+            )}
+            {onOpenCreateChannel && (
+              <button
+                type="button"
+                onClick={onOpenCreateChannel}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-indigo-600/25 flex items-center space-x-2 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Yeni Grup Oluştur</span>
+              </button>
+            )}
+          </div>
         </div>
       </main>
     );
@@ -1171,6 +1191,17 @@ export const ChatArea = ({
                 </div>
               </div>
             </div>
+          ) : !hasActiveChat ? (
+            /* Empty Home Header (When user is not yet added to any group) */
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-emerald-500/20 border border-white/10 flex items-center justify-center text-indigo-300 shadow-sm flex-shrink-0">
+                <Users size={17} />
+              </div>
+              <div className="min-w-0 flex flex-col">
+                <span className="text-[13px] font-bold text-white truncate">Voys</span>
+                <span className="text-[11px] text-gray-400 truncate">Henüz katıldığınız bir grup yok</span>
+              </div>
+            </div>
           ) : (
             /* Group Chat Header - Identical design & size to personal DM chat */
             <div className="flex items-center space-x-2 min-w-0">
@@ -1240,6 +1271,7 @@ export const ChatArea = ({
         </div>
 
         {/* Right side of Top Bar: Universal Call Button + Search Filter */}
+        {hasActiveChat && (
         <div className="flex items-center space-x-2 flex-shrink-0">
           {/* Voice Controls:
               - DM Modunda: Tam ses kontrolleri (arama başlat/kapat, mikrofon vb.)
@@ -1359,12 +1391,13 @@ export const ChatArea = ({
             )}
           </div>
         </div>
+        )}
           </>
         )}
       </div>
 
       {/* Main Content Area OR Inline User/Group Info */}
-      {chatInnerView === 'userInfo' ? (
+      {chatInnerView === 'userInfo' && hasActiveChat ? (
         /* Inline Kişi Bilgisi / Kanal Bilgisi (Sohbet Ekranının Tamamında) */
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-y-auto bg-[#0a0a0d] custom-scrollbar p-6 select-none">
           <div className="max-w-2xl mx-auto w-full space-y-6">
@@ -1644,26 +1677,30 @@ export const ChatArea = ({
             />
           )}
 
-          {/* Channel Not Found Empty State */}
-          {!channelExists && !channelData && !isDmMode ? (
+          {/* Channel Not Found / No Groups Empty State */}
+          {!hasActiveChat && !isDmMode ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-xl">
-                <Hash size={24} />
+                {activeChannel ? <Hash size={24} /> : <Users size={24} />}
               </div>
-              <div className="space-y-1 max-w-sm">
-                <h3 className="text-sm font-bold text-gray-100 uppercase tracking-wide">Kanal Bulunamadı</h3>
+              <div className="space-y-1.5 max-w-sm">
+                <h3 className="text-sm font-bold text-gray-100 tracking-wide">
+                  {activeChannel ? 'Grup Bulunamadı' : 'Henüz Bir Grubunuz Yok'}
+                </h3>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Aradığınız kanal mevcut değil veya veritabanında henüz bir kanal oluşturulmamış.
+                  {activeChannel
+                    ? 'Bu gruba erişiminiz yok veya grup silinmiş.'
+                    : 'Bir grup yöneticisi sizi gruba eklediğinde burada görünecektir. Dilerseniz yeni bir grup oluşturabilir veya arkadaşlarınızla sohbet edebilirsiniz.'}
                 </p>
               </div>
               {onOpenCreateChannel && (
                 <button
                   type="button"
                   onClick={onOpenCreateChannel}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/25 transition active:scale-95"
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/25 transition active:scale-95 cursor-pointer"
                 >
                   <Plus size={14} />
-                  <span>Yeni Kanal Oluştur</span>
+                  <span>Yeni Grup Oluştur</span>
                 </button>
               )}
             </div>
@@ -2097,201 +2134,205 @@ export const ChatArea = ({
             </button>
           )}
 
-          {/* Typing Indicator */}
-          <div className="h-5 px-4 text-[11px] text-gray-400 italic select-none flex items-center flex-shrink-0">
-            {typingUsers.length > 0 && (
-              <div className="flex items-center space-x-1.5 text-indigo-400">
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></span>
-                <span>{typingUsers.join(', ')} yazıyor...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Pending Attachments Chip Bar */}
-          {pendingFiles.length > 0 && (
-            <div className="px-4 py-2 bg-[#0c0c0e] border-t border-white/5 flex items-center justify-between z-10 flex-shrink-0">
-              <div className="flex items-center space-x-2 overflow-x-auto py-1 max-w-full">
-                {pendingFiles.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center space-x-2 px-3 py-1.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-gray-200 flex-shrink-0 shadow-sm"
-                  >
-                    {item.previewUrl ? (
-                      <img
-                        src={item.previewUrl}
-                        alt={item.name}
-                        className="w-7 h-7 object-cover rounded-lg border border-white/10"
-                      />
-                    ) : (
-                      <div className="text-indigo-400">
-                        {getFileIcon(item.type, item.name)}
-                      </div>
-                    )}
-                    <div className="flex flex-col min-w-0 max-w-[120px] sm:max-w-[180px]">
-                      <span className="truncate font-medium">{item.name}</span>
-                      <span className="text-[10px] text-gray-400 font-mono">{formatFileSize(item.size)}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removePendingFile(item.id)}
-                      className="w-5 h-5 rounded-full bg-white/5 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 flex items-center justify-center transition"
-                      title="Kaldır"
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={clearAllPendingFiles}
-                className="text-[11px] text-gray-400 hover:text-rose-400 ml-3 flex items-center space-x-1 flex-shrink-0 px-2.5 py-1 rounded-lg hover:bg-white/5 transition"
-                title="Tümünü Temizle"
-              >
-                <Trash2 size={12} />
-                <span className="hidden sm:inline">Temizle</span>
-              </button>
-            </div>
-          )}
-
-          {/* Hidden File Input (Used by attachment '+' button) */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={(e) => {
-              if (e.target.files) {
-                handleFilesSelected(e.target.files);
-                e.target.value = ''; // reset so same file can be picked again
-              }
-            }}
-            multiple
-            className="hidden"
-          />
-
-          {/* Replying Preview Banner */}
-          {replyingTo && (
-            <div className="px-4 py-2 bg-indigo-950/40 border-t border-white/5 border-l-4 border-l-indigo-500 flex items-center justify-between z-10 flex-shrink-0 animate-in fade-in slide-in-from-bottom-1">
-              <div className="flex items-center space-x-2 min-w-0">
-                <Reply size={14} className="text-indigo-400 flex-shrink-0" />
-                <span className="text-xs text-gray-400">Yanıtlanıyor:</span>
-                <span
-                  className="text-xs font-bold truncate"
-                  style={{ color: replyingTo.color || '#818cf8' }}
-                >
-                  @{replyingTo.user}
-                </span>
-                <span className="text-xs text-gray-400 truncate max-w-xs sm:max-w-md italic">
-                  "{replyingTo.text}"
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReplyingTo(null)}
-                className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
-                title="Yanıtı İptal Et"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
-
-          {/* Bottom Message Input Bar */}
-          <div className="p-3 md:p-4 bg-[#08080a] voys-chat-input-bar flex items-center space-x-2 md:space-x-3 relative z-10 flex-shrink-0">
-
-            {/* File Attachment '+' Button placed directly to the left of the input box */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Dosya veya Medya Paylaş (+)"
-              className="w-10 h-10 text-indigo-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-500/40 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
-            >
-              <Plus size={18} className="group-hover:scale-110 transition-transform" />
-            </button>
-
-            {/* Input Wrapper */}
-            <div className="flex-1 flex items-center bg-[#141418] voys-chat-input-wrapper border border-white/10 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/20 rounded-2xl transition px-3.5 py-2 relative">
-              <input
-                ref={textInputRef}
-                type="text"
-                value={inputText}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  replyingTo
-                    ? `@${replyingTo.user} kişisine yanıt yaz...`
-                    : isDmMode && activeDmFriend
-                      ? `${activeDmFriend.name} kişisine mesaj gönder...`
-                      : "Mesaj gönder..."
-                }
-                className="flex-1 bg-transparent text-sm text-[#e5e7eb] placeholder-gray-500 focus:outline-none min-w-0"
-              />
-
-              {/* Emoji Picker Popover */}
-              <div className="relative flex-shrink-0 ml-1">
-                {showEmojiPicker && (
-                  <div className="emoji-picker-container absolute bottom-12 right-0 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50 animate-in fade-in zoom-in-95">
-                    <div className="bg-white/[0.02] p-2 px-3 border-b border-white/10 flex items-center justify-between text-xs text-gray-300">
-                      <span className="font-semibold text-[11px] text-gray-200">Emoji Seç</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowEmojiPicker(false)}
-                        className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                    <EmojiPicker
-                      theme={chatSettings?.theme === 'light' ? Theme.LIGHT : Theme.DARK}
-                      onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
-                      searchPlaceHolder="Emoji ara..."
-                      width={300}
-                      height={360}
-                      lazyLoadEmojis
-                      skinTonesDisabled
-                      previewConfig={{ showPreview: false }}
-                    />
+          {hasActiveChat && (
+            <>
+              {/* Typing Indicator */}
+              <div className="h-5 px-4 text-[11px] text-gray-400 italic select-none flex items-center flex-shrink-0">
+                {typingUsers.length > 0 && (
+                  <div className="flex items-center space-x-1.5 text-indigo-400">
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></span>
+                    <span>{typingUsers.join(', ')} yazıyor...</span>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="emoji-button-trigger p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition relative"
-                  title="Emoji Ekle"
-                >
-                  <Smile size={16} />
-                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                </button>
               </div>
 
-              {/* Send Button or Upload Loader */}
-              {isUploading ? (
-                <div className="p-1.5 text-indigo-400 flex-shrink-0 flex items-center justify-center ml-1" title="Yükleniyor...">
-                  <Loader2 size={16} className="animate-spin text-indigo-400" />
+              {/* Pending Attachments Chip Bar */}
+              {pendingFiles.length > 0 && (
+                <div className="px-4 py-2 bg-[#0c0c0e] border-t border-white/5 flex items-center justify-between z-10 flex-shrink-0">
+                  <div className="flex items-center space-x-2 overflow-x-auto py-1 max-w-full">
+                    {pendingFiles.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center space-x-2 px-3 py-1.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-gray-200 flex-shrink-0 shadow-sm"
+                      >
+                        {item.previewUrl ? (
+                          <img
+                            src={item.previewUrl}
+                            alt={item.name}
+                            className="w-7 h-7 object-cover rounded-lg border border-white/10"
+                          />
+                        ) : (
+                          <div className="text-indigo-400">
+                            {getFileIcon(item.type, item.name)}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0 max-w-[120px] sm:max-w-[180px]">
+                          <span className="truncate font-medium">{item.name}</span>
+                          <span className="text-[10px] text-gray-400 font-mono">{formatFileSize(item.size)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePendingFile(item.id)}
+                          className="w-5 h-5 rounded-full bg-white/5 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 flex items-center justify-center transition"
+                          title="Kaldır"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={clearAllPendingFiles}
+                    className="text-[11px] text-gray-400 hover:text-rose-400 ml-3 flex items-center space-x-1 flex-shrink-0 px-2.5 py-1 rounded-lg hover:bg-white/5 transition"
+                    title="Tümünü Temizle"
+                  >
+                    <Trash2 size={12} />
+                    <span className="hidden sm:inline">Temizle</span>
+                  </button>
                 </div>
-              ) : (
+              )}
+
+              {/* Hidden File Input (Used by attachment '+' button) */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  if (e.target.files) {
+                    handleFilesSelected(e.target.files);
+                    e.target.value = ''; // reset so same file can be picked again
+                  }
+                }}
+                multiple
+                className="hidden"
+              />
+
+              {/* Replying Preview Banner */}
+              {replyingTo && (
+                <div className="px-4 py-2 bg-indigo-950/40 border-t border-white/5 border-l-4 border-l-indigo-500 flex items-center justify-between z-10 flex-shrink-0 animate-in fade-in slide-in-from-bottom-1">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <Reply size={14} className="text-indigo-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-400">Yanıtlanıyor:</span>
+                    <span
+                      className="text-xs font-bold truncate"
+                      style={{ color: replyingTo.color || '#818cf8' }}
+                    >
+                      @{replyingTo.user}
+                    </span>
+                    <span className="text-xs text-gray-400 truncate max-w-xs sm:max-w-md italic">
+                      "{replyingTo.text}"
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
+                    title="Yanıtı İptal Et"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Bottom Message Input Bar */}
+              <div className="p-3 md:p-4 bg-[#08080a] voys-chat-input-bar flex items-center space-x-2 md:space-x-3 relative z-10 flex-shrink-0">
+
+                {/* File Attachment '+' Button placed directly to the left of the input box */}
                 <button
                   type="button"
-                  onClick={handleSend}
-                  disabled={!inputText.trim() && pendingFiles.length === 0}
-                  className={`p-1.5 rounded-lg transition flex-shrink-0 ml-1 ${
-                    inputText.trim() || pendingFiles.length > 0
-                      ? 'text-indigo-400 hover:text-white hover:bg-indigo-600/30'
-                      : 'text-gray-500 cursor-not-allowed opacity-50'
-                  }`}
-                  title="Gönder"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Dosya veya Medya Paylaş (+)"
+                  className="w-10 h-10 text-indigo-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-500/40 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Send size={16} />
+                  <Plus size={18} className="group-hover:scale-110 transition-transform" />
                 </button>
-              )}
-            </div>
+
+                {/* Input Wrapper */}
+                <div className="flex-1 flex items-center bg-[#141418] voys-chat-input-wrapper border border-white/10 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/20 rounded-2xl transition px-3.5 py-2 relative">
+                  <input
+                    ref={textInputRef}
+                    type="text"
+                    value={inputText}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={
+                      replyingTo
+                        ? `@${replyingTo.user} kişisine yanıt yaz...`
+                        : isDmMode && activeDmFriend
+                          ? `${activeDmFriend.name} kişisine mesaj gönder...`
+                          : "Mesaj gönder..."
+                    }
+                    className="flex-1 bg-transparent text-sm text-[#e5e7eb] placeholder-gray-500 focus:outline-none min-w-0"
+                  />
+
+                  {/* Emoji Picker Popover */}
+                  <div className="relative flex-shrink-0 ml-1">
+                    {showEmojiPicker && (
+                      <div className="emoji-picker-container absolute bottom-12 right-0 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50 animate-in fade-in zoom-in-95">
+                        <div className="bg-white/[0.02] p-2 px-3 border-b border-white/10 flex items-center justify-between text-xs text-gray-300">
+                          <span className="font-semibold text-[11px] text-gray-200">Emoji Seç</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowEmojiPicker(false)}
+                            className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                        <EmojiPicker
+                          theme={chatSettings?.theme === 'light' ? Theme.LIGHT : Theme.DARK}
+                          onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
+                          searchPlaceHolder="Emoji ara..."
+                          width={300}
+                          height={360}
+                          lazyLoadEmojis
+                          skinTonesDisabled
+                          previewConfig={{ showPreview: false }}
+                        />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="emoji-button-trigger p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition relative"
+                      title="Emoji Ekle"
+                    >
+                      <Smile size={16} />
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                    </button>
+                  </div>
+
+                  {/* Send Button or Upload Loader */}
+                  {isUploading ? (
+                    <div className="p-1.5 text-indigo-400 flex-shrink-0 flex items-center justify-center ml-1" title="Yükleniyor...">
+                      <Loader2 size={16} className="animate-spin text-indigo-400" />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSend}
+                      disabled={!inputText.trim() && pendingFiles.length === 0}
+                      className={`p-1.5 rounded-lg transition flex-shrink-0 ml-1 ${
+                        inputText.trim() || pendingFiles.length > 0
+                          ? 'text-indigo-400 hover:text-white hover:bg-indigo-600/30'
+                          : 'text-gray-500 cursor-not-allowed opacity-50'
+                      }`}
+                      title="Gönder"
+                    >
+                      <Send size={16} />
+                    </button>
+                  )}
+                </div>
 
 
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right Side: Channel Members Panel (Sabit panel) */}
-        {!isDmMode && (
+        {!isDmMode && hasActiveChat && (
           <aside className="w-56 md:w-64 flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e]/95 voys-glass-right-panel backdrop-blur-md flex flex-col select-none overflow-y-auto p-3 space-y-3.5 z-10 animate-in slide-in-from-right duration-150 custom-scrollbar">
             {/* Sesli Sohbette Olan Kişiler (Yalnızca sesli sohbette birileri varken gösterilir) */}
             {(isCallActive || isInCall || (callMembers && callMembers.length > 0)) && (
