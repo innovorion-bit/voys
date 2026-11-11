@@ -2800,18 +2800,7 @@ export const ChatArea = ({
                 {/* Tüm Grup Üyeleri (Tek Liste) */}
                 <div className="space-y-1">
                   {[...onlineMembers, ...offlineMembers].map((member) => {
-                    const isSelfMember = Boolean(currentUser?.id && member.id === currentUser.id);
                     const callMatch = (callMembers || []).find((cm) => cm?.id === member.id);
-                    const memberPref = callMatch
-                      ? ((callMatch.id && peerAudioPrefs[callMatch.id]) || (callMatch.peerId && peerAudioPrefs[callMatch.peerId]) || { volume: 100, muted: false })
-                      : { volume: 100, muted: false };
-                    const memberCallSpeaking = Boolean(
-                      callMatch && (
-                        isSelfMember
-                          ? (isSpeaking && !isMuted)
-                          : (callMatch.isSpeaking && !isDeafened && !memberPref.muted && (memberPref.volume ?? 100) > 0)
-                      )
-                    );
 
                     return (
                       <div
@@ -2826,7 +2815,7 @@ export const ChatArea = ({
                         <UserAvatar
                           user={member}
                           size="sm"
-                          isSpeaking={memberCallSpeaking}
+                          isSpeaking={false}
                           showStatus={true}
                           status={member.isOnline ? member.status : 'offline'}
                         />
