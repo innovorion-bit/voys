@@ -1,10 +1,26 @@
 mod activity;
+mod ptt;
 
 use tauri::Manager;
 
 #[tauri::command]
 fn detect_running_game() -> Option<String> {
   activity::detect_running_game()
+}
+
+#[tauri::command]
+fn start_ptt_listener(
+  app: tauri::AppHandle,
+  state: tauri::State<'_, ptt::PttController>,
+  shortcut_key: String,
+  generation: Option<u64>,
+) -> Result<bool, String> {
+  ptt::start_ptt_listener(app, &state, shortcut_key, generation)
+}
+
+#[tauri::command]
+fn stop_ptt_listener(state: tauri::State<'_, ptt::PttController>) {
+  ptt::stop_ptt_listener(&state);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -14,9 +30,14 @@ pub fn run() {
     let _ = std::fs::write("tauri_panic.log", msg);
   }));
 
-  let res = tauri::Builder::default()
+  let app_res = tauri::Builder::default()
+    .manage(ptt::PttController::default())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![detect_running_game])
+    .invoke_handler(tauri::generate_handler![
+      detect_running_game,
+      start_ptt_listener,
+      stop_ptt_listener
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -35,9 +56,18 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(tauri::generate_context!());
+    .build(tauri::generate_context!());
 
-  if let Err(e) = res {
-    let _ = std::fs::write("tauri_error.log", format!("RUN ERROR: {:?}\n", e));
+  match app_res {
+    Ok(app) => {
+      app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+          app_handle.state::<ptt::PttController>().stop();
+        }
+      });
+    }
+    Err(e) => {
+      let _ = std::fs::write("tauri_error.log", format!("RUN ERROR: {:?}\n", e));
+    }
   }
 }

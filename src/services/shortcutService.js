@@ -78,6 +78,7 @@ const KEY_ALIASES = {
   slash: 'Slash',
   minus: 'Minus',
   equal: 'Equal',
+  intlbackslash: 'IntlBackslash',
   scrolllock: 'ScrollLock',
   pause: 'Pause',
   numlock: 'NumLock',
@@ -106,6 +107,7 @@ const FRIENDLY_KEY_LABELS = {
   Period: 'Ç / .',
   Slash: '/',
   Backslash: '\\',
+  IntlBackslash: '< / >',
   Minus: '-',
   Equal: '=',
   ArrowUp: '↑',
@@ -126,9 +128,42 @@ const FRIENDLY_DETAILED_LABELS = {
 };
 
 let activeShortcut = null;
-let activeTauriShortcut = null;
+let activeTauriShortcuts = [];
+let unlistenNativePtt = null;
+let usingNativeTauriPtt = false;
 let cleanupWindowListeners = null;
 let registrationSeq = 0;
+
+const SAFE_SHIFT_COMPANION_KEYS = new Set([
+  'CapsLock',
+  'Insert',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'PrintScreen',
+  'ScrollLock',
+  'Pause',
+]);
+
+function isFunctionKeyToken(key) {
+  return typeof key === 'string' && /^F([1-9]|1[0-9]|2[0-4])$/.test(key);
+}
+
+function isTypingSensitiveKey(parsed) {
+  return Boolean(
+    parsed &&
+    !parsed.isMouse &&
+    !parsed.isModifierOnly &&
+    parsed.modifiers.length === 0 &&
+    parsed.key !== 'CapsLock' &&
+    !isFunctionKeyToken(parsed.key)
+  );
+}
 
 function normalizeSingleToken(rawToken) {
   if (!rawToken || typeof rawToken !== 'string') return '';
@@ -317,20 +352,36 @@ export function isEditableElement(target) {
   return false;
 }
 
-function getHeldModifierState(event, requiredModifiers, { strictShift = true } = {}) {
+function getHeldModifierState(
+  event,
+  requiredModifiers,
+  { strictShift = true, allowExtraModifiers = false, pressedToken = '' } = {}
+) {
+  const hasCtrl = Boolean(event.ctrlKey) || pressedToken === 'Control';
+  const hasAlt = Boolean(event.altKey) || pressedToken === 'Alt';
+  const hasShift = Boolean(event.shiftKey) || pressedToken === 'Shift';
+  const hasMeta = Boolean(event.metaKey) || pressedToken === 'Super';
+
   const reqCtrl = requiredModifiers.includes('Control');
   const reqAlt = requiredModifiers.includes('Alt');
   const reqShift = requiredModifiers.includes('Shift');
   const reqMeta = requiredModifiers.includes('Super');
 
-  if (Boolean(event.ctrlKey) !== reqCtrl) return false;
-  if (Boolean(event.altKey) !== reqAlt) return false;
-  if (Boolean(event.metaKey) !== reqMeta) return false;
-  if (strictShift) {
-    if (Boolean(event.shiftKey) !== reqShift) return false;
-  } else if (reqShift && !event.shiftKey) {
-    return false;
+  if (reqCtrl && !hasCtrl) return false;
+  if (reqAlt && !hasAlt) return false;
+  if (reqShift && !hasShift) return false;
+  if (reqMeta && !hasMeta) return false;
+
+  // Never allow Win/Meta combos to steal OS shortcuts unless Super was explicitly requested
+  if (!reqMeta && hasMeta) return false;
+
+  if (allowExtraModifiers) {
+    return true;
   }
+
+  if (!reqCtrl && hasCtrl) return false;
+  if (!reqAlt && hasAlt) return false;
+  if (strictShift && !reqShift && hasShift) return false;
   return true;
 }
 
@@ -345,17 +396,27 @@ export function matchesShortcutPress(event, parsed) {
   if (!token || token !== parsed.key) return false;
 
   if (parsed.isModifierOnly) {
-    return getHeldModifierState(event, [parsed.key], { strictShift: true });
+    // Allow holding Shift/Ctrl/Alt alongside a standalone modifier PTT key (e.g. Shift + Alt while gaming)
+    return getHeldModifierState(event, [parsed.key], {
+      strictShift: false,
+      allowExtraModifiers: true,
+      pressedToken: token,
+    });
   }
 
   if (parsed.modifiers.length > 0) {
-    return getHeldModifierState(event, parsed.modifiers, { strictShift: true });
+    // Allow extra modifiers (e.g. holding Shift in a game while pressing Alt+V)
+    return getHeldModifierState(event, parsed.modifiers, {
+      strictShift: false,
+      allowExtraModifiers: true,
+      pressedToken: token,
+    });
   }
 
   // Single non-modifier key (e.g. V, F4, CapsLock, Space):
-  // Require no Ctrl/Alt/Meta so Ctrl+V / Alt+F4 don't accidentally toggle PTT,
-  // while still allowing Shift to remain tolerant on F-keys/CapsLock.
-  return getHeldModifierState(event, [], { strictShift: false });
+  // Tolerate Shift so walking/running in games doesn't block single-key PTT,
+  // while still preventing Ctrl+V / Alt+F4 browser shortcuts in DOM mode.
+  return getHeldModifierState(event, [], { strictShift: false, pressedToken: token });
 }
 
 /**
@@ -369,7 +430,10 @@ export function matchesMouseShortcutPress(event, parsed) {
   if (parsed.modifiers.length === 0) {
     return true;
   }
-  return getHeldModifierState(event, parsed.modifiers, { strictShift: true });
+  return getHeldModifierState(event, parsed.modifiers, {
+    strictShift: false,
+    allowExtraModifiers: true,
+  });
 }
 
 /**
@@ -409,15 +473,8 @@ function attachWindowFallbackListeners(parsed, onStateChange) {
 
   const handleKeyDown = (e) => {
     // Allow mouse buttons, F1-F24, and CapsLock even while focused inside chat input;
-    // block single keys / bare modifiers while user is actively typing text.
-    const isFunctionKey = /^F([1-9]|1[0-9]|2[0-4])$/.test(parsed.key);
-    const shouldRespectInputFocus =
-      !parsed.isMouse &&
-      !isFunctionKey &&
-      parsed.key !== 'CapsLock' &&
-      parsed.modifiers.length === 0;
-
-    if (shouldRespectInputFocus && isEditableElement(e.target)) {
+    // block bare printable keys while user is actively typing text.
+    if (isTypingSensitiveKey(parsed) && isEditableElement(e.target)) {
       return;
     }
 
@@ -491,7 +548,60 @@ function attachWindowFallbackListeners(parsed, onStateChange) {
 }
 
 /**
- * Register a Push-to-Talk shortcut (Tauri OS global shortcut when supported, else window fallback).
+ * Prevents browser navigation/focus side-effects (e.g. Mouse4 Back, Alt menu bar)
+ * inside the focused Voys WebView when native OS-level PTT owns hotkey state.
+ */
+function attachFocusedUiPreventDefaults(parsed) {
+  const preventKey = (e) => {
+    if (parsed.key === 'Alt' || parsed.key === 'Tab') {
+      const token = extractKeyboardToken(e);
+      if (token === parsed.key) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const preventMouseNav = (e) => {
+    if (parsed.isMouse && MOUSE_BUTTON_CODES[e.button] === parsed.key) {
+      e.preventDefault();
+    }
+  };
+
+  window.addEventListener('keydown', preventKey, true);
+  window.addEventListener('keyup', preventKey, true);
+  window.addEventListener('mousedown', preventMouseNav, true);
+  window.addEventListener('mouseup', preventMouseNav, true);
+  window.addEventListener('auxclick', preventMouseNav, true);
+
+  return () => {
+    window.removeEventListener('keydown', preventKey, true);
+    window.removeEventListener('keyup', preventKey, true);
+    window.removeEventListener('mousedown', preventMouseNav, true);
+    window.removeEventListener('mouseup', preventMouseNav, true);
+    window.removeEventListener('auxclick', preventMouseNav, true);
+  };
+}
+
+export function getLegacyTauriShortcutVariants(parsed) {
+  if (!parsed || parsed.isMouse || parsed.isModifierOnly) return [];
+  const variants = [parsed.normalized];
+
+  const canAddShiftCompanion =
+    !parsed.modifiers.includes('Shift') &&
+    (parsed.modifiers.length > 0 || isFunctionKeyToken(parsed.key) || SAFE_SHIFT_COMPANION_KEYS.has(parsed.key));
+
+  if (canAddShiftCompanion) {
+    const shiftVariant = normalizeShortcutKey(`Shift+${parsed.normalized}`);
+    if (shiftVariant && !variants.includes(shiftVariant)) {
+      variants.push(shiftVariant);
+    }
+  }
+
+  return variants;
+}
+
+/**
+ * Register a Push-to-Talk shortcut (Tauri native async hook when supported, legacy global-shortcut, else window fallback).
  */
 export async function registerPttShortcut(shortcutKey, onStateChange) {
   const seq = ++registrationSeq;
@@ -510,38 +620,136 @@ export async function registerPttShortcut(shortcutKey, onStateChange) {
   const inTauri = isTauriEnvironment();
   let tauriFailureReason = null;
 
-  // Tauri global-shortcut does not support mouse buttons or standalone modifier-only keys via Win32 RegisterHotKey
+  // 1. Preferred: Tauri native Windows async key-state listener
+  // Supports ALL keys (Alt, Shift, Ctrl, Mouse3/4/5, CapsLock, V, Alt+V, etc.)
+  // without swallowing game inputs and works even while holding Shift/Ctrl in games.
+  if (inTauri) {
+    let tempUnlisten = null;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { listen } = await import('@tauri-apps/api/event');
+
+      const typingSensitiveSingleKey = isTypingSensitiveKey(parsed);
+
+      let nativePressed = false;
+      const setNativePressed = (next) => {
+        if (nativePressed === next) return;
+        nativePressed = next;
+        onStateChange?.(next);
+      };
+
+      tempUnlisten = await listen('voys://ptt-state', (event) => {
+        if (seq !== registrationSeq) return;
+        const payload = event?.payload;
+        if (!payload || (payload.generation != null && payload.generation !== seq)) return;
+
+        if (!payload.pressed) {
+          setNativePressed(false);
+          return;
+        }
+
+        if (payload.isForegroundSelf && typingSensitiveSingleKey) {
+          if (isEditableElement(document.activeElement)) return;
+          if (payload.ctrlDown || payload.altDown || payload.metaDown) return;
+        }
+
+        setNativePressed(true);
+      });
+
+      if (seq !== registrationSeq) {
+        tempUnlisten();
+        return { success: false, cancelled: true };
+      }
+
+      const started = await invoke('start_ptt_listener', {
+        shortcutKey: parsed.normalized,
+        generation: seq,
+      });
+
+      if (seq !== registrationSeq) {
+        tempUnlisten();
+        await invoke('stop_ptt_listener').catch(() => {});
+        return { success: false, cancelled: true };
+      }
+
+      if (started) {
+        unlistenNativePtt = tempUnlisten;
+        usingNativeTauriPtt = true;
+        cleanupWindowListeners = attachFocusedUiPreventDefaults(parsed);
+        return {
+          success: true,
+          shortcut: parsed.normalized,
+          mode: 'native-global',
+          isTauriGlobal: true,
+        };
+      }
+
+      tempUnlisten();
+      tempUnlisten = null;
+    } catch {
+      if (tempUnlisten) {
+        try {
+          tempUnlisten();
+        } catch {}
+      }
+      // Older desktop binaries without native PTT command fall through to legacy plugin-global-shortcut
+    }
+  }
+
+  // 2. Legacy fallback for un-updated desktop binaries using plugin-global-shortcut
   if (inTauri && !parsed.isMouse && !parsed.isModifierOnly) {
+    const registeredVariants = [];
     try {
       const { register, unregister, isRegistered } = await import('@tauri-apps/plugin-global-shortcut');
       if (seq !== registrationSeq) {
         return { success: false, cancelled: true };
       }
 
-      const alreadyReg = await isRegistered(parsed.normalized).catch(() => false);
-      if (alreadyReg) {
-        await unregister(parsed.normalized).catch(() => {});
-      }
+      const variants = getLegacyTauriShortcutVariants(parsed);
+      const heldVariants = new Set();
 
-      if (seq !== registrationSeq) {
-        return { success: false, cancelled: true };
-      }
-
-      await register(parsed.normalized, (event) => {
-        if (seq !== registrationSeq) return;
-        if (event.state === 'Pressed') {
-          onStateChange?.(true);
-        } else if (event.state === 'Released') {
-          onStateChange?.(false);
+      for (const variant of variants) {
+        if (seq !== registrationSeq) {
+          for (const rv of registeredVariants) {
+            await unregister(rv).catch(() => {});
+          }
+          return { success: false, cancelled: true };
         }
-      });
+
+        const alreadyReg = await isRegistered(variant).catch(() => false);
+        if (alreadyReg) {
+          await unregister(variant).catch(() => {});
+        }
+
+        try {
+          await register(variant, (event) => {
+            if (seq !== registrationSeq) return;
+            if (event.state === 'Pressed') {
+              const wasActive = heldVariants.size > 0;
+              heldVariants.add(variant);
+              if (!wasActive) onStateChange?.(true);
+            } else if (event.state === 'Released') {
+              heldVariants.delete(variant);
+              if (heldVariants.size === 0) onStateChange?.(false);
+            }
+          });
+          registeredVariants.push(variant);
+        } catch (variantErr) {
+          // Base shortcut failure triggers full fallback; optional Shift+companion failure is non-fatal
+          if (variant === parsed.normalized) {
+            throw variantErr;
+          }
+        }
+      }
 
       if (seq !== registrationSeq) {
-        await unregister(parsed.normalized).catch(() => {});
+        for (const rv of registeredVariants) {
+          await unregister(rv).catch(() => {});
+        }
         return { success: false, cancelled: true };
       }
 
-      activeTauriShortcut = parsed.normalized;
+      activeTauriShortcuts = registeredVariants;
       return {
         success: true,
         shortcut: parsed.normalized,
@@ -549,13 +757,19 @@ export async function registerPttShortcut(shortcutKey, onStateChange) {
         isTauriGlobal: true,
       };
     } catch (err) {
+      for (const rv of registeredVariants) {
+        try {
+          const { unregister } = await import('@tauri-apps/plugin-global-shortcut');
+          await unregister(rv).catch(() => {});
+        } catch {}
+      }
       tauriFailureReason = err?.message || String(err);
       console.warn('[ShortcutService] Tauri global shortcut fallback:', parsed.normalized, tauriFailureReason);
     }
   } else if (inTauri && parsed.isMouse) {
-    tauriFailureReason = 'Mouse yan tuşları sistem genelinde yakalanamaz.';
+    tauriFailureReason = 'Mouse yan tuşları için masaüstü uygulamasını güncelleyin.';
   } else if (inTauri && parsed.isModifierOnly) {
-    tauriFailureReason = 'Tek başına Ctrl/Alt/Shift sistem genelinde yakalanamaz.';
+    tauriFailureReason = 'Tek başına Ctrl/Alt/Shift için masaüstü uygulamasını güncelleyin.';
   }
 
   if (seq !== registrationSeq) {
@@ -583,14 +797,33 @@ export async function unregisterPttShortcut() {
     cleanupWindowListeners = null;
   }
 
-  const shortcutToUnregister = activeTauriShortcut;
-  activeTauriShortcut = null;
+  if (unlistenNativePtt) {
+    try {
+      unlistenNativePtt();
+    } catch {}
+    unlistenNativePtt = null;
+  }
+
+  const wasNative = usingNativeTauriPtt;
+  usingNativeTauriPtt = false;
+
+  const shortcutsToUnregister = [...activeTauriShortcuts];
+  activeTauriShortcuts = [];
   activeShortcut = null;
 
-  if (shortcutToUnregister && isTauriEnvironment()) {
+  if (wasNative && isTauriEnvironment()) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('stop_ptt_listener').catch(() => {});
+    } catch {}
+  }
+
+  if (shortcutsToUnregister.length > 0 && isTauriEnvironment()) {
     try {
       const { unregister } = await import('@tauri-apps/plugin-global-shortcut');
-      await unregister(shortcutToUnregister).catch(() => {});
+      for (const sc of shortcutsToUnregister) {
+        await unregister(sc).catch(() => {});
+      }
     } catch {}
   }
 }

@@ -1859,7 +1859,9 @@ export const SettingsModal = ({ onLogout = null }) => {
                       />
                       <span>
                         {pttStatus?.isTauriGlobal
-                          ? 'Sistem geneli (Global) kısayol aktif — başka bir uygulama veya oyundayken de Bas-Konuş çalışır.'
+                          ? pttStatus?.mode === 'native-global'
+                            ? 'Sistem geneli (Oyun İçi) kısayol aktif — Shift veya diğer tuşlara basılıyken de oyunlarda Bas-Konuş çalışır.'
+                            : 'Sistem geneli (Global) kısayol aktif — başka bir uygulama veya oyundayken de Bas-Konuş çalışır.'
                           : isTauriEnvironment()
                           ? `Uygulama içi kısayol aktif (${pttStatus?.warning || 'seçilen tuş sistem genelinde yakalanamaz'}). Oyun içinde arka planda da çalışması için Alt+V, Ctrl+Space, CapsLock veya F1–F12 seçebilirsiniz.`
                           : 'Tarayıcı modunda Bas-Konuş, Voys sekmesi aktifken çalışır. Oyun içi arka plan desteği için masaüstü uygulamasını kullanın.'}
