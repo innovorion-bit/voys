@@ -833,10 +833,12 @@ function StanduppApp() {
     if (inputMode === 'ptt') {
       if (isPttActive) {
         if (isMuted && !isDeafened) {
-          setMuted(false, !wasPttActive);
+          setMuted(false, false);
+          if (!wasPttActive) sounds.playPttUnmute();
         }
       } else if (!isMuted) {
-        setMuted(true, wasPttActive);
+        setMuted(true, false);
+        if (wasPttActive) sounds.playPttMute();
       }
     } else if (prevMode === 'ptt' && isMuted && !isDeafened) {
       setMuted(false, false);

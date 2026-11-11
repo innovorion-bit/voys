@@ -190,7 +190,11 @@ export const useRealtimeChat = (
       };
     });
 
-    sounds.playMessage();
+    const senderId = incoming.userId || incoming.user_id || incoming.sender_id;
+    const isOwnMessage = senderId === 'you' || Boolean(currentUserRef.current?.id && senderId === currentUserRef.current.id);
+    if (!isOwnMessage) {
+      sounds.playMessage();
+    }
 
   }, []);
 

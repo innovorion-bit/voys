@@ -1,8 +1,27 @@
 // UI Sound Effects Engine with open-source WAV assets and Web Audio API fallback
+export const DEFAULT_SOUND_CATEGORIES = {
+  ptt: true,
+  voiceConnection: true,
+  voiceActions: true,
+  message: true,
+  ringtone: true,
+};
+
+const SOUND_DEFAULT_CATEGORIES = {
+  join: 'voiceConnection',
+  leave: 'voiceConnection',
+  mute: 'voiceActions',
+  unmute: 'voiceActions',
+  deafen: 'voiceActions',
+  undeafen: 'voiceActions',
+  message: 'message',
+};
+
 class SoundEffects {
   constructor() {
     this.ctx = null;
-    
+    this.categories = { ...DEFAULT_SOUND_CATEGORIES };
+
     // Load persisted sound settings from localStorage
     if (typeof window !== 'undefined') {
       try {
@@ -11,9 +30,26 @@ class SoundEffects {
 
         const savedVol = localStorage.getItem('standupp_sound_effects_volume');
         this.volume = savedVol !== null ? Math.max(0, Math.min(100, Number(savedVol))) / 100 : 0.75;
+
+        const savedCategories = localStorage.getItem('standupp_sound_categories');
+        if (savedCategories) {
+          const parsed = JSON.parse(savedCategories);
+          if (parsed && typeof parsed === 'object') {
+            this.categories = {
+              ...DEFAULT_SOUND_CATEGORIES,
+              ...Object.fromEntries(
+                Object.keys(DEFAULT_SOUND_CATEGORIES).map((k) => [
+                  k,
+                  parsed[k] !== undefined ? Boolean(parsed[k]) : DEFAULT_SOUND_CATEGORIES[k],
+                ])
+              ),
+            };
+          }
+        }
       } catch {
         this.enabled = true;
         this.volume = 0.75;
+        this.categories = { ...DEFAULT_SOUND_CATEGORIES };
       }
     } else {
       this.enabled = true;
@@ -66,6 +102,50 @@ class SoundEffects {
     return Math.round(this.volume * 100);
   }
 
+  getCategories() {
+    return { ...this.categories };
+  }
+
+  isCategoryEnabled(category) {
+    if (!category) return true;
+    return this.categories[category] !== false;
+  }
+
+  setCategoryEnabled(category, enabled) {
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_SOUND_CATEGORIES, category)) return;
+    this.categories = {
+      ...this.categories,
+      [category]: !!enabled,
+    };
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('standupp_sound_categories', JSON.stringify(this.categories));
+      } catch {}
+    }
+  }
+
+  setAllCategoriesEnabled(enabled) {
+    const next = {};
+    Object.keys(DEFAULT_SOUND_CATEGORIES).forEach((k) => {
+      next[k] = !!enabled;
+    });
+    this.categories = next;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('standupp_sound_categories', JSON.stringify(this.categories));
+      } catch {}
+    }
+  }
+
+  canPlay({ category = null, ignoreEnabled = false, minVolume = 0 } = {}) {
+    if (!ignoreEnabled) {
+      if (!this.enabled || this.volume <= 0) return false;
+      if (category && !this.isCategoryEnabled(category)) return false;
+      return true;
+    }
+    return Math.max(this.volume, minVolume) > 0;
+  }
+
   initWebAudio() {
     if (!this.ctx && typeof window !== 'undefined') {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -79,39 +159,51 @@ class SoundEffects {
   }
 
   // Primary playback function using high-fidelity WAV files with Web Audio fallback
-  play(soundName) {
-    if (!this.enabled || this.volume <= 0) return;
+  play(soundName, options = {}) {
+    const category = options.category || SOUND_DEFAULT_CATEGORIES[soundName] || null;
+    const playOptions = { ...options, category };
+    if (!this.canPlay(playOptions)) return;
+
+    const effectiveVolume = playOptions.ignoreEnabled
+      ? Math.max(this.volume, playOptions.minVolume || 0)
+      : this.volume;
 
     const url = this.soundUrls[soundName];
-    if (url && typeof window !== 'undefined') {
+    if (url && typeof window !== 'undefined' && typeof Audio !== 'undefined') {
       try {
         const audio = new Audio(url);
-        audio.volume = this.volume;
+        audio.volume = effectiveVolume;
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise.catch(() => {
             // If browser autoplay blocks or file fetch fails, fallback to synth
-            this.playFallbackSynth(soundName);
+            this.playFallbackSynth(soundName, playOptions);
           });
         }
         return;
       } catch {
-        this.playFallbackSynth(soundName);
+        this.playFallbackSynth(soundName, playOptions);
       }
     } else {
-      this.playFallbackSynth(soundName);
+      this.playFallbackSynth(soundName, playOptions);
     }
   }
 
   // Web Audio API Synthesizer Fallback
-  playFallbackSynth(soundName) {
-    if (!this.enabled || this.volume <= 0) return;
+  playFallbackSynth(soundName, options = {}) {
+    const category = options.category || SOUND_DEFAULT_CATEGORIES[soundName] || null;
+    const playOptions = { ...options, category };
+    if (!this.canPlay(playOptions)) return;
+
     this.initWebAudio();
     if (!this.ctx) return;
 
     try {
       const now = this.ctx.currentTime;
-      const masterGain = this.volume * 0.12;
+      const effectiveVolume = playOptions.ignoreEnabled
+        ? Math.max(this.volume, playOptions.minVolume || 0)
+        : this.volume;
+      const masterGain = effectiveVolume * 0.12;
 
       switch (soundName) {
         case 'join': {
@@ -247,32 +339,45 @@ class SoundEffects {
   }
 
   playMute() {
-    this.play('mute');
+    this.play('mute', { category: 'voiceActions' });
   }
 
   playUnmute() {
-    this.play('unmute');
+    this.play('unmute', { category: 'voiceActions' });
+  }
+
+  playPttMute() {
+    this.play('mute', { category: 'ptt' });
+  }
+
+  playPttUnmute() {
+    this.play('unmute', { category: 'ptt' });
   }
 
   playDeafen() {
-    this.play('deafen');
+    this.play('deafen', { category: 'voiceActions' });
   }
 
   playUndeafen() {
-    this.play('undeafen');
+    this.play('undeafen', { category: 'voiceActions' });
   }
 
   playConnect() {
-    this.play('join');
+    this.play('join', { category: 'voiceConnection' });
   }
 
   playDisconnect() {
-    this.play('leave');
+    this.play('leave', { category: 'voiceConnection' });
+  }
+
+  // Explicit hardware speaker test tone (works even when UI sound effects are muted)
+  playTestTone() {
+    this.play('join', { ignoreEnabled: true, minVolume: 0.6 });
   }
 
   // Web Audio Ringtone Generator (Discord-style incoming and outgoing ringtones)
   playSingleRing(type = 'incoming') {
-    if (!this.enabled || this.volume <= 0) return;
+    if (!this.canPlay({ category: 'ringtone' })) return;
     this.initWebAudio();
     if (!this.ctx) return;
 
@@ -382,4 +487,5 @@ class SoundEffects {
   }
 }
 
+export { SoundEffects };
 export const sounds = new SoundEffects();

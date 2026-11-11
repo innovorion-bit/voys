@@ -241,6 +241,11 @@ export const SettingsProvider = ({ children }) => {
     }
   });
 
+  // UI Sound Effects State (declared before callbacks that synchronize categories)
+  const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(() => sounds.getEnabled());
+  const [soundEffectsVolume, setSoundEffectsVolume] = useState(() => sounds.getVolume());
+  const [soundCategories, setSoundCategories] = useState(() => sounds.getCategories());
+
   const updateChatSetting = useCallback((key, value) => {
     setChatSettings((prev) => {
       const next = { ...prev, [key]: value };
@@ -249,6 +254,10 @@ export const SettingsProvider = ({ children }) => {
       } catch {}
       return next;
     });
+    if (key === 'messageSound') {
+      sounds.setCategoryEnabled('message', Boolean(value));
+      setSoundCategories(sounds.getCategories());
+    }
   }, []);
 
   // Sync active theme with document element
@@ -284,10 +293,7 @@ export const SettingsProvider = ({ children }) => {
     applyWindowTransparency(clampedOpacity);
   }, [chatSettings?.windowOpacity]);
 
-  // UI Sound Effects State
-  const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(() => sounds.getEnabled());
-  const [soundEffectsVolume, setSoundEffectsVolume] = useState(() => sounds.getVolume());
-
+  // UI Sound Effects Callbacks
   const changeSoundEffectsEnabled = useCallback((enabled) => {
     setSoundEffectsEnabled(enabled);
     sounds.setEnabled(enabled);
@@ -296,6 +302,20 @@ export const SettingsProvider = ({ children }) => {
   const changeSoundEffectsVolume = useCallback((vol) => {
     setSoundEffectsVolume(vol);
     sounds.setVolume(vol);
+  }, []);
+
+  const changeSoundCategory = useCallback((category, enabled) => {
+    sounds.setCategoryEnabled(category, enabled);
+    setSoundCategories(sounds.getCategories());
+    if (category === 'message') {
+      setChatSettings((prev) => {
+        const next = { ...prev, messageSound: Boolean(enabled) };
+        try {
+          localStorage.setItem('standupp_chat_settings', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
   }, []);
 
   // Settings Modal Open/Tab State
@@ -495,8 +515,10 @@ export const SettingsProvider = ({ children }) => {
         changeOutputVolume,
         soundEffectsEnabled,
         soundEffectsVolume,
+        soundCategories,
         changeSoundEffectsEnabled,
         changeSoundEffectsVolume,
+        changeSoundCategory,
         advancedAudioFiltering,
         changeAdvancedAudioFiltering,
         inputMode,
