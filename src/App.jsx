@@ -31,41 +31,13 @@ import {
   mergeChannelCallsWithPresences,
 } from './utils/userDisplay';
 import { MAX_VOLUME_PERCENT, clampVolumePercent } from './utils/remoteAudioGain';
+import {
+  buildLeaveCallTransition,
+  buildJoinCallPayload,
+  applyIncomingCallStatus,
+} from './utils/voiceCallState';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
-
-/**
- * Combines stored call members and online global presences currently in a voice channel.
- */
-const collectVoiceMembersForChannel = (
-  presencesMap,
-  channelId,
-  seedMembers = [],
-  excludeUserId = null
-) => {
-  const memberMap = new Map();
-  (seedMembers || []).forEach((member) => {
-    if (!member?.id || member.id === excludeUserId) return;
-    memberMap.set(member.id, member);
-  });
-  Object.entries(presencesMap || {}).forEach(([uid, entry]) => {
-    if (!entry || entry.voiceChannelId !== channelId) return;
-    const resolvedId = entry.userId || entry.id || uid;
-    if (!resolvedId || resolvedId === excludeUserId) return;
-    const isOnline =
-      entry.isOnline !== false && entry.status !== 'offline' && entry.status !== 'invisible';
-    if (!isOnline || memberMap.has(resolvedId)) return;
-    memberMap.set(resolvedId, {
-      id: resolvedId,
-      name: pickDisplayName([entry.name, entry.username], 'Kullanıcı'),
-      username: entry.username || '',
-      avatar: entry.avatar || entry.avatar_url || null,
-      avatar_url: entry.avatar_url || entry.avatar || null,
-      role: entry.role || null,
-    });
-  });
-  return Array.from(memberMap.values());
-};
 
 function StanduppApp() {
   const navigate = useNavigate();
@@ -693,37 +665,20 @@ function StanduppApp() {
   const [channelCalls, setChannelCalls] = useState({});
   const [activeCallChannelId, setActiveCallChannelId] = useState(null);
 
+  const voiceCallSnapshotRef = useRef({});
+
   // Sync real-time in-chat voice calls (Steam-style joinable voice sessions)
   useEffect(() => {
     const handleCallStatus = (data) => {
       if (!data?.channelId) return;
-
-      // Voice chat session ended or all participants left
-      if (!data.active || (data.count === 0 && (!data.members || data.members.length === 0))) {
-        setChannelCalls((prev) => {
-          const next = { ...prev };
-          delete next[data.channelId];
-          return next;
-        });
-        return;
-      }
-
-      // Voice chat is actively joinable
-      const receivedAt = Date.now();
-      setChannelCalls((prev) => ({
-        ...prev,
-        [data.channelId]: {
-          active: true,
-          stage: 'active',
-          channelId: data.channelId,
-          initiator: data.initiator,
-          targetUserId: data.targetUserId,
-          targetUser: data.targetUser,
-          count: data.count || data.members?.length || 1,
-          members: data.members || (data.initiator ? [data.initiator] : []),
-          receivedAt,
-        },
-      }));
+      const snap = voiceCallSnapshotRef.current;
+      setChannelCalls((prev) =>
+        applyIncomingCallStatus(prev, data, {
+          currentUserId: snap.currentUserId,
+          activeCallChannelId: snap.activeCallChannelId,
+          isConnected: snap.isConnected,
+        })
+      );
     };
 
     chatService.on('call_status', handleCallStatus);
@@ -952,7 +907,25 @@ function StanduppApp() {
   const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
     try {
       sounds.playJoin();
+      const snapshot = voiceCallSnapshotRef.current;
       const previousCallChannelId = activeCallChannelId;
+      const prevLeaveTransition =
+        previousCallChannelId && previousCallChannelId !== targetChannelId
+          ? buildLeaveCallTransition({
+              channelCalls: snapshot.channelCalls,
+              effectiveChannelCalls: snapshot.effectiveChannelCalls,
+              channelId: previousCallChannelId,
+              leavingUserId: activeUserProfile.id,
+              presences: snapshot.presences,
+              voiceMembers: snapshot.voiceMembers,
+              remotePeers: snapshot.remotePeers,
+              peerMetadata: snapshot.peerMetadata,
+              myPeerId: snapshot.myPeerId,
+              activeCallChannelId,
+              knownProfiles: snapshot.knownProfiles,
+            })
+          : null;
+
       const callRoom = `standupp-call-${targetChannelId}`;
       switchVoiceRoom(callRoom);
       await connectVoice(null, activeUserProfile.name, activeUserProfile);
@@ -962,70 +935,37 @@ function StanduppApp() {
       setActiveCallChannelId(targetChannelId);
       chatService.setVoiceChannel?.(targetChannelId, activeUserProfile);
 
+      const latestSnap = voiceCallSnapshotRef.current;
       const targetFriend = isDm ? activeDmFriend : null;
+      const joinPayload = buildJoinCallPayload({
+        channelCalls: latestSnap.channelCalls,
+        effectiveChannelCalls: latestSnap.effectiveChannelCalls,
+        channelId: targetChannelId,
+        joiningUser: activeUserProfile,
+        presences: latestSnap.presences,
+        knownProfiles: latestSnap.knownProfiles,
+        targetUserId: isDm ? activeDmUserId : null,
+        targetUser: targetFriend,
+      });
 
       setChannelCalls((prev) => {
         const next = { ...prev };
-        const now = Date.now();
-
-        if (
-          previousCallChannelId &&
-          previousCallChannelId !== targetChannelId
-        ) {
-          const prevCall = next[previousCallChannelId];
-          const prevRemaining = collectVoiceMembersForChannel(
-            presences,
-            previousCallChannelId,
-            prevCall?.members,
-            activeUserProfile.id
-          );
-          if (prevRemaining.length === 0) {
+        if (previousCallChannelId && previousCallChannelId !== targetChannelId) {
+          const prevPayload = prevLeaveTransition?.callUpdatePayload;
+          if (!prevPayload || !prevPayload.active) {
             delete next[previousCallChannelId];
-            chatService.sendCallUpdate({
-              channelId: previousCallChannelId,
-              active: false,
-              stage: 'ended',
-              count: 0,
-              members: [],
-            });
           } else {
-            const updatedPrev = {
-              ...prevCall,
-              channelId: previousCallChannelId,
-              active: true,
-              stage: 'active',
-              count: prevRemaining.length,
-              members: prevRemaining,
-              receivedAt: now,
-            };
-            next[previousCallChannelId] = updatedPrev;
-            chatService.sendCallUpdate(updatedPrev);
+            next[previousCallChannelId] = { ...prev[previousCallChannelId], ...prevPayload };
           }
         }
-
-        const currentCall = next[targetChannelId];
-        const existingOtherMembers = collectVoiceMembersForChannel(
-          presences,
-          targetChannelId,
-          currentCall?.members,
-          activeUserProfile.id
-        );
-        const updatedMembers = [...existingOtherMembers, activeUserProfile];
-        const callPayload = {
-          channelId: targetChannelId,
-          active: true,
-          stage: 'active',
-          initiator: currentCall?.initiator || activeUserProfile,
-          targetUserId: isDm ? activeDmUserId : null,
-          targetUser: targetFriend,
-          count: updatedMembers.length,
-          members: updatedMembers,
-          receivedAt: now,
-        };
-        next[targetChannelId] = callPayload;
-        chatService.sendCallUpdate(callPayload);
+        next[targetChannelId] = joinPayload;
         return next;
       });
+
+      if (prevLeaveTransition?.callUpdatePayload) {
+        chatService.sendCallUpdate(prevLeaveTransition.callUpdatePayload);
+      }
+      chatService.sendCallUpdate(joinPayload);
     } catch (err) {
       console.warn('Call start error:', err);
     }
@@ -1040,54 +980,50 @@ function StanduppApp() {
     activeDmFriend,
     inputMode,
     setMuted,
-    presences,
   ]);
 
   // Handle in-chat voice call leave / disconnect
   const handleLeaveCall = useCallback(() => {
     sounds.playLeave();
     const leavingChan = activeCallChannelId || activeChannel;
+    const snapshot = voiceCallSnapshotRef.current;
+    const { callUpdatePayload } = buildLeaveCallTransition({
+      channelCalls: snapshot.channelCalls,
+      effectiveChannelCalls: snapshot.effectiveChannelCalls,
+      channelId: leavingChan,
+      leavingUserId: activeUserProfile.id,
+      presences: snapshot.presences,
+      voiceMembers: snapshot.voiceMembers,
+      remotePeers: snapshot.remotePeers,
+      peerMetadata: snapshot.peerMetadata,
+      myPeerId: snapshot.myPeerId,
+      activeCallChannelId,
+      knownProfiles: snapshot.knownProfiles,
+    });
+
     disconnectVoice();
     setActiveCallChannelId(null);
     chatService.setVoiceChannel?.(null, activeUserProfile);
 
+    if (!leavingChan) return;
+
     setChannelCalls((prev) => {
-      const currentCall = prev[leavingChan];
-      const remainingMembers = collectVoiceMembersForChannel(
-        presences,
-        leavingChan,
-        currentCall?.members,
-        activeUserProfile.id
-      );
-      if (remainingMembers.length === 0) {
-        const next = { ...prev };
+      const next = { ...prev };
+      if (!callUpdatePayload || !callUpdatePayload.active) {
         delete next[leavingChan];
-        chatService.sendCallUpdate({
-          channelId: leavingChan,
-          active: false,
-          stage: 'ended',
-          count: 0,
-          members: [],
-        });
         return next;
-      } else {
-        const updated = {
-          ...currentCall,
-          channelId: leavingChan,
-          active: true,
-          stage: 'active',
-          count: remainingMembers.length,
-          members: remainingMembers,
-          receivedAt: Date.now(),
-        };
-        chatService.sendCallUpdate(updated);
-        return {
-          ...prev,
-          [leavingChan]: updated,
-        };
       }
+      next[leavingChan] = {
+        ...prev[leavingChan],
+        ...callUpdatePayload,
+      };
+      return next;
     });
-  }, [activeCallChannelId, activeChannel, disconnectVoice, activeUserProfile, presences]);
+
+    if (callUpdatePayload) {
+      chatService.sendCallUpdate(callUpdatePayload);
+    }
+  }, [activeCallChannelId, activeChannel, disconnectVoice, activeUserProfile]);
 
   // Logout handler from within the application
   const handleLogout = useCallback(async () => {
@@ -1244,20 +1180,24 @@ function StanduppApp() {
     presences,
   ]);
 
-  // Combine persisted global voice presence (`voiceChannelId`), ephemeral call broadcasts,
-  // and active WebRTC voice members so non-joined channel members see active sessions immediately.
-  const effectiveChannelCalls = useMemo(() => {
-    const knownProfiles = [
+  const voiceKnownProfiles = useMemo(
+    () => [
       ...(liveChannelMembers || []),
       ...(friends || []),
       ...(isDm && activeDmFriend ? [activeDmFriend] : []),
       ...(dmUserProfile ? [dmUserProfile] : []),
       ...Object.values(presences || {}),
-    ];
+    ],
+    [liveChannelMembers, friends, isDm, activeDmFriend, dmUserProfile, presences]
+  );
+
+  // Combine persisted global voice presence (`voiceChannelId`), ephemeral call broadcasts,
+  // and active WebRTC voice members so non-joined channel members see active sessions immediately.
+  const effectiveChannelCalls = useMemo(() => {
     return mergeChannelCallsWithPresences({
       channelCalls,
       presences,
-      knownProfiles,
+      knownProfiles: voiceKnownProfiles,
       activeCallChannelId,
       isConnected,
       voiceMembers,
@@ -1266,15 +1206,39 @@ function StanduppApp() {
   }, [
     channelCalls,
     presences,
-    liveChannelMembers,
-    friends,
-    isDm,
-    activeDmFriend,
-    dmUserProfile,
+    voiceKnownProfiles,
     activeCallChannelId,
     isConnected,
     voiceMembers,
     activeUserProfile,
+  ]);
+
+  useEffect(() => {
+    voiceCallSnapshotRef.current = {
+      currentUserId: activeUserProfile?.id || null,
+      activeCallChannelId,
+      isConnected,
+      channelCalls,
+      effectiveChannelCalls,
+      presences,
+      voiceMembers,
+      remotePeers,
+      peerMetadata,
+      myPeerId,
+      knownProfiles: voiceKnownProfiles,
+    };
+  }, [
+    activeUserProfile?.id,
+    activeCallChannelId,
+    isConnected,
+    channelCalls,
+    effectiveChannelCalls,
+    presences,
+    voiceMembers,
+    remotePeers,
+    peerMetadata,
+    myPeerId,
+    voiceKnownProfiles,
   ]);
 
   // Per-user audio volume & local mute preferences persisted in localStorage

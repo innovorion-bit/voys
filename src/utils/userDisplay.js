@@ -384,8 +384,10 @@ export const mergeChannelCallsWithPresences = ({
         if (p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false)) {
           return;
         }
+        const hasExplicitVoiceField = p.voiceChannelId !== undefined;
         const presenceChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
         if (
+          hasExplicitVoiceField &&
           presenceChan !== String(chanId) &&
           (p.receivedAt || 0) >= (callInfo.receivedAt || 0) + 1500
         ) {
