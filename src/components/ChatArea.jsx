@@ -208,6 +208,7 @@ export const ChatArea = ({
   channelExists = true,
   onOpenCreateChannel = null,
   onOpenAddMember = null,
+  onOpenGroupAddMember = null,
   friends = [],
   onMemberAdded = null,
   isDmMode = false,
@@ -527,14 +528,14 @@ export const ChatArea = ({
   }, [friends, addMemberSearch]);
 
   const handleAddMemberFromSidebar = async (friend) => {
-    if (!friend?.id || !activeChannel) return;
+    if (!friend?.id || !activeChannel || addingMemberId === friend.id) return;
     try {
       setAddingMemberId(friend.id);
-      await dbService.addChannelMember(activeChannel, friend.id, 'member');
+      const addedRow = await dbService.addChannelMember(activeChannel, friend.id, 'member');
       toast.success('Üye Gruba Eklendi', {
         description: `${friend.name || friend.username || 'Arkadaşınız'} bu gruba eklendi.`,
       });
-      onMemberAdded?.(friend);
+      onMemberAdded?.(friend, addedRow);
     } catch (err) {
       toast.error('Üye Eklenemedi', {
         description: err.message || 'Bir problem oluştu.',
@@ -957,7 +958,7 @@ export const ChatArea = ({
               Henüz Aktif Bir Sohbet Yok
             </h3>
             <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
-              Soldaki listeden bir arkadaşınızı seçebilir, bir grup yöneticisinin sizi gruba eklemesini bekleyebilir veya yeni bir grup oluşturabilirsiniz.
+              Soldaki listeden bir arkadaşınızı seçebilir, bir gruptan davet edilmeyi bekleyebilir veya yeni bir grup oluşturabilirsiniz.
             </p>
           </div>
 
@@ -1359,6 +1360,24 @@ export const ChatArea = ({
                     )}
                   </button>
 
+                  {!isDmMode && activeChannel !== 'home' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOptionsMenuOpen(false);
+                        if (onOpenGroupAddMember) {
+                          onOpenGroupAddMember();
+                        } else {
+                          setIsAddingMember(true);
+                        }
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-500/15 rounded-xl transition text-left cursor-pointer"
+                    >
+                      <UserPlus size={15} className="text-indigo-400 flex-shrink-0" />
+                      <span>Üye ekle</span>
+                    </button>
+                  )}
+
                   <div className="my-1 border-t border-white/5" />
 
                   <button
@@ -1580,10 +1599,27 @@ export const ChatArea = ({
               {/* Grup Üyeleri Listesi (Grup Modunda) */}
               {!isDmMode && (
                 <div className="pt-5 border-t border-white/10 space-y-4">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-2">
-                    <Users size={14} className="text-indigo-400" />
-                    <span>Grup Üyeleri ({liveMembers.length})</span>
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-2">
+                      <Users size={14} className="text-indigo-400" />
+                      <span>Grup Üyeleri ({liveMembers.length})</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenGroupAddMember) {
+                          onOpenGroupAddMember();
+                        } else {
+                          setChatInnerView('messages');
+                          setIsAddingMember(true);
+                        }
+                      }}
+                      className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 transition cursor-pointer"
+                    >
+                      <UserPlus size={12} />
+                      <span>Üye Ekle</span>
+                    </button>
+                  </div>
                   <div className="divide-y divide-white/5 max-h-60 overflow-y-auto custom-scrollbar">
                     {liveMembers.map((member) => (
                       <div key={member.id} className="py-2.5 flex items-center space-x-3">

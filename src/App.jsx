@@ -313,6 +313,51 @@ function StanduppApp() {
     }
   }, [activeChannel, isDm]);
 
+  // Optimistically append newly added member so UI flips from "Ekle" to "Üye" immediately
+  const handleMemberAdded = useCallback((addedFriend, insertedRow = null) => {
+    if (activeChannel && !isDm && addedFriend?.id) {
+      const friendId = String(addedFriend.id);
+      setChannelMembers((prev) => {
+        const existing = Array.isArray(prev) ? prev : [];
+        if (existing.some((m) => String(m.user_id || m.id) === friendId)) {
+          return existing;
+        }
+        const resolvedName = addedFriend.name || addedFriend.display_name || addedFriend.username || 'Kullanıcı';
+        const resolvedAvatar = addedFriend.avatar || addedFriend.avatar_url || '';
+        const resolvedStatus = addedFriend.status || 'offline';
+        const profilePayload = {
+          id: addedFriend.id,
+          username: addedFriend.username || 'user',
+          display_name: resolvedName,
+          avatar_url: resolvedAvatar,
+          status: resolvedStatus,
+          substatus: addedFriend.substatus || '',
+          game: addedFriend.game || null,
+        };
+        return [
+          ...existing,
+          {
+            ...(insertedRow && typeof insertedRow === 'object' ? insertedRow : {}),
+            id: insertedRow?.id || `mem-${activeChannel}-${friendId}`,
+            channel_id: activeChannel,
+            user_id: addedFriend.id,
+            role: insertedRow?.role || 'member',
+            name: resolvedName,
+            username: profilePayload.username,
+            avatar: resolvedAvatar || null,
+            avatar_url: resolvedAvatar || null,
+            game: profilePayload.game || '',
+            substatus: profilePayload.substatus || '',
+            status: resolvedStatus,
+            profile: profilePayload,
+            profiles: profilePayload,
+          },
+        ];
+      });
+    }
+    loadChannelMembers();
+  }, [activeChannel, isDm, loadChannelMembers]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -398,47 +443,49 @@ function StanduppApp() {
   }, [isDm, activeDmUserId]);
 
   // Compute dynamic friends list with real-time presences merged
-  const friends = (friendshipsData.friends || []).map((f) => {
-    const p = presences[f.id];
-    const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
-    const fallbackAv = (dmUserProfile?.id === f.id && (dmUserProfile.avatar_url || dmUserProfile.avatar)) || null;
-    const fAvatar = (f.avatar || f.avatar_url || '').trim?.() || (f.avatar || f.avatar_url || '');
-    const resolvedAv = pAvatar || fallbackAv || fAvatar || '';
+  const friends = useMemo(() => {
+    return (friendshipsData.friends || []).map((f) => {
+      const p = presences[f.id];
+      const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
+      const fallbackAv = (dmUserProfile?.id === f.id && (dmUserProfile.avatar_url || dmUserProfile.avatar)) || null;
+      const fAvatar = (f.avatar || f.avatar_url || '').trim?.() || (f.avatar || f.avatar_url || '');
+      const resolvedAv = pAvatar || fallbackAv || fAvatar || '';
 
-    // A friend is strictly online ONLY if active presence is confirmed and not offline/invisible
-    const isFriendOnline = Boolean(
-      p &&
-      p.status &&
-      p.status !== 'offline' &&
-      p.status !== 'invisible' &&
-      p.isOnline !== false
-    );
+      // A friend is strictly online ONLY if active presence is confirmed and not offline/invisible
+      const isFriendOnline = Boolean(
+        p &&
+        p.status &&
+        p.status !== 'offline' &&
+        p.status !== 'invisible' &&
+        p.isOnline !== false
+      );
 
-    if (!isFriendOnline) {
+      if (!isFriendOnline) {
+        return {
+          ...f,
+          avatar: resolvedAv,
+          avatar_url: resolvedAv,
+          status: 'offline',
+          isOnline: false,
+          isAway: false,
+          game: null,
+          substatus: '',
+        };
+      }
+
       return {
         ...f,
+        name: p.name || f.name,
         avatar: resolvedAv,
         avatar_url: resolvedAv,
-        status: 'offline',
-        isOnline: false,
-        isAway: false,
-        game: null,
-        substatus: '',
+        game: p.game || null,
+        substatus: p.substatus || f.substatus || '',
+        status: p.status || 'online',
+        isAway: p.status === 'idle' || !!p.isAway,
+        isOnline: true,
       };
-    }
-
-    return {
-      ...f,
-      name: p.name || f.name,
-      avatar: resolvedAv,
-      avatar_url: resolvedAv,
-      game: p.game || null,
-      substatus: p.substatus || f.substatus || '',
-      status: p.status || 'online',
-      isAway: p.status === 'idle' || !!p.isAway,
-      isOnline: true,
-    };
-  });
+    });
+  }, [friendshipsData.friends, presences, dmUserProfile]);
 
   const activeDmFriend = useMemo(() => {
     if (!isDm || !activeDmUserId) return null;
@@ -1270,8 +1317,9 @@ function StanduppApp() {
             channelExists={channelExists}
             onOpenCreateChannel={() => setModalOpen(true)}
             onOpenAddMember={null}
+            onOpenGroupAddMember={() => setIsAddMemberModalOpen(true)}
             friends={friends}
-            onMemberAdded={loadChannelMembers}
+            onMemberAdded={handleMemberAdded}
             isDmMode={isDm}
             activeDmFriend={activeDmFriend}
             onBackToChannels={handleBackToChannels}
@@ -1381,7 +1429,7 @@ function StanduppApp() {
         channelType="text"
         friends={friends}
         currentMembers={channelMembers}
-        onMemberAdded={loadChannelMembers}
+        onMemberAdded={handleMemberAdded}
       />
     </div>
   );

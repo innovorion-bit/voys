@@ -245,18 +245,27 @@ export const Sidebar = ({
     return activeMessages[activeMessages.length - 1];
   }, [activeChannel, activeMessages]);
 
+  const friendIdsKey = useMemo(() => {
+    return (friends || [])
+      .map((f) => f?.id)
+      .filter(Boolean)
+      .sort()
+      .join(',');
+  }, [friends]);
+
   // Load latest messages from database & subscribe to realtime updates
   useEffect(() => {
     let cancelled = false;
     const currentUserId = currentUserProfile?.id;
     if (!currentUserId) return;
 
-    // Fetch from Supabase for all friends
-    friends.forEach(async (friend) => {
-      if (!friend?.id) return;
-      const roomId = getDmRoomId(currentUserId, friend.id);
+    // Fetch from Supabase for all friends only when user or friend IDs change
+    const friendIds = friendIdsKey ? friendIdsKey.split(',') : [];
+    friendIds.forEach(async (friendId) => {
+      if (!friendId) return;
+      const roomId = getDmRoomId(currentUserId, friendId);
       try {
-        const msgs = await dbService.fetchDmMessages(roomId, currentUserId, friend.id);
+        const msgs = await dbService.fetchDmMessages(roomId, currentUserId, friendId);
         if (!cancelled && Array.isArray(msgs) && msgs.length > 0) {
           const latest = msgs[msgs.length - 1];
           setLastMessagesMap((prev) => ({
@@ -310,7 +319,7 @@ export const Sidebar = ({
       unsubDms?.();
       chatService.off('message', handleChatMessage);
     };
-  }, [currentUserProfile?.id, friends]);
+  }, [currentUserProfile?.id, friendIdsKey]);
 
   // Search query state
   const [searchQuery, setSearchQuery] = useState('');

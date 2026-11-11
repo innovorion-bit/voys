@@ -357,3 +357,12 @@ create policy "Authenticated users can update avatars"
   to authenticated 
   using (bucket_id = 'avatars')
   with check (bucket_id = 'avatars');
+
+-- Performance indexes for DM/channel lookups and membership filtering
+create index if not exists idx_direct_messages_room_id_sent_at on public.direct_messages (room_id, sent_at asc);
+create index if not exists idx_direct_messages_sender_receiver_sent_at on public.direct_messages (sender_id, receiver_id, sent_at asc);
+create index if not exists idx_channel_members_user_id on public.channel_members (user_id);
+create index if not exists idx_channel_messages_channel_id_sent_at on public.channel_messages (channel_id, sent_at asc);
+create index if not exists idx_friendships_user_id on public.friendships (user_id);
+create index if not exists idx_friendships_friend_id on public.friendships (friend_id);
+

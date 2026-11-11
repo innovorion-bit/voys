@@ -30,7 +30,7 @@ export const AddMemberModal = ({
 
   // Set of user IDs already members
   const memberIdSet = new Set(
-    currentMembers.map((m) => (typeof m === 'string' ? m : m.user_id || m.id))
+    currentMembers.map((m) => String(typeof m === 'string' ? m : m.user_id || m.id))
   );
 
   const filteredFriends = friends.filter((f) => {
@@ -43,13 +43,14 @@ export const AddMemberModal = ({
   });
 
   const handleAddMember = async (friend) => {
+    if (!friend?.id || !activeChannel || addingId === friend.id) return;
     try {
       setAddingId(friend.id);
-      await dbService.addChannelMember(activeChannel, friend.id, 'member');
+      const addedRow = await dbService.addChannelMember(activeChannel, friend.id, 'member');
       toast.success('Üye Sohbete Eklendi', {
         description: `${friend.name || 'Arkadaşınız'} bu sohbete katıldı.`,
       });
-      onMemberAdded?.(friend);
+      onMemberAdded?.(friend, addedRow);
     } catch (err) {
       toast.error('Üye Eklenemedi', {
         description: err.message || 'Bir problem oluştu.',
@@ -119,7 +120,7 @@ export const AddMemberModal = ({
             </div>
           ) : (
             filteredFriends.map((friend) => {
-              const isAlreadyMember = memberIdSet.has(friend.id);
+              const isAlreadyMember = memberIdSet.has(String(friend.id));
               const isAdding = addingId === friend.id;
 
               return (

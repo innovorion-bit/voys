@@ -758,10 +758,14 @@ export const dbService = {
     if (!userId) return [];
     if (isSupabaseConfigured) {
       try {
-        const { data: memberships, error: memError } = await supabase
-          .from('channel_members')
-          .select('channel_id')
-          .eq('user_id', userId);
+        const { data: memberships, error: memError } = await withTimeout(
+          supabase
+            .from('channel_members')
+            .select('channel_id')
+            .eq('user_id', userId),
+          10000,
+          'Kanal üyelikleri alınırken zaman aşımı oluştu.'
+        );
 
         if (memError) {
           console.warn('Supabase fetchChannels memberships error:', memError);
@@ -776,14 +780,18 @@ export const dbService = {
           return [];
         }
 
-        const { data, error } = await supabase
-          .from('channels')
-          .select('*')
-          .in('id', memberChannelIds)
-          .neq('id', 'home')
-          .neq('id', 'voice-sesli-sohbet')
-          .neq('is_home', true)
-          .order('created_at', { ascending: true });
+        const { data, error } = await withTimeout(
+          supabase
+            .from('channels')
+            .select('*')
+            .in('id', memberChannelIds)
+            .neq('id', 'home')
+            .neq('id', 'voice-sesli-sohbet')
+            .neq('is_home', true)
+            .order('created_at', { ascending: true }),
+          10000,
+          'Kanallar alınırken zaman aşımı oluştu.'
+        );
 
         if (!error && Array.isArray(data)) {
           return data
@@ -937,18 +945,26 @@ export const dbService = {
   async fetchChannelMembers(channelId) {
     if (isSupabaseConfigured) {
       try {
-        const { data: memberRows, error } = await supabase
-          .from('channel_members')
-          .select('*')
-          .eq('channel_id', channelId);
+        const { data: memberRows, error } = await withTimeout(
+          supabase
+            .from('channel_members')
+            .select('*')
+            .eq('channel_id', channelId),
+          10000,
+          'Grup üyeleri alınırken zaman aşımı oluştu.'
+        );
 
         if (!error && Array.isArray(memberRows)) {
           if (memberRows.length === 0) return [];
           const userIds = memberRows.map((m) => m.user_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url, status, substatus, game')
-            .in('id', userIds);
+          const { data: profiles } = await withTimeout(
+            supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url, status, substatus, game')
+              .in('id', userIds),
+            10000,
+            'Üye profilleri alınırken zaman aşımı oluştu.'
+          );
 
           const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
 
@@ -998,38 +1014,42 @@ export const dbService = {
   async addChannelMember(channelId, userId, role = 'member') {
     if (!channelId || !userId) return null;
     if (isSupabaseConfigured) {
-      const { data: existing } = await supabase
-        .from('channel_members')
-        .select('*')
-        .eq('channel_id', channelId)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (existing) {
-        return existing;
-      }
-
-      const { data, error } = await supabase
-        .from('channel_members')
-        .insert([
-          {
-            channel_id: channelId,
-            user_id: userId,
-            role,
-          },
-        ])
-        .select()
-        .single();
+      const { data, error } = await withTimeout(
+        supabase
+          .from('channel_members')
+          .insert([
+            {
+              channel_id: channelId,
+              user_id: userId,
+              role,
+            },
+          ])
+          .select()
+          .single(),
+        10000,
+        'Üye ekleme isteği zaman aşımına uğradı. Lütfen tekrar deneyin.'
+      );
 
       if (error) {
         if (error.code === '23505') {
-          const { data: dupRow } = await supabase
-            .from('channel_members')
-            .select('*')
-            .eq('channel_id', channelId)
-            .eq('user_id', userId)
-            .maybeSingle();
-          if (dupRow) return dupRow;
+          const { data: dupRow } = await withTimeout(
+            supabase
+              .from('channel_members')
+              .select('*')
+              .eq('channel_id', channelId)
+              .eq('user_id', userId)
+              .maybeSingle(),
+            8000,
+            'Mevcut üyelik kontrolü zaman aşımına uğradı.'
+          );
+          if (dupRow) {
+            const list = localDb.getChannelMembers();
+            if (!list.some((m) => m.channel_id === channelId && m.user_id === userId)) {
+              localDb.saveChannelMembers([...list, dupRow]);
+            }
+            return dupRow;
+          }
+          return { channel_id: channelId, user_id: userId, role };
         }
         throw error;
       }
@@ -1068,11 +1088,15 @@ export const dbService = {
   async fetchChannelMessages(channelId) {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
-          .from('channel_messages')
-          .select('*')
-          .eq('channel_id', channelId)
-          .order('sent_at', { ascending: true });
+        const { data, error } = await withTimeout(
+          supabase
+            .from('channel_messages')
+            .select('*')
+            .eq('channel_id', channelId)
+            .order('sent_at', { ascending: true }),
+          12000,
+          'Kanal mesajları alınırken zaman aşımı oluştu.'
+        );
 
         if (!error && Array.isArray(data)) {
           const mapped = data.map((row) => {
@@ -1121,12 +1145,14 @@ export const dbService = {
   async saveChannelMessage(channelId, message) {
     if (isSupabaseConfigured) {
       try {
+        const rawAvatar = typeof message.avatar === 'string' ? message.avatar : '';
+        const safeAvatar = rawAvatar.startsWith('data:') && rawAvatar.length > 2000 ? '' : rawAvatar;
         const dbRow = {
           id: message.id,
           channel_id: channelId,
           sender_id: message.userId,
           sender_name: message.user,
-          sender_avatar: message.avatar || '',
+          sender_avatar: safeAvatar,
           color: message.color || '#90ba3c',
           has_crown: message.hasCrown || false,
           lines: message.lines || (message.text ? [message.text] : []),
@@ -1137,7 +1163,11 @@ export const dbService = {
           timestamp_text: message.timestamp,
           sent_at: message.sentAt || Date.now(),
         };
-        await supabase.from('channel_messages').insert([dbRow]);
+        await withTimeout(
+          supabase.from('channel_messages').insert([dbRow]),
+          10000,
+          'Mesaj gönderilirken zaman aşımı oluştu.'
+        );
       } catch (err) {
         console.warn('Supabase saveChannelMessage error:', err);
       }
@@ -1165,6 +1195,8 @@ export const dbService = {
 
     if (isSupabaseConfigured) {
       try {
+        const dmColumns =
+          'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, created_at';
         const roomIdsToMatch = Array.from(new Set([
           canonical,
           roomId,
@@ -1172,27 +1204,40 @@ export const dbService = {
           user2 ? `dm-${user2}` : null,
         ].filter(Boolean)));
 
-        let { data, error } = await supabase
-          .from('direct_messages')
-          .select('*')
-          .in('room_id', roomIdsToMatch)
-          .order('sent_at', { ascending: true });
+        let { data, error } = await withTimeout(
+          supabase
+            .from('direct_messages')
+            .select(dmColumns)
+            .in('room_id', roomIdsToMatch)
+            .order('sent_at', { ascending: true }),
+          12000,
+          'DM mesajları alınırken zaman aşımı oluştu.'
+        );
 
         // If no messages found by room_id and both participants are known, fallback to sender/receiver query
         if ((!data || data.length === 0) && user1 && user2) {
-          const res1 = await supabase
-            .from('direct_messages')
-            .select('*')
-            .eq('sender_id', user1)
-            .eq('receiver_id', user2)
-            .order('sent_at', { ascending: true });
-
-          const res2 = await supabase
-            .from('direct_messages')
-            .select('*')
-            .eq('sender_id', user2)
-            .eq('receiver_id', user1)
-            .order('sent_at', { ascending: true });
+          const [res1, res2] = await Promise.all([
+            withTimeout(
+              supabase
+                .from('direct_messages')
+                .select(dmColumns)
+                .eq('sender_id', user1)
+                .eq('receiver_id', user2)
+                .order('sent_at', { ascending: true }),
+              12000,
+              'DM mesajları alınırken zaman aşımı oluştu.'
+            ),
+            withTimeout(
+              supabase
+                .from('direct_messages')
+                .select(dmColumns)
+                .eq('sender_id', user2)
+                .eq('receiver_id', user1)
+                .order('sent_at', { ascending: true }),
+              12000,
+              'DM mesajları alınırken zaman aşımı oluştu.'
+            ),
+          ]);
 
           const combined = [
             ...(Array.isArray(res1.data) ? res1.data : []),
@@ -1277,13 +1322,15 @@ export const dbService = {
 
     if (isSupabaseConfigured) {
       try {
+        const rawAvatar = typeof message.avatar === 'string' ? message.avatar : '';
+        const safeAvatar = rawAvatar.startsWith('data:') && rawAvatar.length > 2000 ? '' : rawAvatar;
         const dbRow = {
           id: message.id,
           room_id: canonicalRoomId,
           sender_id: senderId,
           receiver_id: receiverId,
           sender_name: message.user || 'Kullanıcı',
-          sender_avatar: message.avatar || '',
+          sender_avatar: safeAvatar,
           color: message.color || '#90ba3c',
           has_crown: message.hasCrown || false,
           lines: message.lines || (message.text ? [message.text] : []),
@@ -1294,7 +1341,11 @@ export const dbService = {
           timestamp_text: message.timestamp,
           sent_at: message.sentAt || Date.now(),
         };
-        await supabase.from('direct_messages').insert([dbRow]);
+        await withTimeout(
+          supabase.from('direct_messages').insert([dbRow]),
+          10000,
+          'Mesaj gönderilirken zaman aşımı oluştu.'
+        );
       } catch (err) {
         console.warn('Supabase saveDmMessage error:', err);
       }
