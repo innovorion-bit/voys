@@ -68,7 +68,7 @@ Deno.serve(async (req: Request) => {
     supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 }),
     supabaseAdmin
       .from('profiles')
-      .select('id, username, display_name, avatar_url, status, substatus, game, tag, updated_at'),
+      .select('id, username, display_name, avatar_url, status, substatus, game, updated_at'),
     supabaseAdmin.rpc('admin_get_telemetry'),
   ]);
 
@@ -100,7 +100,6 @@ Deno.serve(async (req: Request) => {
         email: u.email ?? null,
         username,
         display_name: displayName,
-        tag: profile?.tag || u.user_metadata?.tag || '1001',
         avatar_url: profile?.avatar_url || null,
         status: profile?.status || 'offline',
         substatus: profile?.substatus || '',
@@ -122,3 +121,4 @@ Deno.serve(async (req: Request) => {
     checked_at: new Date().toISOString(),
   });
 });
+

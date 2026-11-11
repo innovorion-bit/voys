@@ -473,7 +473,7 @@ export const AdminMonitorTab = () => {
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-gray-500 font-mono">@{u.username}#{u.tag}</div>
+                                <div className="text-[11px] text-gray-500 font-mono">@{u.username}</div>
                               </div>
                             </div>
                           </td>
@@ -622,3 +622,4 @@ export const AdminMonitorTab = () => {
     </div>
   );
 };
+

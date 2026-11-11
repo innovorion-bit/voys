@@ -128,7 +128,6 @@ export const cacheUserProfiles = (profiles = []) => {
         name: nextName || existing.name || rawUsername,
         display_name: nextName || existing.display_name || rawUsername,
         username: rawUsername || existing.username || '',
-        tag: prof.tag || existing.tag || '0001',
         avatar: safeAvatar || existing.avatar || '',
         avatar_url: safeAvatar || existing.avatar_url || '',
         updatedAt: now,

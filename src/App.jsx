@@ -101,7 +101,6 @@ function StanduppApp() {
     if (!user) return profile;
     const rawUsername = user.username || user.user_metadata?.username || profile.username || (user.email ? user.email.split('@')[0] : 'user');
     const rawDisplayName = user.display_name || user.user_metadata?.display_name || profile.name || rawUsername;
-    const rawTag = user.tag || user.user_metadata?.tag || profile.tag || '1001';
 
     // Strictly own avatar from user profile; prioritize newest avatar from profile, then user
     const resolvedAvatar = (user.id === profile.id)
@@ -114,7 +113,6 @@ function StanduppApp() {
       name: rawDisplayName,
       display_name: rawDisplayName,
       username: rawUsername,
-      tag: rawTag,
       avatar: resolvedAvatar || '',
       avatar_url: resolvedAvatar || '',
       email: user.email,
@@ -485,7 +483,7 @@ function StanduppApp() {
       if (!cancelled && prof) {
         setDmUserProfile(prof);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     return () => {
       cancelled = true;
@@ -697,7 +695,7 @@ function StanduppApp() {
       try {
         localStorage.removeItem('standupp_text_channels');
         localStorage.removeItem('standupp_db_channels');
-      } catch {}
+      } catch { }
     }
 
     async function loadDbChannels() {
@@ -723,7 +721,7 @@ function StanduppApp() {
           if (cacheKey) {
             try {
               localStorage.setItem(cacheKey, JSON.stringify(texts));
-            } catch {}
+            } catch { }
           }
         }
       } catch (err) {
@@ -796,7 +794,7 @@ function StanduppApp() {
     if (!cacheKey) return;
     try {
       localStorage.setItem(cacheKey, JSON.stringify(textChannels));
-    } catch {}
+    } catch { }
   }, [textChannels, currentUserId]);
 
   // Monitor network connection (online / offline)
@@ -886,7 +884,7 @@ function StanduppApp() {
       clearMessages?.(activeChannel);
       try {
         localStorage.removeItem('standupp_cached_messages');
-      } catch {}
+      } catch { }
     } catch (err) {
       console.error('handleClearActiveChat error:', err);
       throw err;
@@ -913,18 +911,18 @@ function StanduppApp() {
       const prevLeaveTransition =
         previousCallChannelId && previousCallChannelId !== targetChannelId
           ? buildLeaveCallTransition({
-              channelCalls: snapshot.channelCalls,
-              effectiveChannelCalls: snapshot.effectiveChannelCalls,
-              channelId: previousCallChannelId,
-              leavingUserId: activeUserProfile.id,
-              presences: snapshot.presences,
-              voiceMembers: snapshot.voiceMembers,
-              remotePeers: snapshot.remotePeers,
-              peerMetadata: snapshot.peerMetadata,
-              myPeerId: snapshot.myPeerId,
-              activeCallChannelId,
-              knownProfiles: snapshot.knownProfiles,
-            })
+            channelCalls: snapshot.channelCalls,
+            effectiveChannelCalls: snapshot.effectiveChannelCalls,
+            channelId: previousCallChannelId,
+            leavingUserId: activeUserProfile.id,
+            presences: snapshot.presences,
+            voiceMembers: snapshot.voiceMembers,
+            remotePeers: snapshot.remotePeers,
+            peerMetadata: snapshot.peerMetadata,
+            myPeerId: snapshot.myPeerId,
+            activeCallChannelId,
+            knownProfiles: snapshot.knownProfiles,
+          })
           : null;
 
       const callRoom = `standupp-call-${targetChannelId}`;
@@ -1144,20 +1142,20 @@ function StanduppApp() {
     return [
       ...(isConnected
         ? [
-            {
-              id: activeUserProfile.id,
-              name: activeUserProfile.name,
-              avatar: activeUserProfile.avatar || null,
-              avatarBg: '#3d9921',
-              isSpeaking: isSpeaking,
-              status: activeUserProfile.status || 'online',
-              game: activeUserProfile.game || '',
-              substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
-              statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
-              isAway: activeUserProfile.status === 'idle',
-              ping: myPing || 24,
-            },
-          ]
+          {
+            id: activeUserProfile.id,
+            name: activeUserProfile.name,
+            avatar: activeUserProfile.avatar || null,
+            avatarBg: '#3d9921',
+            isSpeaking: isSpeaking,
+            status: activeUserProfile.status || 'online',
+            game: activeUserProfile.game || '',
+            substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
+            statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
+            isAway: activeUserProfile.status === 'idle',
+            ping: myPing || 24,
+          },
+        ]
         : []),
       ...resolvedRemotes,
     ];
@@ -1267,7 +1265,7 @@ function StanduppApp() {
       });
       try {
         localStorage.setItem('voys_peer_audio_prefs', JSON.stringify(next));
-      } catch {}
+      } catch { }
       return next;
     });
   }, []);
@@ -1289,7 +1287,7 @@ function StanduppApp() {
       });
       try {
         localStorage.setItem('voys_peer_audio_prefs', JSON.stringify(next));
-      } catch {}
+      } catch { }
       return next;
     });
   }, []);
@@ -1314,14 +1312,14 @@ function StanduppApp() {
       .trim()
       .replace(/[^a-z0-9ığüşöçİĞÜŞÖÇ]/gi, '-')
       .replace(/-+/g, '-');
-    
+
     const channelId = `text-${slug || Date.now().toString(36)}`;
-    const newChan = { 
-      id: channelId, 
-      name, 
-      type: 'text', 
+    const newChan = {
+      id: channelId,
+      name,
+      type: 'text',
       is_home: false,
-      created_by: user?.id || null 
+      created_by: user?.id || null
     };
 
     setTextChannels((prev) => (prev.some((c) => c.id === newChan.id) ? prev : [...prev, newChan]));
@@ -1330,11 +1328,11 @@ function StanduppApp() {
     try {
       await dbService.createChannel(newChan);
       if (user?.id) {
-        await dbService.addChannelMember(channelId, user.id, 'admin').catch(() => {});
+        await dbService.addChannelMember(channelId, user.id, 'admin').catch(() => { });
       }
       if (Array.isArray(members) && members.length > 0) {
         for (const memberId of members) {
-          await dbService.addChannelMember(channelId, memberId, 'member').catch(() => {});
+          await dbService.addChannelMember(channelId, memberId, 'member').catch(() => { });
         }
       }
     } catch (err) {
@@ -1364,7 +1362,7 @@ function StanduppApp() {
         if (cacheKey) {
           try {
             localStorage.setItem(cacheKey, JSON.stringify(next));
-          } catch {}
+          } catch { }
         }
         return next;
       });
@@ -1386,7 +1384,7 @@ function StanduppApp() {
         if (cacheKey) {
           try {
             localStorage.setItem(cacheKey, JSON.stringify(next));
-          } catch {}
+          } catch { }
         }
         return next;
       });
@@ -1474,16 +1472,16 @@ function StanduppApp() {
   return (
     <div className="flex flex-col h-screen w-screen bg-[#101214] voys-glass-app rounded-2xl border border-white/10 overflow-hidden select-none">
       {/* Hidden remote <audio autoPlay> tags managed within React component */}
-      <RemoteAudioPlayers 
-        remotePeers={remotePeers} 
-        isDeafened={isDeafened} 
+      <RemoteAudioPlayers
+        remotePeers={remotePeers}
+        isDeafened={isDeafened}
         volume={outputVolume / 100}
         peerAudioMap={peerAudioMap}
         sinkId={selectedAudioOutput}
       />
 
       {/* Top Window Bar & Header */}
-      <WindowHeader 
+      <WindowHeader
         pageTitle={currentPageTitle}
       />
 
@@ -1491,9 +1489,9 @@ function StanduppApp() {
       {audioError && isConnected && (
         <div className="bg-amber-950/40 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-300 flex items-center justify-between select-none backdrop-blur-md">
           <span>{audioError}</span>
-          <button 
-            type="button" 
-            onClick={() => connectVoice(null, activeUserProfile.name, activeUserProfile)} 
+          <button
+            type="button"
+            onClick={() => connectVoice(null, activeUserProfile.name, activeUserProfile)}
             className="underline font-bold hover:text-white transition"
           >
             İzin Ver / Yeniden Dene
@@ -1552,8 +1550,8 @@ function StanduppApp() {
             // Universal In-Chat Voice Call Props (Steam-style joinable session)
             isCallActive={Boolean(
               activeChannel &&
-                (effectiveChannelCalls[activeChannel]?.active ||
-                  (activeCallChannelId === activeChannel && isConnected))
+              (effectiveChannelCalls[activeChannel]?.active ||
+                (activeCallChannelId === activeChannel && isConnected))
             )}
             isInCall={Boolean(activeChannel && activeCallChannelId === activeChannel && isConnected)}
             callMembers={
@@ -1657,7 +1655,7 @@ function StanduppApp() {
           activeChannel === 'home'
             ? 'Home'
             : (textChannels.find((c) => c.id === activeChannel)?.name ||
-               (typeof activeChannel === 'string' ? activeChannel.replace(/^text-/, '') : 'Sohbet'))
+              (typeof activeChannel === 'string' ? activeChannel.replace(/^text-/, '') : 'Sohbet'))
         }
         channelType="text"
         friends={friends}
@@ -1711,29 +1709,29 @@ function App() {
           />
 
           {/* Protected Application Routes */}
-          <Route 
-            path="/channel/:channelId" 
+          <Route
+            path="/channel/:channelId"
             element={
               <ProtectedRoute>
                 <StanduppApp />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/dm/:userId" 
+          <Route
+            path="/dm/:userId"
             element={
               <ProtectedRoute>
                 <StanduppApp />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/" 
+          <Route
+            path="/"
             element={
               <ProtectedRoute>
                 <StanduppApp />
               </ProtectedRoute>
-            } 
+            }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

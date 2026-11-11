@@ -50,7 +50,6 @@ async function runTests() {
         data: {
           username: testUsername,
           display_name: testDisplayName,
-          tag: '7788',
         }
       }
     });
@@ -88,25 +87,25 @@ async function runTests() {
       if (profileError || !profileData) {
         logFail('2. Profil Kontrolü', profileError?.message || 'Profil kaydı bulunamadı');
       } else {
-        logPass('2. Profil Kontrolü', `Kullanıcı: ${profileData.username}, Tag: #${profileData.tag}, İsim: ${profileData.display_name}`);
+        logPass('2. Profil Kontrolü', `Kullanıcı: ${profileData.username}, İsim: ${profileData.display_name}`);
       }
     }
 
     // ----------------------------------------------------
-    // TEST 3: User Search (By Username & Tag)
+    // TEST 3: User Search (By Username & Display Name)
     // ----------------------------------------------------
     console.log('\n--- TEST 3: Kullanıcı Arama ---');
     // Search for existing main user "Lyring"
     const { data: searchResults, error: searchError } = await clientB
       .from('profiles')
-      .select('id, username, tag, display_name')
+      .select('id, username, display_name')
       .or(`username.ilike.%lyring%,display_name.ilike.%lyring%`);
 
     if (searchError || !searchResults || searchResults.length === 0) {
       logFail('3. Kullanıcı Arama (@Lyring)', searchError?.message || 'Sonuç dönmedi');
     } else {
       const found = searchResults[0];
-      logPass('3. Kullanıcı Arama (@Lyring)', `Bulundu: ${found.display_name} (#${found.tag}) - ID: ${found.id}`);
+      logPass('3. Kullanıcı Arama (@Lyring)', `Bulundu: ${found.display_name} (@${found.username}) - ID: ${found.id}`);
     }
 
     // ----------------------------------------------------

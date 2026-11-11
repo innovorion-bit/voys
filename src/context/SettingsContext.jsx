@@ -29,7 +29,6 @@ const defaultProfile = {
   name: 'Sen (You)',
   id: 'you',
   username: 'kullanici',
-  tag: '1001',
   avatar: '',
   status: 'online', // 'online' | 'idle' | 'dnd' | 'invisible'
   game: '',
@@ -58,7 +57,6 @@ function computeUserProfile(user) {
     name: user.display_name || user.username || defaultProfile.name,
     display_name: user.display_name || user.username || defaultProfile.name,
     username: user.username || defaultProfile.username,
-    tag: user.tag || defaultProfile.tag,
     avatar: userAvatar,
     avatar_url: userAvatar,
     status: user.status || savedData.status || 'online',

@@ -296,7 +296,7 @@ export const AddFriendModal = ({
           {/* TAB 1: Search & Add Friend */}
           {activeTab === 'search' && (
             <div className="space-y-4">
-              {/* My Personal Username & Tag Banner */}
+              {/* My Personal Username Banner */}
               <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 flex items-center justify-between">
                 <div className="flex items-center space-x-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">

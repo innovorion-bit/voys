@@ -269,14 +269,12 @@ class StanduppLocalEngine {
     const emailPrefix = safeEmail ? safeEmail.split('@')[0] : 'kullanici';
     const cleanUsername = (options?.data?.username || emailPrefix).trim().toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
     const displayName = options?.data?.display_name || options?.data?.username || emailPrefix;
-    const tag = (options?.data?.tag || String(Math.floor(1000 + Math.random() * 9000))).toString().replace(/[^0-9]/g, '').slice(0, 4) || '0001';
 
     const newUser = {
       id: `user-${Date.now().toString(36)}`,
       email: safeEmail || `${emailPrefix}@standupp.local`,
       password,
       username: cleanUsername,
-      tag,
       display_name: displayName,
       avatar_url: options?.data?.avatar_url || '',
       game: '',
@@ -314,7 +312,6 @@ class StanduppLocalEngine {
         email: safeEmail,
         password: password,
         username: emailPrefix.replace(/[^a-z0-9_]/g, '') || 'kullanici',
-        tag: '1001',
         display_name: emailPrefix,
         name: emailPrefix,
         avatar_url: '',
@@ -857,7 +854,6 @@ export const dbService = {
   async signUp(email, password, metadata = {}) {
     const rawUsername = (metadata.username || (email ? email.split('@')[0] : 'kullanici')).trim().toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
     const rawDisplayName = (metadata.display_name || metadata.username || rawUsername).trim();
-    const tag = (metadata.tag || String(Math.floor(1000 + Math.random() * 9000))).toString().replace(/[^0-9]/g, '').slice(0, 4) || '0001';
 
     if (isSupabaseConfigured) {
       const maxRetries = 2;
@@ -877,7 +873,6 @@ export const dbService = {
                 data: {
                   username: rawUsername,
                   display_name: rawDisplayName,
-                  tag: tag,
                   avatar_url: metadata.avatar_url || '',
                 },
               },
@@ -910,7 +905,6 @@ export const dbService = {
             this.ensureProfile(res.data.user, {
               username: rawUsername,
               display_name: rawDisplayName,
-              tag: tag,
               avatar_url: metadata.avatar_url || '',
             }).catch((err) => {
               console.warn('Supabase profile create background warning:', err);
@@ -947,7 +941,6 @@ export const dbService = {
           ...metadata, 
           username: rawUsername, 
           display_name: rawDisplayName, 
-          tag 
         } 
       } 
     });
@@ -2102,18 +2095,11 @@ export const dbService = {
       emailPrefix
     ).trim() || rawUsername;
 
-    const rawTag = (
-      user.user_metadata?.tag ||
-      metadata.tag ||
-      String(Math.floor(1000 + Math.random() * 9000))
-    ).toString().replace(/[^0-9]/g, '').slice(0, 4) || '0001';
-
     const avatarUrl = user.user_metadata?.avatar_url || metadata.avatar_url || metadata.avatar || '';
 
     let profileObj = {
       id: user.id,
       username: rawUsername,
-      tag: rawTag,
       display_name: rawDisplayName,
       name: rawDisplayName,
       avatar_url: avatarUrl,
@@ -2138,7 +2124,6 @@ export const dbService = {
           profileObj = {
             id: existing.id,
             username: existing.username || rawUsername,
-            tag: existing.tag || rawTag,
             display_name: existing.display_name || rawDisplayName,
             name: existing.display_name || rawDisplayName,
             avatar_url: existing.avatar_url || avatarUrl,
@@ -2150,7 +2135,6 @@ export const dbService = {
           };
 
           const updateFields = {};
-          if (!existing.tag && rawTag) updateFields.tag = rawTag;
           if (!existing.username && rawUsername) updateFields.username = rawUsername;
           if (!existing.display_name && rawDisplayName) updateFields.display_name = rawDisplayName;
           if (Object.keys(updateFields).length > 0) {
@@ -2163,30 +2147,22 @@ export const dbService = {
             id: user.id,
             username: rawUsername,
             display_name: rawDisplayName,
-            tag: rawTag,
             avatar_url: avatarUrl,
             status: 'online',
             substatus: 'Çevrimiçi',
             updated_at: new Date().toISOString(),
           };
 
-          let { data: inserted, error: insertErr } = await supabase
+          const { data: inserted } = await supabase
             .from('profiles')
             .upsert(insertPayload)
             .select()
             .maybeSingle();
 
-          if (insertErr && insertErr.message && insertErr.message.includes('tag')) {
-            delete insertPayload.tag;
-            const res = await supabase.from('profiles').upsert(insertPayload).select().maybeSingle();
-            inserted = res.data;
-          }
-
           if (inserted) {
             profileObj = {
               id: inserted.id,
               username: inserted.username || rawUsername,
-              tag: inserted.tag || rawTag,
               display_name: inserted.display_name || rawDisplayName,
               name: inserted.display_name || rawDisplayName,
               avatar_url: inserted.avatar_url,
@@ -2229,9 +2205,6 @@ export const dbService = {
     if (profileData.username !== undefined) {
       updatePayload.username = (profileData.username || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
     }
-    if (profileData.tag !== undefined) {
-      updatePayload.tag = (profileData.tag || '').toString().replace(/[^0-9]/g, '').slice(0, 4) || '0001';
-    }
     if (profileData.avatar !== undefined || profileData.avatar_url !== undefined) {
       updatePayload.avatar_url = profileData.avatar_url !== undefined ? profileData.avatar_url : profileData.avatar;
     }
@@ -2249,7 +2222,7 @@ export const dbService = {
 
     if (isSupabaseConfigured) {
       try {
-        let { data, error } = await withTimeout(
+        const { data, error } = await withTimeout(
           supabase
             .from('profiles')
             .update(updatePayload)
@@ -2260,29 +2233,11 @@ export const dbService = {
           'Profil güncelleme zaman aşımına uğradı.'
         );
 
-        // If tag column is not available in Supabase, retry without tag
-        if (error && error.message && error.message.includes('tag')) {
-          const fallbackPayload = { ...updatePayload };
-          delete fallbackPayload.tag;
-          const retryRes = await withTimeout(
-            supabase
-              .from('profiles')
-              .update(fallbackPayload)
-              .eq('id', userId)
-              .select()
-              .maybeSingle(),
-            8000
-          );
-          data = retryRes.data;
-          error = retryRes.error;
-        }
-
         if (!error && data) {
           returnedProfile = {
             id: data.id,
             name: data.display_name || data.username,
             username: data.username,
-            tag: data.tag || updatePayload.tag || '0001',
             avatar: data.avatar_url,
             game: data.game,
             substatus: data.substatus,
@@ -2301,7 +2256,6 @@ export const dbService = {
     localDb.updateUser(userId, {
       display_name: updatePayload.display_name,
       username: updatePayload.username,
-      tag: updatePayload.tag,
       avatar_url: updatePayload.avatar_url,
       game: updatePayload.game,
       substatus: updatePayload.substatus,
@@ -2332,7 +2286,6 @@ export const dbService = {
             name: resolvedName,
             display_name: resolvedName,
             username: data.username,
-            tag: data.tag || '0001',
             avatar: data.avatar_url,
             avatar_url: data.avatar_url,
             game: data.game,
@@ -2356,7 +2309,6 @@ export const dbService = {
         name: localName,
         display_name: localName,
         username: u.username,
-        tag: u.tag || '0001',
         avatar: u.avatar_url,
         avatar_url: u.avatar_url,
         game: u.game,
@@ -2413,96 +2365,44 @@ export const dbService = {
     }
     if (!rawQuery) return [];
 
-    let namePart = rawQuery;
-    let tagPart = null;
-
-    if (rawQuery.includes('#')) {
-      const parts = rawQuery.split('#');
-      namePart = parts[0].trim();
-      tagPart = parts[1].trim();
-    }
-
+    const namePart = rawQuery.includes('#') ? rawQuery.split('#')[0].trim() : rawQuery;
     const cleanName = namePart.replace(/İ/g, 'i').toLowerCase().replace(/[(),]/g, '');
-    const cleanTag = tagPart ? tagPart.replace(/İ/g, 'i').toLowerCase().replace(/[(),]/g, '') : null;
+    if (!cleanName) return [];
+
     const foundMap = new Map();
     let supabaseSearchError = null;
 
     // 1. Search in Supabase profiles if configured
     if (isSupabaseConfigured) {
       try {
-        let filterStr = '';
-        if (cleanTag && cleanName) {
-          filterStr = `and(username.ilike.%${cleanName}%,tag.eq.${cleanTag}),and(display_name.ilike.%${cleanName}%,tag.eq.${cleanTag})`;
-        } else if (cleanTag && !cleanName) {
-          filterStr = `tag.eq.${cleanTag}`;
-        } else if (cleanName) {
-          filterStr = `username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`;
+        const filterStr = `username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`;
+        const { data, error } = await withTimeout(
+          supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url, status, substatus')
+            .or(filterStr)
+            .limit(15),
+          8000,
+          'Kullanıcı araması zaman aşımına uğradı.'
+        );
+
+        if (error) {
+          throw new Error(error.message || 'Kullanıcı araması başarısız oldu.');
         }
 
-        if (filterStr) {
-          let { data, error } = await withTimeout(
-            supabase
-              .from('profiles')
-              .select('id, username, tag, display_name, avatar_url, status, substatus')
-              .or(filterStr)
-              .limit(15),
-            8000,
-            'Kullanıcı araması zaman aşımına uğradı.'
-          );
-
-          // Fallback: If user searched name#tag but no exact tag match was found, search by name only
-          if ((!data || data.length === 0) && cleanTag && cleanName) {
-            try {
-              const fallbackRes = await withTimeout(
-                supabase
-                  .from('profiles')
-                  .select('id, username, tag, display_name, avatar_url, status, substatus')
-                  .or(`username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`)
-                  .limit(15),
-                8000,
-                'Kullanıcı araması zaman aşımına uğradı.'
-              );
-              if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
-                data = fallbackRes.data;
-              }
-            } catch {}
-          }
-
-          // Fallback: If tag column does not exist in Supabase profiles yet
-          if (error && error.message && error.message.includes('tag') && cleanName) {
-            const fallbackFilter = `username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`;
-            const res = await withTimeout(
-              supabase
-                .from('profiles')
-                .select('id, username, display_name, avatar_url, status, substatus')
-                .or(fallbackFilter)
-                .limit(15),
-              8000,
-              'Kullanıcı araması zaman aşımına uğradı.'
-            );
-            data = res.data;
-            error = res.error;
-          }
-
-          if (error) {
-            throw new Error(error.message || 'Kullanıcı araması başarısız oldu.');
-          }
-
-          if (Array.isArray(data)) {
-            cacheUserProfiles(data);
-            data.forEach((u) => {
-              if (u.id !== currentUserId) {
-                foundMap.set(u.id, {
-                  id: u.id,
-                  name: pickDisplayName([u.display_name, u.username], 'Kullanıcı'),
-                  username: (!isUuidLike(u.username) && u.username) || 'user',
-                  tag: u.tag || '0001',
-                  avatar: u.avatar_url,
-                  status: u.status || 'offline',
-                });
-              }
-            });
-          }
+        if (Array.isArray(data)) {
+          cacheUserProfiles(data);
+          data.forEach((u) => {
+            if (u.id !== currentUserId) {
+              foundMap.set(u.id, {
+                id: u.id,
+                name: pickDisplayName([u.display_name, u.username], 'Kullanıcı'),
+                username: (!isUuidLike(u.username) && u.username) || 'user',
+                avatar: u.avatar_url,
+                status: u.status || 'offline',
+              });
+            }
+          });
         }
       } catch (err) {
         supabaseSearchError = err;
@@ -2516,26 +2416,12 @@ export const dbService = {
       if (u.id !== currentUserId && !foundMap.has(u.id)) {
         const uName = (u.username || '').replace(/İ/g, 'i').toLowerCase();
         const uDisp = (u.display_name || '').replace(/İ/g, 'i').toLowerCase();
-        const uTag = (u.tag || '0001').replace(/İ/g, 'i').toLowerCase();
 
-        let matches = false;
-        if (cleanTag && cleanName) {
-          matches = (uName.includes(cleanName) || uDisp.includes(cleanName)) && (uTag === cleanTag || !tagPart);
-          if (!matches) {
-            matches = uName.includes(cleanName) || uDisp.includes(cleanName);
-          }
-        } else if (cleanTag && !cleanName) {
-          matches = uTag === cleanTag;
-        } else {
-          matches = uName.includes(cleanName) || uDisp.includes(cleanName) || uTag.includes(cleanName);
-        }
-
-        if (matches) {
+        if (uName.includes(cleanName) || uDisp.includes(cleanName)) {
           foundMap.set(u.id, {
             id: u.id,
             name: pickDisplayName([u.display_name, u.username], 'Kullanıcı'),
             username: (!isUuidLike(u.username) && u.username) || 'user',
-            tag: u.tag || '0001',
             avatar: u.avatar_url,
             status: u.status || 'offline',
           });
@@ -2828,7 +2714,7 @@ export const dbService = {
             const { data: profiles } = await withTimeout(
               supabase
                 .from('profiles')
-                .select('id, username, tag, display_name, avatar_url, game, substatus, status')
+                .select('id, username, display_name, avatar_url, game, substatus, status')
                 .in('id', otherIds),
               8000,
               'Arkadaş profilleri alınırken zaman aşımı oluştu.'
@@ -2868,7 +2754,6 @@ export const dbService = {
           const prof = profileMap.get(otherId) || cached || {
             id: otherId,
             username: 'user',
-            tag: '0001',
             display_name: 'Kullanıcı',
             status: 'offline',
           };
@@ -2885,7 +2770,6 @@ export const dbService = {
             name: resolvedName,
             display_name: resolvedName,
             username: (!isUuidLike(prof.username) && prof.username) || cached?.username || 'user',
-            tag: prof.tag || cached?.tag || '0001',
             avatar: resolvedAvatar,
             avatar_url: resolvedAvatar,
             game: null,
@@ -2928,7 +2812,6 @@ export const dbService = {
         id: otherId,
         name: u.display_name || u.username || 'Kullanıcı',
         username: u.username,
-        tag: u.tag || '0001',
         avatar: u.avatar_url || null,
         game: null,
         substatus: '',

@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Search,
   X,
-  Hash,
   Settings2,
   UserPlus,
   Gamepad2,
@@ -639,7 +638,7 @@ export const Sidebar = ({
     }
   };
 
-  const handleCopyTag = () => {
+  const handleCopyUsername = () => {
     const username = currentUserProfile?.username || 'user';
     const text = `@${username}`;
     if (navigator.clipboard?.writeText) {
@@ -720,8 +719,7 @@ export const Sidebar = ({
         f.name?.toLowerCase().includes(q) ||
         f.username?.toLowerCase().includes(q) ||
         f.game?.toLowerCase().includes(q) ||
-        f.substatus?.toLowerCase().includes(q) ||
-        (f.tag && String(f.tag).includes(q))
+        f.substatus?.toLowerCase().includes(q)
       );
     }
     return list.sort((a, b) => {
@@ -827,11 +825,6 @@ export const Sidebar = ({
                         <span className="text-xs font-semibold text-white truncate">
                           {friend.name}
                         </span>
-                        {friend.tag && (
-                          <span className="text-[10px] text-gray-400 font-mono">
-                            #{friend.tag}
-                          </span>
-                        )}
                       </div>
                       <div className="text-[11px] truncate mt-0.5">
                         {friend.game ? (
@@ -1007,7 +1000,7 @@ export const Sidebar = ({
                   )}
                 </div>
 
-                {/* Current User Tag info card */}
+                {/* Current User Username info card */}
                 <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
                   <div className="min-w-0 pr-2">
                     <p className="text-[10px] text-gray-400 font-medium">Senin Kullanıcı Adın</p>
@@ -1017,7 +1010,7 @@ export const Sidebar = ({
                   </div>
                   <button
                     type="button"
-                    onClick={handleCopyTag}
+                    onClick={handleCopyUsername}
                     className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition flex items-center space-x-1 text-[11px] font-medium border border-white/10 flex-shrink-0"
                     title="Kullanıcı Adını Kopyala"
                   >

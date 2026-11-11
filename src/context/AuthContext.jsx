@@ -52,11 +52,6 @@ export const AuthProvider = ({ children }) => {
       rawUser.user_metadata?.name ||
       profileData?.name ||
       rawUsername;
-    const rawTag =
-      profileData?.tag ||
-      rawUser.user_metadata?.tag ||
-      rawUser.tag ||
-      '1001';
     const rawAvatar =
       profileData?.avatar_url ||
       profileData?.avatar ||
@@ -74,7 +69,6 @@ export const AuthProvider = ({ children }) => {
       username: rawUsername,
       display_name: rawDisplayName,
       name: rawDisplayName,
-      tag: rawTag,
       avatar: rawAvatar,
       avatar_url: rawAvatar,
     };
@@ -220,12 +214,10 @@ export const AuthProvider = ({ children }) => {
       const cleanEmail = (email || '').trim().toLowerCase();
       const safeUsername = (username || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
       const safeDisplayName = displayName?.trim() || safeUsername;
-      const tag = String(Math.floor(1000 + Math.random() * 9000));
 
       const { data, error } = await dbService.signUp(cleanEmail, password, {
         username: safeUsername,
         display_name: safeDisplayName,
-        tag,
       });
 
       if (error) {
@@ -236,11 +228,10 @@ export const AuthProvider = ({ children }) => {
             email: cleanEmail,
             username: safeUsername,
             display_name: safeDisplayName,
-            tag,
             status: 'online',
             substatus: 'Çevrimiçi',
           };
-          await dbService.ensureProfile(fallbackUser, { username: safeUsername, display_name: safeDisplayName, tag });
+          await dbService.ensureProfile(fallbackUser, { username: safeUsername, display_name: safeDisplayName });
           setUser(fallbackUser);
           setSession({ user: fallbackUser });
           await resizeToMainWindow();
@@ -259,7 +250,6 @@ export const AuthProvider = ({ children }) => {
               data: {
                 username: safeUsername,
                 display_name: safeDisplayName,
-                tag,
               },
             },
           });

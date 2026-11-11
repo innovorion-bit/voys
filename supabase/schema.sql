@@ -7,7 +7,6 @@
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   username text,
-  tag text default '0001',
   display_name text,
   avatar_url text,
   game text default '',
@@ -19,11 +18,8 @@ create table if not exists public.profiles (
 
 -- Backward compatibility columns
 alter table public.profiles add column if not exists email text;
-alter table public.profiles add column if not exists tag text default '0001';
-
--- Allow same username with different tags
-alter table public.profiles drop constraint if exists profiles_username_key;
-create unique index if not exists profiles_username_tag_idx on public.profiles (lower(username), tag);
+drop index if exists public.profiles_username_tag_idx;
+alter table public.profiles drop column if exists tag;
 
 -- Enable Row Level Security
 alter table public.profiles enable row level security;
@@ -53,16 +49,13 @@ create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   raw_user_name text;
-  clean_tag text;
 begin
   raw_user_name := coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1), 'kullanici');
-  clean_tag := coalesce(new.raw_user_meta_data->>'tag', lpad((floor(random() * 9000 + 1000))::text, 4, '0'));
   
-  insert into public.profiles (id, username, tag, display_name, avatar_url, email)
+  insert into public.profiles (id, username, display_name, avatar_url, email)
   values (
     new.id,
     raw_user_name,
-    clean_tag,
     coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'name', raw_user_name),
     coalesce(new.raw_user_meta_data->>'avatar_url', ''),
     new.email
@@ -70,7 +63,6 @@ begin
   on conflict (id) do update set
     email = excluded.email,
     username = coalesce(public.profiles.username, excluded.username),
-    tag = coalesce(public.profiles.tag, excluded.tag),
     display_name = coalesce(public.profiles.display_name, excluded.display_name);
   return new;
 end;
