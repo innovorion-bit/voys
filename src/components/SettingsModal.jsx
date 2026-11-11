@@ -24,8 +24,6 @@ import {
   Calendar,
   Lock,
   KeyRound,
-  Eye,
-  EyeOff,
   Mail,
   AtSign,
   ChevronDown,
@@ -194,7 +192,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   // Password update form state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
@@ -725,11 +722,10 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
             type="button"
             onClick={handleClose}
             className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition cursor-pointer select-none group"
-            title="Sohbetlere Dön (ESC)"
+            title="Sohbetlere Dön"
           >
             <ArrowLeft size={16} className="text-gray-400 group-hover:text-white transition group-hover:-translate-x-0.5" />
             <span>Sohbetlere Dön</span>
-            <span className="ml-auto text-[10px] text-gray-500 font-normal px-1.5 py-0.5 rounded border border-white/10">ESC</span>
           </button>
         </div>
       </div>
@@ -967,22 +963,13 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Yeni Şifre */}
                     <div>
-                      <label className="text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between">
-                        <span>Yeni Şifre</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-gray-400 hover:text-white text-[11px] flex items-center space-x-1 cursor-pointer"
-                        >
-                          {showPassword ? <EyeOff size={12} /> : <Eye size={12} />}
-                          <span>{showPassword ? 'Gizle' : 'Göster'}</span>
-                        </button>
+                      <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                        Yeni Şifre
                       </label>
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="••••••••"
                         className="w-full bg-[#1e1f22] border border-black/40 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#8B51FF] transition"
                       />
                     </div>
@@ -993,10 +980,9 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         Yeni Şifre (Tekrar)
                       </label>
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
                         className="w-full bg-[#1e1f22] border border-black/40 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#8B51FF] transition"
                       />
                     </div>
