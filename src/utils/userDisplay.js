@@ -150,3 +150,132 @@ export const cacheUserProfiles = (profiles = []) => {
     // Ignore localStorage quota/privacy errors
   }
 };
+
+/**
+ * Splits a group channel's members between active voice-chat participants and
+ * remaining group members so the same user is not shown in both sidebar sections.
+ */
+export const partitionSidebarGroupMembers = ({
+  effectiveMembers = [],
+  callMembers = [],
+  isCallActive = false,
+  isInCall = false,
+  currentUser = null,
+  callInitiator = null,
+} = {}) => {
+  const safeMembers = Array.isArray(effectiveMembers) ? effectiveMembers : [];
+  const hasCallMembers = Array.isArray(callMembers) && callMembers.length > 0;
+  const showVoiceSection = Boolean(isCallActive || isInCall || hasCallMembers);
+
+  if (!showVoiceSection) {
+    return {
+      showVoiceSection: false,
+      voiceMembers: [],
+      groupMembers: safeMembers,
+    };
+  }
+
+  const rawVoiceList = hasCallMembers
+    ? callMembers
+    : isInCall && currentUser
+      ? [currentUser]
+      : callInitiator
+        ? [callInitiator]
+        : [];
+
+  const effectiveById = new Map();
+  const effectiveByUsername = new Map();
+
+  safeMembers.forEach((member) => {
+    if (!member) return;
+    const mId = member.id || member.user_id || member.userId;
+    if (mId) {
+      effectiveById.set(String(mId), member);
+    }
+    if (typeof member.username === 'string' && member.username.trim() && !isUuidLike(member.username)) {
+      effectiveByUsername.set(member.username.trim().toLowerCase(), member);
+    }
+  });
+
+  const voiceIdSet = new Set();
+  const voiceUsernameSet = new Set();
+  const seenVoiceKeys = new Set();
+  const voiceMembers = [];
+
+  rawVoiceList.forEach((cm) => {
+    if (!cm) return;
+
+    const rawId = cm.id || cm.user_id || cm.userId;
+    const rawUsername =
+      typeof cm.username === 'string' && cm.username.trim() && !isUuidLike(cm.username)
+        ? cm.username.trim().toLowerCase()
+        : '';
+
+    let matchedMember = rawId ? effectiveById.get(String(rawId)) || null : null;
+    if (!matchedMember && rawUsername) {
+      matchedMember = effectiveByUsername.get(rawUsername) || null;
+    }
+
+    // Fallback when remote WebRTC peer metadata hasn't resolved to a user UUID yet:
+    // only match by display name if unambiguous across group members.
+    if (!matchedMember && isRealDisplayName(cm.name)) {
+      const targetName = cm.name.trim().toLowerCase();
+      const nameMatches = safeMembers.filter((em) => {
+        const emName = typeof em.name === 'string' ? em.name.trim().toLowerCase() : '';
+        const emUser = typeof em.username === 'string' ? em.username.trim().toLowerCase() : '';
+        return emName === targetName || emUser === targetName;
+      });
+      if (nameMatches.length === 1) {
+        matchedMember = nameMatches[0];
+      }
+    }
+
+    const canonicalId = matchedMember
+      ? String(matchedMember.id || matchedMember.user_id || matchedMember.userId)
+      : rawId
+        ? String(rawId)
+        : '';
+
+    const dedupeKey = canonicalId || (cm.peerId ? `peer:${String(cm.peerId)}` : '');
+    if (dedupeKey) {
+      if (seenVoiceKeys.has(dedupeKey)) return;
+      seenVoiceKeys.add(dedupeKey);
+    }
+
+    if (canonicalId) voiceIdSet.add(canonicalId);
+    if (rawId) voiceIdSet.add(String(rawId));
+    if (rawUsername) voiceUsernameSet.add(rawUsername);
+    if (matchedMember?.username && !isUuidLike(matchedMember.username)) {
+      voiceUsernameSet.add(matchedMember.username.trim().toLowerCase());
+    }
+
+    voiceMembers.push(
+      matchedMember
+        ? {
+            ...cm,
+            id: matchedMember.id || cm.id,
+            role: cm.role || matchedMember.role,
+            username: cm.username || matchedMember.username || '',
+            avatar: cm.avatar || matchedMember.avatar || '',
+          }
+        : cm
+    );
+  });
+
+  const groupMembers = safeMembers.filter((member) => {
+    if (!member) return false;
+    const mId = member.id || member.user_id || member.userId;
+    if (mId && voiceIdSet.has(String(mId))) return false;
+    if (typeof member.username === 'string' && member.username.trim() && !isUuidLike(member.username)) {
+      if (voiceUsernameSet.has(member.username.trim().toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  return {
+    showVoiceSection: true,
+    voiceMembers,
+    groupMembers,
+  };
+};
+

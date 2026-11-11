@@ -118,7 +118,7 @@ import { VoiceControls } from './VoiceControls';
 import { ScreenShareStage } from './ScreenShareStage';
 import { InChatCallStage } from './InChatCallStage';
 import { dbService } from '../lib/supabase';
-import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike } from '../utils/userDisplay';
+import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike, partitionSidebarGroupMembers } from '../utils/userDisplay';
 
 // Helper to format file sizes nicely
 function formatFileSize(bytes) {
@@ -565,6 +565,23 @@ export const ChatArea = ({
 
   const onlineMembers = effectiveMembers.filter((m) => m.isOnline);
   const offlineMembers = effectiveMembers.filter((m) => !m.isOnline);
+
+  // Split sidebar display so voice-chat participants appear only under SESLİ SOHBET
+  // and remaining members appear under GRUP ÜYELERİ.
+  const {
+    showVoiceSection,
+    voiceMembers: sidebarVoiceMembers,
+    groupMembers: sidebarGroupMembers,
+  } = partitionSidebarGroupMembers({
+    effectiveMembers,
+    callMembers,
+    isCallActive,
+    isInCall,
+    currentUser,
+    callInitiator,
+  });
+  const sidebarOnlineMembers = sidebarGroupMembers.filter((m) => m.isOnline);
+  const sidebarOfflineMembers = sidebarGroupMembers.filter((m) => !m.isOnline);
 
   // Right sidebar inline add-member state
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -2528,7 +2545,7 @@ export const ChatArea = ({
         {!isDmMode && hasActiveChat && (
           <aside className="w-56 md:w-64 flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e]/95 voys-glass-right-panel backdrop-blur-md flex flex-col select-none overflow-y-auto p-3 space-y-3.5 z-10 animate-in slide-in-from-right duration-150 custom-scrollbar">
             {/* Sesli Sohbette Olan Kişiler (Yalnızca sesli sohbette birileri varken gösterilir) */}
-            {(isCallActive || isInCall || (callMembers && callMembers.length > 0)) && (
+            {showVoiceSection && (
               <div className="space-y-1.5 pb-2.5 border-b border-white/10 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
@@ -2537,13 +2554,13 @@ export const ChatArea = ({
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                     </span>
                     <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                      SESLİ SOHBET — {callMembers?.length || 1}
+                      SESLİ SOHBET — {sidebarVoiceMembers.length}
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  {(callMembers && callMembers.length > 0 ? callMembers : (currentUser ? [currentUser] : [])).map((m, idx) => {
+                  {sidebarVoiceMembers.map((m, idx) => {
                     const isMe = m.id === currentUser?.id;
                     const pref = !isMe
                       ? (peerAudioPrefs[String(m.id)] || (m.peerId ? peerAudioPrefs[String(m.peerId)] : null))
@@ -2575,6 +2592,9 @@ export const ChatArea = ({
                             <span className="text-xs font-semibold text-gray-100 group-hover:text-white truncate">
                               {m.name || 'Katılımcı'}
                             </span>
+                            {m.role === 'admin' && (
+                              <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                            )}
                             {isMe && (
                               <span className="text-[10px] text-gray-400 font-semibold">(Sen)</span>
                             )}
@@ -2815,7 +2835,7 @@ export const ChatArea = ({
                 {/* Header: GRUP ÜYELERİ */}
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                    Grup Üyeleri — {effectiveMembers.length}
+                    Grup Üyeleri — {sidebarGroupMembers.length}
                   </span>
                   <button
                     type="button"
@@ -2828,24 +2848,29 @@ export const ChatArea = ({
                   </button>
                 </div>
 
-                {/* Tüm Grup Üyeleri (Tek Liste) */}
+                {/* Sesli Sohbette Olmayan Grup Üyeleri */}
                 <div className="space-y-1">
-                  {[...onlineMembers, ...offlineMembers].map((member) => (
-                    <div
-                      key={member.id}
-                      onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
-                      title="Seçenekler için sağ tıklayın"
-                      className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
-                        !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
-                      }`}
-                    >
-                      <UserAvatar
-                        user={member}
-                        size="sm"
-                        isSpeaking={false}
-                        showStatus={true}
-                        status={member.isOnline ? member.status : 'offline'}
-                      />
+                  {sidebarGroupMembers.length === 0 ? (
+                    <div className="py-3 px-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-500 text-center">
+                      Tüm grup üyeleri sesli sohbette.
+                    </div>
+                  ) : (
+                    [...sidebarOnlineMembers, ...sidebarOfflineMembers].map((member) => (
+                      <div
+                        key={member.id}
+                        onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                        title="Seçenekler için sağ tıklayın"
+                        className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
+                          !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
+                        }`}
+                      >
+                        <UserAvatar
+                          user={member}
+                          size="sm"
+                          isSpeaking={false}
+                          showStatus={true}
+                          status={member.isOnline ? member.status : 'offline'}
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-1">
                             <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
@@ -2876,7 +2901,8 @@ export const ChatArea = ({
                           )}
                         </div>
                       </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </>
             )}
