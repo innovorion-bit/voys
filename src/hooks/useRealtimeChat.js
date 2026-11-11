@@ -5,6 +5,7 @@ import { initialChatMessages, initialDmMessages } from '../data/mockData';
 import { sounds } from '../utils/audio';
 import { pickDisplayName } from '../utils/userDisplay';
 import { isDirectMessageForPair, normalizeParticipantId, parseDmRoomPair } from '../utils/dmIsolation';
+import { purgeUserFromMessagesMap } from '../utils/userPurge';
 
 // Helper to format current timestamp (HH:mm only)
 const formatTimestamp = () => {
@@ -566,6 +567,20 @@ export const useRealtimeChat = (
       }
     });
 
+    const handleAccountDeleted = (payload) => {
+      const deletedId = payload?.userId;
+      if (!deletedId) return;
+      const myNorm = normalizeParticipantId(currentUserRef.current?.id);
+      const targetNorm = normalizeParticipantId(deletedId);
+      if (myNorm && targetNorm && myNorm === targetNorm) {
+        receivedMsgIdsRef.current?.clear?.();
+        setMessagesByChannel({});
+        return;
+      }
+      setMessagesByChannel((prev) => purgeUserFromMessagesMap(prev, deletedId));
+    };
+    chatService.on('account_deleted', handleAccountDeleted);
+
     return () => {
       isCancelled = true;
       clearInterval(pollInterval);
@@ -574,6 +589,7 @@ export const useRealtimeChat = (
       chatService.off('reaction', handleReaction);
       chatService.off('typing', handleTyping);
       chatService.off('connected', handleConnected);
+      chatService.off('account_deleted', handleAccountDeleted);
       unsubChannel?.();
       unsubDm?.();
     };
@@ -590,6 +606,18 @@ export const useRealtimeChat = (
     }));
   }, [channelId]);
 
+  const purgeUserMessages = useCallback((targetUserId) => {
+    if (!targetUserId) return;
+    const myNorm = normalizeParticipantId(currentUserRef.current?.id);
+    const targetNorm = normalizeParticipantId(targetUserId);
+    if (myNorm && targetNorm && myNorm === targetNorm) {
+      receivedMsgIdsRef.current?.clear?.();
+      setMessagesByChannel({});
+      return;
+    }
+    setMessagesByChannel((prev) => purgeUserFromMessagesMap(prev, targetUserId));
+  }, []);
+
   return {
     messages: currentMessages,
     sendMessage,
@@ -598,5 +626,6 @@ export const useRealtimeChat = (
     typingUsers,
     isChatConnected: isConnected,
     clearMessages,
+    purgeUserMessages,
   };
 };

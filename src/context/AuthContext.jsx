@@ -4,6 +4,36 @@ import { AuthContext } from './authContextDef';
 import { supabase, dbService, localDb, isSupabaseConfigured, ADMIN_USER_ID, ADMIN_EMAIL } from '../lib/supabase';
 import { chatService } from '../services/chatService';
 import { resizeToMainWindow, resizeToLoginWindow } from '../utils/windowManager';
+import { normalizeUserId, purgeUserFromStorage } from '../utils/userPurge';
+
+const isDefinitiveMissingUserAuthError = (error) => {
+  if (!error) return false;
+  const status = Number(error.status || error.statusCode || 0);
+  const msg = String(error.message || '').toLowerCase();
+  const code = String(error.code || '').toLowerCase();
+
+  if (
+    error.isNetworkOrTimeout ||
+    msg.includes('failed to fetch') ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('zaman aşımı')
+  ) {
+    return false;
+  }
+
+  return (
+    code === 'user_not_found' ||
+    code === 'session_not_found' ||
+    code === 'session_expired' ||
+    msg.includes('user from sub claim in jwt does not exist') ||
+    msg.includes('user not found') ||
+    msg.includes('session from session_id claim in jwt does not exist') ||
+    status === 401 ||
+    status === 403 ||
+    status === 404
+  );
+};
 
 function getAuthErrorMessage(error) {
   if (!error) return 'Bir hata oluştu.';
@@ -35,6 +65,39 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const isMountedRef = useRef(true);
+  const handlingAccountDeletionRef = useRef(false);
+  const lastServerUserCheckRef = useRef(0);
+
+  const forceDeletedAccountLogout = useCallback(async (targetUserId) => {
+    if (handlingAccountDeletionRef.current) return;
+    handlingAccountDeletionRef.current = true;
+    try {
+      chatService.leavePresence?.();
+      await dbService.signOut();
+      if (targetUserId) {
+        purgeUserFromStorage(targetUserId);
+      }
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setIsPasswordRecovery(false);
+      }
+      await resizeToLoginWindow();
+      toast.error('Hesabınız Kaldırıldı', {
+        description: 'Bu Voys hesabı sistem yöneticisi tarafından kalıcı olarak silindi.',
+      });
+    } catch (err) {
+      console.error('forceDeletedAccountLogout error:', err);
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setIsPasswordRecovery(false);
+      }
+      await resizeToLoginWindow();
+    } finally {
+      handlingAccountDeletionRef.current = false;
+    }
+  }, []);
 
   // Helper to construct a normalized user object
   const buildNormalizedUser = useCallback((rawUser, profileData = null) => {
@@ -101,14 +164,32 @@ export const AuthProvider = ({ children }) => {
             supabase.auth.refreshSession().catch(() => {});
           }
 
-          // Fetch fresh profile in background
-          dbService.ensureProfile(currentSession.user)
-            .then((profileData) => {
-              if (isMountedRef.current && profileData) {
-                setUser((prev) => (prev ? buildNormalizedUser(prev, profileData) : prev));
-              }
-            })
-            .catch(() => {});
+          // Verify account still exists on server before syncing profile (never signs out on offline/network errors)
+          if (isSupabaseConfigured && supabase?.auth?.getUser) {
+            supabase.auth.getUser()
+              .then(({ error: userCheckError }) => {
+                if (userCheckError && isDefinitiveMissingUserAuthError(userCheckError)) {
+                  forceDeletedAccountLogout(currentSession.user.id);
+                  return null;
+                }
+                return dbService.ensureProfile(currentSession.user);
+              })
+              .then((profileData) => {
+                if (isMountedRef.current && profileData) {
+                  setUser((prev) => (prev ? buildNormalizedUser(prev, profileData) : prev));
+                }
+              })
+              .catch(() => {});
+          } else {
+            // Fetch fresh profile in background
+            dbService.ensureProfile(currentSession.user)
+              .then((profileData) => {
+                if (isMountedRef.current && profileData) {
+                  setUser((prev) => (prev ? buildNormalizedUser(prev, profileData) : prev));
+                }
+              })
+              .catch(() => {});
+          }
         } else {
           setLoading(false);
         }
@@ -155,10 +236,28 @@ export const AuthProvider = ({ children }) => {
           })
           .catch((e) => console.warn('ensureProfile sync warning:', e));
 
-        // Subscribe to live profile changes
+        // Subscribe to live profile changes & deletion
         unsubProfiles?.();
         unsubProfiles = dbService.subscribeToTable('profiles', (payload) => {
-          if (payload?.new && payload.new.id === currentUser.id && isMountedRef.current) {
+          if (!isMountedRef.current) return;
+          if (
+            payload?.eventType === 'DELETE' &&
+            normalizeUserId(payload?.old?.id) === normalizeUserId(currentUser.id)
+          ) {
+            if (isSupabaseConfigured && supabase?.auth?.getUser) {
+              supabase.auth.getUser()
+                .then(({ error: userCheckError }) => {
+                  if (userCheckError && isDefinitiveMissingUserAuthError(userCheckError)) {
+                    forceDeletedAccountLogout(currentUser.id);
+                  }
+                })
+                .catch(() => {});
+            } else {
+              forceDeletedAccountLogout(currentUser.id);
+            }
+            return;
+          }
+          if (payload?.new && payload.new.id === currentUser.id) {
             setUser((prev) => (prev ? buildNormalizedUser(prev, payload.new) : prev));
           }
         });
@@ -175,7 +274,7 @@ export const AuthProvider = ({ children }) => {
       subscription?.unsubscribe?.();
       unsubProfiles?.();
     };
-  }, [buildNormalizedUser]);
+  }, [buildNormalizedUser, forceDeletedAccountLogout]);
 
   // Login handler
   const login = useCallback(async (email, password) => {
@@ -378,6 +477,51 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: { message: errorText } };
     }
   }, []);
+
+  // Listen for immediate account deletion broadcasts & verify session on window focus
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const currentId = user.id;
+
+    const handleAccountDeleted = (payload) => {
+      if (normalizeUserId(payload?.userId) === normalizeUserId(currentId)) {
+        forceDeletedAccountLogout(currentId);
+      }
+    };
+    chatService.on('account_deleted', handleAccountDeleted);
+
+    const verifyActiveUser = () => {
+      if (!isSupabaseConfigured || !supabase?.auth?.getUser) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const now = Date.now();
+      if (now - lastServerUserCheckRef.current < 30000) return;
+      lastServerUserCheckRef.current = now;
+      supabase.auth.getUser()
+        .then(({ error: userCheckError }) => {
+          if (userCheckError && isDefinitiveMissingUserAuthError(userCheckError)) {
+            forceDeletedAccountLogout(currentId);
+          }
+        })
+        .catch(() => {});
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', verifyActiveUser);
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', verifyActiveUser);
+    }
+
+    return () => {
+      chatService.off('account_deleted', handleAccountDeleted);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', verifyActiveUser);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', verifyActiveUser);
+      }
+    };
+  }, [user?.id, forceDeletedAccountLogout]);
 
   // Logout handler
   const logout = useCallback(async () => {

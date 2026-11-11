@@ -96,7 +96,7 @@ export const UKFlag = ({ className = "w-5 h-3.5" }) => (
   </svg>
 );
 
-export const SettingsModal = ({ onLogout = null }) => {
+export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   const { user: authUser, updateEmail, updatePassword } = useAuth();
   const {
     profile,
@@ -2429,7 +2429,7 @@ export const SettingsModal = ({ onLogout = null }) => {
 
           {/* TAB 5: SİSTEM & İZLEME (ADMIN ONLY) */}
           {activeTab === 'system_monitor' && isAdmin && (
-            <AdminMonitorTab />
+            <AdminMonitorTab onUserDeleted={onUserDeleted} />
           )}
         </div>
       </div>

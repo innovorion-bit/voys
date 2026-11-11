@@ -358,3 +358,81 @@ create index if not exists idx_channel_messages_channel_id_sent_at on public.cha
 create index if not exists idx_friendships_user_id on public.friendships (user_id);
 create index if not exists idx_friendships_friend_id on public.friendships (friend_id);
 
+-- Helper RPC for Edge Function admin-delete-user (service_role only)
+create or replace function public.admin_get_user_storage_objects(p_user_id uuid)
+returns table (
+  bucket_id text,
+  object_name text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  c_admin_id constant uuid := 'ba1e9bcb-ed19-4b81-8a29-2a8c89077f1a'::uuid;
+begin
+  if current_user not in ('service_role', 'postgres', 'supabase_admin') then
+    raise exception 'Forbidden: service_role required';
+  end if;
+
+  if p_user_id is null then
+    raise exception 'p_user_id is required';
+  end if;
+
+  if p_user_id = c_admin_id then
+    raise exception 'Forbidden: primary admin cannot be deleted';
+  end if;
+
+  return query
+  select distinct sub.bucket_id, sub.object_name
+  from (
+    select
+      o.bucket_id::text as bucket_id,
+      o.name::text as object_name
+    from storage.objects o
+    where o.owner = p_user_id
+       or o.owner_id = p_user_id::text
+       or (o.bucket_id = 'avatars' and o.name like p_user_id::text || '/%')
+
+    union all
+
+    select
+      'avatars'::text as bucket_id,
+      regexp_replace(split_part(p.avatar_url, '/storage/v1/object/public/avatars/', 2), '[\?#].*$', '') as object_name
+    from public.profiles p
+    where p.id = p_user_id
+      and p.avatar_url like '%/storage/v1/object/public/avatars/%'
+
+    union all
+
+    select
+      'chat-attachments'::text as bucket_id,
+      regexp_replace(split_part(att->>'url', '/storage/v1/object/public/chat-attachments/', 2), '[\?#].*$', '') as object_name
+    from public.channel_messages cm,
+         lateral jsonb_array_elements(
+           case when jsonb_typeof(cm.attachments) = 'array' then cm.attachments else '[]'::jsonb end
+         ) as att
+    where cm.sender_id = p_user_id::text
+      and (att->>'url') like '%/storage/v1/object/public/chat-attachments/%'
+
+    union all
+
+    select
+      'chat-attachments'::text as bucket_id,
+      regexp_replace(split_part(att->>'url', '/storage/v1/object/public/chat-attachments/', 2), '[\?#].*$', '') as object_name
+    from public.direct_messages dm,
+         lateral jsonb_array_elements(
+           case when jsonb_typeof(dm.attachments) = 'array' then dm.attachments else '[]'::jsonb end
+         ) as att
+    where (dm.sender_id = p_user_id::text or dm.receiver_id = p_user_id::text)
+      and (att->>'url') like '%/storage/v1/object/public/chat-attachments/%'
+  ) sub
+  where sub.object_name is not null
+    and sub.object_name <> '';
+end;
+$$;
+
+revoke all on function public.admin_get_user_storage_objects(uuid) from public, anon, authenticated;
+grant execute on function public.admin_get_user_storage_objects(uuid) to service_role;
+

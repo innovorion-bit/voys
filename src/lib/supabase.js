@@ -10,6 +10,7 @@ import {
   sanitizeDmMessagesList,
   sanitizeDmMessagesMap,
 } from '../utils/dmIsolation';
+import { isProtectedAdminIdentity, purgeUserFromStorage } from '../utils/userPurge';
 
 // Retrieve environment variables from Vite
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -626,6 +627,24 @@ class StanduppLocalEngine {
   saveChannelMembers(list) {
     this.setItem('standupp_db_channel_members', list);
     this.notifyTable('channel_members', { eventType: 'UPDATE', new: list });
+  }
+
+  purgeUserData(userId) {
+    const summary = purgeUserFromStorage(userId);
+    if (summary.updatedKeys.includes('standupp_db_friendships')) {
+      this.notifyTable('friendships', { eventType: 'DELETE', old: { id: userId, user_id: userId } });
+    }
+    if (summary.updatedKeys.includes('standupp_db_channel_members')) {
+      this.notifyTable('channel_members', { eventType: 'DELETE', old: { user_id: userId } });
+    }
+    if (summary.updatedKeys.includes('standupp_db_dm_msgs')) {
+      this.notifyTable('direct_messages', { eventType: 'DELETE', old: { sender_id: userId, receiver_id: userId } });
+    }
+    if (summary.updatedKeys.includes('standupp_db_channel_msgs')) {
+      this.notifyTable('channel_messages', { eventType: 'DELETE', old: { sender_id: userId } });
+    }
+    this.notifyTable('profiles', { eventType: 'DELETE', old: { id: userId } });
+    return summary;
   }
 }
 
@@ -2153,11 +2172,16 @@ export const dbService = {
             updated_at: new Date().toISOString(),
           };
 
-          const { data: inserted } = await supabase
+          const { data: inserted, error: insertError } = await supabase
             .from('profiles')
             .upsert(insertPayload)
             .select()
             .maybeSingle();
+
+          if (insertError?.code === '23503') {
+            console.warn('ensureProfile aborted: auth user no longer exists (23503)');
+            return null;
+          }
 
           if (inserted) {
             profileObj = {
@@ -3117,6 +3141,47 @@ export const dbService = {
       throw new Error(await unwrapFunctionError(error, 'Depolama temizliği çalıştırılamadı.'));
     }
     return data;
+  },
+
+  purgeLocalUserData(userId) {
+    return localDb.purgeUserData(userId);
+  },
+
+  async deleteUserAccount(userId) {
+    const cleanId = typeof userId === 'string' ? userId.trim() : '';
+    if (!cleanId) {
+      throw new Error('Silinecek kullanıcı ID geçersiz.');
+    }
+    if (isProtectedAdminIdentity(cleanId) || cleanId.toLowerCase() === ADMIN_USER_ID) {
+      throw new Error('Ana yönetici hesabı silinemez.');
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        throw new Error('Yönetici oturumu bulunamadı.');
+      }
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke('admin-delete-user', {
+          body: { userId: cleanId },
+        }),
+        25000,
+        'Kullanıcı silme işlemi zaman aşımına uğradı.'
+      );
+      if (error) {
+        throw new Error(await unwrapFunctionError(error, 'Kullanıcı hesabı silinemedi.'));
+      }
+      localDb.purgeUserData(cleanId);
+      return data;
+    }
+
+    const summary = localDb.purgeUserData(cleanId);
+    return {
+      success: true,
+      userId: cleanId,
+      localOnly: true,
+      summary,
+    };
   },
 };
 

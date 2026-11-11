@@ -19,6 +19,7 @@ class RealtimeChatService {
       presence: [],
       all_presences: [],
       call_status: [],
+      account_deleted: [],
     };
   }
 
@@ -157,6 +158,8 @@ class RealtimeChatService {
             this.emitLocal('call_status', event.data.payload);
           } else if (event.data?.type === 'MESSAGE_READ' && event.data.payload) {
             this.emitLocal('message_read', event.data.payload);
+          } else if (event.data?.type === 'ACCOUNT_DELETED' && event.data.payload) {
+            this.emitLocal('account_deleted', event.data.payload);
           }
         };
 
@@ -235,6 +238,11 @@ class RealtimeChatService {
           .on('broadcast', { event: 'call_update' }, ({ payload }) => {
             if (payload) {
               this.emitLocal('call_status', payload);
+            }
+          })
+          .on('broadcast', { event: 'account_deleted' }, ({ payload }) => {
+            if (payload?.userId) {
+              this.emitLocal('account_deleted', payload);
             }
           })
           .subscribe();
@@ -469,6 +477,38 @@ class RealtimeChatService {
     }
 
     this.emitLocal('call_status', callData);
+  }
+
+  // Broadcast account deletion event to connected clients and browser tabs
+  broadcastAccountDeleted(userId) {
+    if (!userId) return;
+    const payload = {
+      userId: String(userId),
+      deletedAt: new Date().toISOString(),
+    };
+
+    if (this.presenceBroadcastChannel) {
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'ACCOUNT_DELETED',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'account_deleted',
+          payload,
+        });
+      } catch (err) {
+        console.warn('Supabase account_deleted broadcast send error:', err);
+      }
+    }
+
+    this.emitLocal('account_deleted', payload);
   }
 
   // Emit read receipt for a room

@@ -36,6 +36,7 @@ import {
   buildJoinCallPayload,
   applyIncomingCallStatus,
 } from './utils/voiceCallState';
+import { normalizeUserId, removeCachedUserProfile } from './utils/userPurge';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
@@ -864,6 +865,7 @@ function StanduppApp() {
     setTyping,
     typingUsers,
     clearMessages,
+    purgeUserMessages,
   } = useRealtimeChat(activeChannel, activeUserProfile);
 
   // Automatically send read receipt when viewing a DM
@@ -1305,6 +1307,143 @@ function StanduppApp() {
     return map;
   }, [voiceMembers, peerAudioPrefs]);
 
+  const deleteContextRef = useRef({});
+  useEffect(() => {
+    deleteContextRef.current = {
+      isDm,
+      activeDmUserId,
+      activeCallChannelId,
+      isConnected,
+      currentUserId,
+    };
+  }, [isDm, activeDmUserId, activeCallChannelId, isConnected, currentUserId]);
+
+  const handleUserDeleted = useCallback((deletedUserId) => {
+    if (!deletedUserId) return;
+    const rawId = String(deletedUserId).trim();
+    const normId = normalizeUserId(rawId);
+    if (!normId) return;
+
+    dbService.purgeLocalUserData(rawId);
+    removeCachedUserProfile(rawId);
+
+    setPresences((prev) => {
+      if (!prev || typeof prev !== 'object') return prev;
+      let changed = false;
+      const next = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (normalizeUserId(k) === normId || normalizeUserId(v?.userId || v?.id) === normId) {
+          changed = true;
+          continue;
+        }
+        next[k] = v;
+      }
+      return changed ? next : prev;
+    });
+
+    setFriendshipsData((prev) => {
+      if (!prev || typeof prev !== 'object') return prev;
+      const matchesTarget = (entry) => {
+        if (!entry || typeof entry !== 'object') return false;
+        const ids = [entry.id, entry.user_id, entry.friend_id, entry.profile?.id]
+          .filter(Boolean)
+          .map((id) => normalizeUserId(id));
+        return ids.includes(normId);
+      };
+      const next = {};
+      let changed = false;
+      for (const [key, list] of Object.entries(prev)) {
+        if (Array.isArray(list)) {
+          const filtered = list.filter((item) => !matchesTarget(item));
+          if (filtered.length !== list.length) changed = true;
+          next[key] = filtered;
+        } else {
+          next[key] = list;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    setChannelMembers((prev) => {
+      if (!Array.isArray(prev)) return prev;
+      const filtered = prev.filter(
+        (m) => normalizeUserId(m?.id || m?.user_id || m?.profiles?.id) !== normId
+      );
+      return filtered.length !== prev.length ? filtered : prev;
+    });
+
+    setDmUserProfile((prev) => (prev && normalizeUserId(prev.id) === normId ? null : prev));
+
+    setPeerAudioPrefs((prev) => {
+      if (!prev || typeof prev !== 'object') return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        if (normalizeUserId(key) === normId) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      try {
+        localStorage.setItem('voys_peer_audio_prefs', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+
+    setChannelCalls((prev) => {
+      if (!prev || typeof prev !== 'object') return prev;
+      let changed = false;
+      const next = {};
+      for (const [chanId, info] of Object.entries(prev)) {
+        if (!info || typeof info !== 'object') {
+          next[chanId] = info;
+          continue;
+        }
+        const rawMembers = Array.isArray(info.members) ? info.members : [];
+        const filteredMembers = rawMembers.filter(
+          (m) => normalizeUserId(m?.id || m?.userId) !== normId
+        );
+        if (filteredMembers.length !== rawMembers.length) {
+          changed = true;
+          if (filteredMembers.length === 0) continue;
+          next[chanId] = {
+            ...info,
+            members: filteredMembers,
+            count: filteredMembers.length,
+          };
+        } else {
+          next[chanId] = info;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    purgeUserMessages(rawId);
+
+    const ctx = deleteContextRef.current;
+    if (ctx.isDm && normalizeUserId(ctx.activeDmUserId) === normId) {
+      if (ctx.activeCallChannelId && ctx.isConnected && getDmRoomId(ctx.currentUserId, rawId) === ctx.activeCallChannelId) {
+        handleLeaveCall();
+      }
+      navigate('/channels/home', { replace: true });
+    } else if (normalizeUserId(ctx.currentUserId) === normId && ctx.activeCallChannelId && ctx.isConnected) {
+      handleLeaveCall();
+    }
+  }, [navigate, purgeUserMessages, handleLeaveCall]);
+
+  useEffect(() => {
+    const onAccountDeleted = (payload) => {
+      if (payload?.userId) {
+        handleUserDeleted(payload.userId);
+      }
+    };
+    chatService.on('account_deleted', onAccountDeleted);
+    return () => {
+      chatService.off('account_deleted', onAccountDeleted);
+    };
+  }, [handleUserDeleted]);
+
   // Channel Creation Handler with database persistence
   const handleCreateChannel = async ({ name, members = [] }) => {
     const slug = name
@@ -1625,7 +1764,7 @@ function StanduppApp() {
       />
 
       {/* Stand.upp Settings & Audio Devices Modal */}
-      <SettingsModal onLogout={() => setIsLogoutModalOpen(true)} />
+      <SettingsModal onLogout={() => setIsLogoutModalOpen(true)} onUserDeleted={handleUserDeleted} />
 
       {/* Logout Confirmation Modal */}
       <LogoutConfirmModal
