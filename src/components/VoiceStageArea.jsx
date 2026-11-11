@@ -124,7 +124,7 @@ export const VoiceStageArea = ({
       <header className="h-16 px-6 flex items-center justify-between border-b border-white/5 bg-[#0c0c0e]/80 backdrop-blur-md flex-shrink-0 z-10">
         {/* Left: Active Channel Badge & Name */}
         <div className="flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-[#1d2d24] border border-[#22c55e]/30 flex items-center justify-center text-[#22c55e] shadow-[0_0_15px_rgba(34,197,94,0.2)]">
+          <div className="w-10 h-10 rounded-2xl bg-[#1d2d24] border border-[#22c55e]/30 flex items-center justify-center text-[#22c55e]">
             <Volume2 size={20} />
           </div>
           <div>
@@ -146,10 +146,10 @@ export const VoiceStageArea = ({
           {/* Connected Status Pill */}
           <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border ${
             isConnected
-              ? 'bg-[#14291f] border-[#22c55e]/30 text-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.15)]'
+              ? 'bg-[#14291f] border-[#22c55e]/30 text-[#22c55e]'
               : 'bg-[#26171a] border-[#ef4444]/30 text-[#ef4444]'
           }`}>
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#22c55e] animate-pulse' : 'bg-[#ef4444]'}`} />
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}`} />
             <span>{isConnected ? 'Bağlandı' : 'Bağlantı Kesildi'}</span>
           </div>
 
@@ -275,9 +275,9 @@ export const VoiceStageArea = ({
             return (
               <div
                 key={p.id}
-                className={`h-40 sm:h-44 rounded-2xl flex flex-col items-center justify-center p-4 relative transition-all overflow-hidden ${
+                className={`h-40 sm:h-44 rounded-2xl flex flex-col items-center justify-center p-4 relative transition-colors overflow-hidden ${
                   isSpeakingActive
-                    ? 'speaking-card-glow border-2 border-[#22c55e] bg-gradient-to-b from-[#141b24] to-[#0e0e12] shadow-[0_0_25px_rgba(34,197,94,0.3)]'
+                    ? 'speaking-card-glow border-2 border-[#22c55e] bg-[#101816]'
                     : 'bg-[#0c0c0e] border border-white/5 hover:border-white/10'
                 }`}
               >
@@ -289,8 +289,8 @@ export const VoiceStageArea = ({
                 {/* User Center Avatar */}
                 <div className="relative flex items-center justify-center">
                   <div
-                    className={`transition-all rounded-2xl ${
-                      isSpeakingActive ? 'speaking-ring ring-4 ring-[#22c55e]/70 ring-offset-4 ring-offset-[#0c0c0e]' : ''
+                    className={`rounded-2xl ${
+                      isSpeakingActive ? 'speaking-ring ring-2 ring-[#22c55e] ring-offset-2 ring-offset-[#0c0c0e]' : ''
                     }`}
                   >
                     <UserAvatar
@@ -306,9 +306,9 @@ export const VoiceStageArea = ({
                 </div>
 
                 {/* Bottom Tag Label (Name + Status) */}
-                <div className="absolute bottom-2.5 left-3 flex items-center space-x-1.5 px-2.5 py-1 bg-[#121216]/90 backdrop-blur-md rounded-lg text-xs font-semibold text-white shadow-sm border border-white/5 max-w-[85%]">
+                <div className="absolute bottom-2.5 left-3 flex items-center space-x-1.5 px-2.5 py-1 bg-[#121216] rounded-lg text-xs font-semibold text-white border border-white/5 max-w-[85%]">
                   {isSpeakingActive ? (
-                    <div className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse flex-shrink-0" />
+                    <div className="w-2 h-2 rounded-full bg-[#22c55e] flex-shrink-0" />
                   ) : p.isMuted ? (
                     <MicOff size={12} className="text-[#ef4444] flex-shrink-0" />
                   ) : null}
@@ -352,7 +352,7 @@ export const VoiceStageArea = ({
               onClick={onToggleMute}
               className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 isPttActive
-                  ? 'bg-[#22c55e] text-white shadow-[0_0_20px_rgba(34,197,94,0.5)] ring-2 ring-emerald-400'
+                  ? 'bg-[#22c55e] text-white ring-2 ring-emerald-400'
                   : isMuted
                   ? 'bg-[#ef4444] text-white shadow-lg shadow-red-500/25'
                   : 'bg-[#1a1a22] hover:bg-[#252530] text-gray-200'
@@ -416,7 +416,7 @@ export const VoiceStageArea = ({
             onClick={onToggleScreenShare}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-md transform hover:scale-105 active:scale-95 ${
               isScreenSharing
-                ? 'bg-[#22c55e] text-white shadow-[0_0_20px_rgba(34,197,94,0.4)]'
+                ? 'bg-[#22c55e] text-white'
                 : 'bg-white text-black hover:bg-gray-100'
             }`}
             title={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}

@@ -16,16 +16,14 @@ export const IncomingCallToast = ({
 
   return (
     <div className="fixed top-5 right-5 z-[999] max-w-sm w-full animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
-      <div className="p-4 rounded-3xl bg-[#0c0c10]/95 backdrop-blur-2xl border-2 border-emerald-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_35px_rgba(16,185,129,0.3)] flex flex-col space-y-3.5">
+      <div className="p-4 rounded-3xl bg-[#0c0c10] border-2 border-emerald-500/40 shadow-2xl flex flex-col space-y-3.5">
         <div className="flex items-center space-x-3.5">
-          {/* Avatar with pulsing radar animation */}
+          {/* Avatar */}
           <div className="relative flex-shrink-0">
-            <span className="absolute -inset-1.5 rounded-2xl bg-emerald-500/30 animate-ping opacity-75" />
-            <span className="absolute -inset-3 rounded-2xl bg-emerald-500/15 animate-pulse" />
             <div className="relative">
               <UserAvatar user={initiator} size="lg" />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 border-2 border-[#0c0c10] flex items-center justify-center text-white shadow-md animate-bounce">
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 border-2 border-[#0c0c10] flex items-center justify-center text-white">
               <PhoneCall size={10} />
             </div>
           </div>
@@ -57,7 +55,7 @@ export const IncomingCallToast = ({
               key={r}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 ringCount >= r 
-                  ? 'w-7 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' 
+                  ? 'w-7 bg-emerald-400' 
                   : 'w-2 bg-white/10'
               }`}
             />
@@ -78,9 +76,9 @@ export const IncomingCallToast = ({
           <button
             type="button"
             onClick={onAccept}
-            className="flex items-center justify-center space-x-2 py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs shadow-lg shadow-emerald-600/40 transition active:scale-95"
+            className="flex items-center justify-center space-x-2 py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs transition active:scale-95"
           >
-            <Phone size={14} className="animate-pulse" />
+            <Phone size={14} />
             <span>Kabul Et</span>
           </button>
         </div>

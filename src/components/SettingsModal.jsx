@@ -1485,7 +1485,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                       <div
                         key={index}
                         className={`flex-1 h-5 rounded-full transition-colors duration-75 ${
-                          active ? 'bg-[#23a55a] shadow-[0_0_6px_rgba(35,165,90,0.8)]' : 'bg-[#232428]'
+                          active ? 'bg-[#23a55a]' : 'bg-[#232428]'
                         }`}
                       />
                     );
@@ -1507,15 +1507,15 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
 
                   {inputMode === 'ptt' && (
                     <span
-                      className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                      className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
                         isPttActive
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                           : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25'
                       }`}
                     >
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          isPttActive ? 'bg-emerald-400 animate-ping' : 'bg-indigo-400'
+                          isPttActive ? 'bg-emerald-400' : 'bg-indigo-400'
                         }`}
                       />
                       <span>{isPttActive ? 'Konuşma Aktif (İletiliyor)' : `Bas-Konuş Hazır [${formatShortcutLabel(pttKey)}]`}</span>
@@ -1628,9 +1628,9 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           setIsRecordingPttKey(true);
                         }
                       }}
-                      className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition cursor-pointer select-none ${
+                      className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors cursor-pointer select-none ${
                         isRecordingPttKey
-                          ? 'bg-rose-500/10 border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.18)]'
+                          ? 'bg-rose-500/10 border-rose-500/60'
                           : isPttActive
                           ? 'bg-emerald-500/10 border-emerald-500/50'
                           : 'bg-[#17171d] border-white/10 hover:border-indigo-500/50'
@@ -1641,7 +1641,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           size={18}
                           className={
                             isRecordingPttKey
-                              ? 'text-rose-400 animate-pulse flex-shrink-0'
+                              ? 'text-rose-400 flex-shrink-0'
                               : isPttActive
                               ? 'text-emerald-400 flex-shrink-0'
                               : 'text-indigo-400 flex-shrink-0'

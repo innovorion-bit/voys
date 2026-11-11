@@ -1156,13 +1156,10 @@ export const ChatArea = ({
 
       {/* Drag and Drop Fullscreen Overlay (Windows Desktop & Browser) */}
       {(isDragActive || isWindowDragging) && (
-        <div className="absolute inset-0 bg-[#08080a]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-150 pointer-events-none">
-          <div className="w-full h-full max-w-2xl max-h-[85%] border-2 border-dashed border-indigo-500/80 rounded-3xl bg-[#121216]/80 flex flex-col items-center justify-center p-8 shadow-[0_0_50px_rgba(139,81,255,0.25)] text-center relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Glowing Icon Container */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mb-5 shadow-[0_0_35px_rgba(139,81,255,0.4)] animate-bounce duration-1000">
+        <div className="absolute inset-0 bg-[#08080a]/95 z-50 flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-150 pointer-events-none">
+          <div className="w-full h-full max-w-2xl max-h-[85%] border-2 border-dashed border-indigo-500/80 rounded-3xl bg-[#121216]/90 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
+            {/* Static Icon Container */}
+            <div className="w-20 h-20 rounded-3xl bg-indigo-500/15 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mb-5">
               <UploadCloud size={40} className="text-indigo-400" />
             </div>
 
@@ -1459,16 +1456,13 @@ export const ChatArea = ({
                 title={isCallActive ? `Sesli Sohbete Katıl ${callMembers?.length ? `(${callMembers.length} kişi seste)` : ''}` : "Sesli Sohbet Başlat"}
                 className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
                   isCallActive
-                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40'
                     : 'text-gray-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Phone size={17} />
                 {isCallActive && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]"></span>
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]" />
                 )}
               </button>
             )
@@ -1850,9 +1844,9 @@ export const ChatArea = ({
 
           {/* Steam-Style Active Voice Chat Banner (Sadece DM modunda gösterilir, grupta sağ panelde yer alır) */}
           {isDmMode && isCallActive && !isInCall && (
-            <div className="mx-3 mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#10141e] to-emerald-950/20 border border-emerald-500/30 flex items-center justify-between shadow-lg animate-in fade-in duration-200 flex-shrink-0 z-10">
+            <div className="mx-3 mt-2.5 p-3 rounded-2xl bg-[#10141e] border border-emerald-500/30 flex items-center justify-between flex-shrink-0 z-10">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0 animate-pulse">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0">
                   <Volume2 size={18} />
                 </div>
                 <div className="min-w-0">
@@ -1860,7 +1854,7 @@ export const ChatArea = ({
                     <span className="text-xs font-bold text-white tracking-wide">
                       Sesli Sohbet Aktif
                     </span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   </div>
                   <p className="text-[11px] text-gray-300 truncate">
                     {callInitiator?.name || (isDmMode && activeDmFriend ? activeDmFriend.name : 'Bir katılımcı')} sesli sohbet başlattı • {callMembers?.length || 1} kişi katıldı
@@ -1871,7 +1865,7 @@ export const ChatArea = ({
               <button
                 type="button"
                 onClick={onStartCall || onToggleDmCall}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 transition active:scale-95 cursor-pointer flex-shrink-0 ml-3"
+                className="flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer flex-shrink-0 ml-3"
               >
                 <Phone size={13} />
                 <span>Katıl</span>
@@ -2359,7 +2353,7 @@ export const ChatArea = ({
             <button
               type="button"
               onClick={() => scrollToBottom('smooth')}
-              className="absolute bottom-20 right-6 bg-indigo-600/90 hover:bg-indigo-500 text-white border border-indigo-400/30 p-2.5 rounded-full shadow-xl shadow-indigo-600/30 transition-all animate-bounce select-none z-20"
+              className="absolute bottom-20 right-6 w-9 h-9 rounded-full bg-[#141418] hover:bg-[#1e1e26] text-gray-300 hover:text-white border border-white/15 flex items-center justify-center transition-colors select-none z-20 cursor-pointer"
               title="En alta kaydır"
             >
               <ArrowDown size={16} />
@@ -2372,7 +2366,7 @@ export const ChatArea = ({
               <div className="h-5 px-4 text-[11px] text-gray-400 italic select-none flex items-center flex-shrink-0">
                 {typingUsers.length > 0 && (
                   <div className="flex items-center space-x-1.5 text-indigo-400">
-                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></span>
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full"></span>
                     <span>{typingUsers.join(', ')} yazıyor...</span>
                   </div>
                 )}
@@ -2718,7 +2712,7 @@ export const ChatArea = ({
                       } rounded-xl transition cursor-pointer border ${
                         inputMode === 'ptt'
                           ? isPttActive
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                             : 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 hover:bg-indigo-500/25'
                           : isMuted
                           ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
@@ -3617,7 +3611,7 @@ export const ChatArea = ({
               <img
                 src={activeMediaModal.url}
                 alt={activeMediaModal.name}
-                className="max-h-[78vh] max-w-full rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_rgba(139,81,255,0.15)] object-contain border border-white/10"
+                className="max-h-[78vh] max-w-full rounded-2xl shadow-2xl object-contain border border-white/10"
               />
             ) : activeMediaModal.fallbackUser ? (
               <div className="w-56 h-56 rounded-full bg-[#18181b] border-4 border-indigo-500/30 flex items-center justify-center shadow-2xl text-white font-bold select-none p-2">

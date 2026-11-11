@@ -1585,7 +1585,7 @@ export const Sidebar = ({
 
                     <div className="flex items-center justify-between mt-0.5">
                       {isDmCallActive ? (
-                        <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-semibold animate-pulse">
+                        <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-semibold">
                           <Phone size={11} className="flex-shrink-0" />
                           <span className="truncate">
                             {dmCallInfo.stage === 'ringing' ? 'Arama çalıyor...' : 'Sesli görüşme aktif'}
@@ -1628,7 +1628,7 @@ export const Sidebar = ({
                       {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
                       <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
                         {isDmCallActive && (
-                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30 flex-shrink-0 animate-pulse">
+                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30 flex-shrink-0">
                             {dmCallInfo.stage === 'ringing' ? 'Çalıyor' : 'Canlı'}
                           </span>
                         )}

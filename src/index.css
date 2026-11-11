@@ -730,36 +730,13 @@ html.glass-mode .voys-glass-settings-sidebar {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Custom animations & glow */
-@keyframes voicePulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-  }
-}
-
-@keyframes speakingBorder {
-  0%, 100% {
-    border-color: rgba(34, 197, 94, 0.9);
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.35);
-  }
-  50% {
-    border-color: rgba(34, 197, 94, 0.5);
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
-  }
-}
-
+/* Clean static speaking indicators (no GPU-heavy pulsing shadows) */
 .speaking-ring {
-  animation: voicePulse 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.85);
 }
 
 .speaking-card-glow {
-  animation: speakingBorder 2s infinite ease-in-out;
+  border-color: rgba(34, 197, 94, 0.85);
 }
 
 /* Glass panel background */
@@ -841,7 +818,9 @@ html.voys-performance-mode .speaking-card-glow {
   box-shadow: none !important;
 }
 
-html.voys-performance-mode .animate-pulse {
+html.voys-performance-mode .animate-pulse,
+html.voys-performance-mode .animate-ping,
+html.voys-performance-mode .animate-bounce {
   animation: none !important;
 }
 

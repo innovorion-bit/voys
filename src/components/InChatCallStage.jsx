@@ -82,21 +82,16 @@ export const InChatCallStage = ({
     const targetName = targetUser?.name || targetUser?.display_name || channelName;
     return (
       <div className="flex-1 w-full h-full min-h-[420px] bg-[#08080a] flex flex-col items-center justify-between p-6 sm:p-12 select-none animate-in fade-in duration-300 relative overflow-hidden">
-        {/* Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
-
         {/* Top Info */}
-        <div className="flex items-center space-x-2 text-xs font-mono text-gray-400 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full z-10 backdrop-blur-md">
-          <PhoneCall size={13} className="text-indigo-400 animate-pulse" />
+        <div className="flex items-center space-x-2 text-xs font-mono text-gray-400 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full z-10">
+          <PhoneCall size={13} className="text-indigo-400" />
           <span>Giden Sesli Arama • {channelName}</span>
         </div>
 
-        {/* Center Target Info & Sonar Pulsing Avatar */}
+        {/* Center Target Info */}
         <div className="flex flex-col items-center text-center z-10 my-auto py-6">
           <div className="relative mb-6">
-            <span className="absolute -inset-6 rounded-full bg-indigo-500/20 animate-ping opacity-75 pointer-events-none" />
-            <span className="absolute -inset-12 rounded-full bg-indigo-500/10 animate-pulse pointer-events-none" />
-            <div className="relative rounded-full overflow-hidden p-1.5 bg-[#0e0e12] border-2 border-indigo-500/40 shadow-2xl">
+            <div className="relative rounded-full overflow-hidden p-1.5 bg-[#0e0e12] border-2 border-indigo-500/40 shadow-xl">
               <UserAvatar user={targetUser || { name: targetName }} size="2xl" className="w-28 h-28 text-3xl font-bold" showStatus={false} />
             </div>
           </div>
@@ -106,7 +101,7 @@ export const InChatCallStage = ({
               {targetName} aranıyor...
             </h2>
             <div className="flex items-center justify-center space-x-2 text-sm font-mono text-indigo-300">
-              <PhoneCall size={15} className="animate-bounce text-indigo-400" />
+              <PhoneCall size={15} className="text-indigo-400" />
               <span>Çalıyor ({ringCount}/{maxRings})</span>
             </div>
           </div>
@@ -173,19 +168,14 @@ export const InChatCallStage = ({
     const callerName = callInitiator?.name || callInitiator?.display_name || 'Kullanıcı';
     return (
       <div className="flex-1 w-full h-full min-h-[420px] bg-[#08080a] flex flex-col items-center justify-between p-6 sm:p-12 select-none animate-in fade-in duration-300 relative overflow-hidden">
-        {/* Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-600/15 rounded-full blur-[120px] pointer-events-none" />
-
-        <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-full z-10 backdrop-blur-md">
-          <PhoneCall size={13} className="animate-bounce" />
+        <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-full z-10">
+          <PhoneCall size={13} />
           <span>Gelen Sesli Arama • {channelName}</span>
         </div>
 
         <div className="flex flex-col items-center text-center z-10 my-auto py-6">
           <div className="relative mb-6">
-            <span className="absolute -inset-6 rounded-full bg-emerald-500/20 animate-ping opacity-75 pointer-events-none" />
-            <span className="absolute -inset-12 rounded-full bg-emerald-500/10 animate-pulse pointer-events-none" />
-            <div className="relative rounded-full overflow-hidden p-1.5 bg-[#0e0e12] border-2 border-emerald-500/40 shadow-2xl">
+            <div className="relative rounded-full overflow-hidden p-1.5 bg-[#0e0e12] border-2 border-emerald-500/40 shadow-xl">
               <UserAvatar user={callInitiator || { name: callerName }} size="2xl" className="w-28 h-28 text-3xl font-bold" showStatus={false} />
             </div>
           </div>
@@ -214,7 +204,7 @@ export const InChatCallStage = ({
           <button
             type="button"
             onClick={onAcceptCall || onJoinCall}
-            className="flex items-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-sm rounded-2xl shadow-xl shadow-emerald-600/40 transition active:scale-95 animate-pulse cursor-pointer"
+            className="flex items-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-sm rounded-2xl transition active:scale-95 cursor-pointer"
           >
             <Phone size={18} />
             <span>Kabul Et</span>
@@ -228,9 +218,9 @@ export const InChatCallStage = ({
   if (!isInCall) {
     const callerName = callInitiator?.name || (callMembers.length > 0 ? `${callMembers.length} kişi` : 'Sesli sohbet');
     return (
-      <div className="mx-3 md:mx-4 mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#121216]/90 to-indigo-950/40 border border-emerald-500/30 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shadow-[0_8px_25px_-5px_rgba(16,185,129,0.15)] animate-in fade-in slide-in-from-top-2 duration-200 z-10 flex-shrink-0">
+      <div className="mx-3 md:mx-4 mt-2.5 p-3 rounded-2xl bg-[#121216] border border-emerald-500/30 flex flex-wrap items-center justify-between gap-3 z-10 flex-shrink-0">
         <div className="flex items-center space-x-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0">
             <Phone size={18} />
           </div>
           <div className="min-w-0">
@@ -238,7 +228,7 @@ export const InChatCallStage = ({
               <span className="text-xs font-bold text-white tracking-wide">
                 Sesli Görüşme Aktif
               </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
             </div>
             <p className="text-[11px] text-emerald-300/80 truncate">
               {callMembers.length > 0 
@@ -284,10 +274,7 @@ export const InChatCallStage = ({
       {/* Top Header Bar */}
       <div className="h-12 px-6 bg-[#0c0c0e]/90 border-b border-white/5 flex items-center justify-between text-xs text-gray-300 flex-shrink-0 z-10 backdrop-blur-md">
         <div className="flex items-center space-x-2.5">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-          </span>
+          <span className="inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
           <span className="font-bold text-white text-xs sm:text-sm tracking-wide">
             Sesli Görüşme • {channelName}
           </span>
@@ -321,20 +308,17 @@ export const InChatCallStage = ({
 
       {/* Main Call Stage Body: Participants Grid & Waiting Area */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 min-h-0 overflow-y-auto relative z-10">
-        {/* Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
-
         {/* Screen Share Player if active */}
         {activeScreenShare?.stream && (
-          <div className="relative w-full max-h-[60vh] bg-black/90 rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center mb-6 shadow-2xl">
+          <div className="relative w-full max-h-[60vh] bg-black/90 rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center mb-6 shadow-xl">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               className="w-full h-full object-contain"
             />
-            <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl text-xs text-white flex items-center space-x-2 border border-white/10">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            <div className="absolute top-3 left-3 bg-black/80 px-3 py-1 rounded-xl text-xs text-white flex items-center space-x-2 border border-white/10">
+              <span className="w-2 h-2 rounded-full bg-indigo-400" />
               <span>{activeScreenShare.userName || 'Ekran Paylaşımı'}</span>
             </div>
           </div>
@@ -350,9 +334,9 @@ export const InChatCallStage = ({
             return (
               <div
                 key={member.id || member.peerId}
-                className={`w-48 h-56 sm:w-56 sm:h-64 rounded-3xl flex flex-col items-center justify-between p-5 transition-all duration-200 relative bg-[#121216]/95 border backdrop-blur-xl shadow-2xl ${
+                className={`w-48 h-56 sm:w-56 sm:h-64 rounded-3xl flex flex-col items-center justify-between p-5 transition-colors duration-150 relative bg-[#121216] border shadow-xl ${
                   memberSpeaking
-                    ? 'border-emerald-500 shadow-[0_0_35px_rgba(16,185,129,0.35)] ring-2 ring-emerald-500/50'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/50'
                     : 'border-white/10 hover:border-white/20'
                 }`}
               >
@@ -370,13 +354,13 @@ export const InChatCallStage = ({
                   )}
                 </div>
 
-                {/* Big Center Avatar with Speaking Glow */}
+                {/* Big Center Avatar with Speaking Ring */}
                 <div className="relative my-auto">
-                  <div className={`p-1.5 rounded-full transition-all duration-200 ${memberSpeaking ? 'ring-4 ring-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.6)]' : ''}`}>
+                  <div className={`p-1.5 rounded-full transition-colors duration-150 ${memberSpeaking ? 'ring-3 ring-emerald-400' : ''}`}>
                     <UserAvatar
                       user={member}
                       size="xl"
-                      className="w-24 h-24 text-3xl font-bold shadow-xl"
+                      className="w-24 h-24 text-3xl font-bold shadow-lg"
                       showStatus={false}
                     />
                   </div>
@@ -397,7 +381,7 @@ export const InChatCallStage = ({
 
           {/* Katılımcı Bekleniyor Kartı (Tek kişi olduğunda) */}
           {callMembers.length <= 1 && (
-            <div className="w-48 h-56 sm:w-56 sm:h-64 rounded-3xl border-2 border-dashed border-white/15 bg-white/[0.02] flex flex-col items-center justify-center p-6 text-center space-y-4 animate-pulse">
+            <div className="w-48 h-56 sm:w-56 sm:h-64 rounded-3xl border-2 border-dashed border-white/15 bg-white/[0.02] flex flex-col items-center justify-center p-6 text-center space-y-4">
               <div className="w-20 h-20 rounded-full bg-white/5 border border-dashed border-white/20 flex items-center justify-center text-indigo-400 shadow-inner">
                 <PhoneCall size={30} className="text-indigo-400/80" />
               </div>
@@ -415,7 +399,7 @@ export const InChatCallStage = ({
       </div>
 
       {/* Voice Controls Bottom Toolbar */}
-      <div className="h-20 px-6 sm:px-10 bg-[#0c0c0e]/95 border-t border-white/5 flex items-center justify-between flex-shrink-0 z-10 backdrop-blur-xl">
+      <div className="h-20 px-6 sm:px-10 bg-[#0c0c0e] border-t border-white/5 flex items-center justify-between flex-shrink-0 z-10">
         {/* Left: Input Mode / PTT Info */}
         <div className="flex items-center space-x-2 text-xs text-gray-400 min-w-0">
           {inputMode === 'ptt' ? (
@@ -426,11 +410,11 @@ export const InChatCallStage = ({
             }`}>
               <span>Bas-Konuş:</span>
               <strong className="text-white">[{formatShortcutLabel(pttKey)}]</strong>
-              {isPttActive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />}
+              {isPttActive && <span className="w-2 h-2 rounded-full bg-emerald-400 ml-1" />}
             </span>
           ) : (
             <div className="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-xl">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span className="font-medium hidden sm:inline">Açık Mikrofon Aktif</span>
             </div>
           )}

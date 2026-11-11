@@ -37,16 +37,13 @@ export const VoiceControls = ({
         title={isCallActive ? `Sesli Sohbete Katıl ${callMembersCount > 0 ? `(${callMembersCount} kişi seste)` : ''}` : "Sesli Sohbet Başlat"}
         className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
           isCallActive
-            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40'
             : 'text-gray-300 hover:text-white hover:bg-white/10'
         }`}
       >
         <Phone size={17} />
         {isCallActive && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]"></span>
-          </span>
+          <span className="absolute -top-0.5 -right-0.5 inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]" />
         )}
       </button>
     );
@@ -78,7 +75,7 @@ export const VoiceControls = ({
         }
         className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition active:scale-95 ${
           isPttActive
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
             : isMuted
             ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30'
             : 'hover:bg-white/10 text-gray-200 hover:text-white'
@@ -113,11 +110,11 @@ export const VoiceControls = ({
         title={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
         className={`w-8 h-8 flex items-center justify-center rounded-lg transition active:scale-95 ${
           isScreenSharing
-            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 shadow-[0_0_12px_rgba(139,81,255,0.3)]'
+            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
             : 'hover:bg-white/10 text-gray-300 hover:text-white'
         }`}
       >
-        <ScreenShare size={15} className={isScreenSharing ? 'text-indigo-400 animate-pulse' : ''} />
+        <ScreenShare size={15} className={isScreenSharing ? 'text-indigo-400' : ''} />
       </button>
     </div>
   );

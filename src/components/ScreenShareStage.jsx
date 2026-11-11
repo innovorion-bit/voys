@@ -67,15 +67,15 @@ export const ScreenShareStage = ({
       ref={containerRef}
       className={`transition-all duration-300 ease-in-out select-none ${
         isPipMode
-          ? 'absolute top-14 right-4 z-40 w-72 sm:w-88 md:w-96 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_30px_rgba(0,0,0,0.4)] border border-white/10 rounded-2xl overflow-hidden bg-[#0c0c0e]/95 backdrop-blur-2xl'
+          ? 'absolute top-14 right-4 z-40 w-72 sm:w-88 md:w-96 shadow-xl border border-white/10 rounded-2xl overflow-hidden bg-[#0c0c0e]'
           : 'relative w-full border-b border-white/5 bg-[#08080a] flex-shrink-0'
       }`}
     >
       {/* Stage Header Overlay Bar */}
       <div className="px-3.5 py-2 bg-[#0c0c0e]/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between text-xs text-gray-200 z-10 relative">
         <div className="flex items-center space-x-2.5 min-w-0">
-          {/* Live pulsing badge */}
-          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold tracking-wider animate-pulse flex-shrink-0 shadow-sm">
+          {/* Live badge */}
+          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold tracking-wider flex-shrink-0">
             <Radio size={10} />
             <span>CANLI</span>
           </span>
