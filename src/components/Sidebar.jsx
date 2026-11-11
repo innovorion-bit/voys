@@ -1492,7 +1492,7 @@ export const Sidebar = ({
       </div>
 
       {/* 4. CHAT LIST (WhatsApp Web style rows) */}
-      <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
+      <div className="flex-1 overflow-y-auto">
         {totalResultsCount === 0 ? (
           <div className="p-8 text-center text-xs text-gray-400 flex flex-col items-center justify-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-[#141418] flex items-center justify-center text-gray-500">
@@ -1557,8 +1557,8 @@ export const Sidebar = ({
                   onClick={() => onSelectDm?.(friend.id)}
                   className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
                     isSelected
-                      ? 'bg-[#18181f] border-l-[3.5px] border-[#8B51FF]'
-                      : 'border-l-[3.5px] border-transparent hover:bg-[#121215]'
+                      ? 'bg-[#18181f]'
+                      : 'hover:bg-[#121215]'
                   }`}
                 >
                   {/* Avatar */}
@@ -1669,8 +1669,8 @@ export const Sidebar = ({
                   onClick={() => onSelectChannel?.(chan.id)}
                   className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
                     isSelected
-                      ? 'bg-[#18181f] border-l-[3.5px] border-[#8B51FF]'
-                      : 'border-l-[3.5px] border-transparent hover:bg-[#121215]'
+                      ? 'bg-[#18181f]'
+                      : 'hover:bg-[#121215]'
                   }`}
                 >
                   {/* Channel Group Avatar */}
