@@ -2596,18 +2596,16 @@ export const ChatArea = ({
                 }`}
               >
                 {isRightPanelCompact ? (
-                  <div
-                    className="flex items-center justify-center px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20"
-                    title={`Sesli Sohbet — ${sidebarVoiceMembers.length}`}
+                  <span
+                    className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider"
+                    title="Sesli Sohbet"
                   >
-                    <span className="text-[10px] font-bold text-emerald-400 leading-none">
-                      {sidebarVoiceMembers.length}
-                    </span>
-                  </div>
+                    Sesli
+                  </span>
                 ) : (
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                      SESLİ SOHBET — {sidebarVoiceMembers.length}
+                      SESLİ SOHBET
                     </span>
                   </div>
                 )}
@@ -2933,7 +2931,7 @@ export const ChatArea = ({
               <>
                 {/* Header: GRUP ÜYELERİ */}
                 {isRightPanelCompact ? (
-                  <div className="flex flex-col items-center space-y-1.5 w-full">
+                  <div className="flex flex-col items-center w-full">
                     <button
                       type="button"
                       onClick={() => {
@@ -2941,22 +2939,16 @@ export const ChatArea = ({
                         setIsAddingMember(true);
                       }}
                       className="w-9 h-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 flex items-center justify-center transition cursor-pointer"
-                      title={`Yeni Üye Ekle (Grup Üyeleri — ${sidebarGroupMembers.length})`}
+                      title="Yeni Üye Ekle"
                       aria-label="Yeni Üye Ekle"
                     >
                       <UserPlus size={14} />
                     </button>
-                    <span
-                      className="text-[10px] font-bold text-gray-500 tracking-wider select-none"
-                      title={`Grup Üyeleri — ${sidebarGroupMembers.length}`}
-                    >
-                      {sidebarGroupMembers.length}
-                    </span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      Grup Üyeleri — {sidebarGroupMembers.length}
+                      Grup Üyeleri
                     </span>
                     <button
                       type="button"
