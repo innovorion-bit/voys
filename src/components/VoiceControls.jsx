@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
+import { NoiseSuppressionButton } from './NoiseSuppressionButton';
 
 export const VoiceControls = ({
   isConnected = false,
@@ -105,6 +106,9 @@ export const VoiceControls = ({
       >
         {isDeafened ? <VolumeX size={15} /> : <Headphones size={15} />}
       </button>
+
+      {/* AI Noise Suppression Toggle */}
+      <NoiseSuppressionButton variant="icon-sm" />
 
       {/* Screen Share Button */}
       <button

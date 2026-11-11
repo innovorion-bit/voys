@@ -13,6 +13,16 @@ import {
   unregisterAllShortcuts
 } from '../services/shortcutService';
 import { applyWindowTransparency } from '../utils/windowManager';
+import {
+  STORAGE_KEYS,
+  DEFAULT_AI_NOISE_SUPPRESSION,
+  DEFAULT_NOISE_GATE_THRESHOLD,
+  normalizeNoiseSuppressionMode,
+  clampNoiseGateThreshold,
+  readStoredBool,
+  readStoredNumber,
+  readStoredNoiseSuppressionMode,
+} from '../utils/noiseSuppressionPipeline';
 
 const defaultProfile = {
   name: 'Sen (You)',
@@ -108,63 +118,121 @@ export const SettingsProvider = ({ children }) => {
     }
   });
 
-  const [antiStaticFilter, setAntiStaticFilterState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('standupp_anti_static_filter');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
+  const [antiStaticFilter, setAntiStaticFilterState] = useState(() =>
+    readStoredBool('standupp_anti_static_filter', true)
+  );
 
-  const changeAdvancedAudioFiltering = useCallback(async (enabled) => {
-    const val = Boolean(enabled);
-    setAdvancedAudioFilteringState(val);
+  const [aiNoiseSuppression, setAiNoiseSuppressionState] = useState(() =>
+    readStoredBool(STORAGE_KEYS.aiNoiseSuppression, DEFAULT_AI_NOISE_SUPPRESSION)
+  );
+
+  const [noiseSuppressionMode, setNoiseSuppressionModeState] = useState(() =>
+    readStoredNoiseSuppressionMode()
+  );
+
+  const [noiseGateThreshold, setNoiseGateThresholdState] = useState(() =>
+    clampNoiseGateThreshold(readStoredNumber(STORAGE_KEYS.noiseGateThreshold, DEFAULT_NOISE_GATE_THRESHOLD))
+  );
+
+  const updateAudioSetting = useCallback(async ({ key, setter, storageKey, payload }) => {
+    setter(payload);
     try {
-      localStorage.setItem('standupp_advanced_audio_filtering', String(val));
+      localStorage.setItem(storageKey, String(payload));
     } catch {}
 
     try {
-      await peerService.applyAudioSettings({ advancedAudioFiltering: val });
+      await peerService.applyAudioSettings({ [key]: payload });
     } catch (err) {
-      console.warn('applyAudioFiltering error:', err);
+      console.warn(`apply ${key} error:`, err);
     }
   }, []);
 
-  const changeAutoGainControl = useCallback(async (enabled) => {
-    const val = Boolean(enabled);
-    setAutoGainControlState(val);
-    try {
-      localStorage.setItem('standupp_auto_gain_control', String(val));
-    } catch {}
+  const changeAdvancedAudioFiltering = useCallback(
+    (enabled) =>
+      updateAudioSetting({
+        key: 'advancedAudioFiltering',
+        setter: setAdvancedAudioFilteringState,
+        storageKey: 'standupp_advanced_audio_filtering',
+        payload: Boolean(enabled),
+      }),
+    [updateAudioSetting]
+  );
 
-    try {
-      await peerService.applyAudioSettings({ autoGainControl: val });
-    } catch (err) {
-      console.warn('applyAutoGainControl error:', err);
-    }
-  }, []);
+  const changeAutoGainControl = useCallback(
+    (enabled) =>
+      updateAudioSetting({
+        key: 'autoGainControl',
+        setter: setAutoGainControlState,
+        storageKey: 'standupp_auto_gain_control',
+        payload: Boolean(enabled),
+      }),
+    [updateAudioSetting]
+  );
 
-  const changeAntiStaticFilter = useCallback(async (enabled) => {
-    const val = Boolean(enabled);
-    setAntiStaticFilterState(val);
-    try {
-      localStorage.setItem('standupp_anti_static_filter', String(val));
-    } catch {}
+  const changeAntiStaticFilter = useCallback(
+    (enabled) =>
+      updateAudioSetting({
+        key: 'antiStaticFilter',
+        setter: setAntiStaticFilterState,
+        storageKey: 'standupp_anti_static_filter',
+        payload: Boolean(enabled),
+      }),
+    [updateAudioSetting]
+  );
 
-    try {
-      await peerService.applyAudioSettings({ antiStaticFilter: val });
-    } catch (err) {
-      console.warn('applyAntiStaticFilter error:', err);
-    }
-  }, []);
+  const changeAiNoiseSuppression = useCallback(
+    (enabled) =>
+      updateAudioSetting({
+        key: 'aiNoiseSuppression',
+        setter: setAiNoiseSuppressionState,
+        storageKey: STORAGE_KEYS.aiNoiseSuppression,
+        payload: Boolean(enabled),
+      }),
+    [updateAudioSetting]
+  );
+
+  const toggleAiNoiseSuppression = useCallback(() => {
+    return changeAiNoiseSuppression(!aiNoiseSuppression);
+  }, [aiNoiseSuppression, changeAiNoiseSuppression]);
+
+  const changeNoiseSuppressionMode = useCallback(
+    (mode) =>
+      updateAudioSetting({
+        key: 'noiseSuppressionMode',
+        setter: setNoiseSuppressionModeState,
+        storageKey: STORAGE_KEYS.noiseSuppressionMode,
+        payload: normalizeNoiseSuppressionMode(mode),
+      }),
+    [updateAudioSetting]
+  );
+
+  const changeNoiseGateThreshold = useCallback(
+    (threshold) =>
+      updateAudioSetting({
+        key: 'noiseGateThreshold',
+        setter: setNoiseGateThresholdState,
+        storageKey: STORAGE_KEYS.noiseGateThreshold,
+        payload: clampNoiseGateThreshold(threshold),
+      }),
+    [updateAudioSetting]
+  );
 
   // Synchronize peerService with initial audio processing preferences & live input volume
   useEffect(() => {
     peerService.setAdvancedAudioFiltering(advancedAudioFiltering);
     peerService.setAutoGainControl(autoGainControl);
     peerService.setAntiStaticFilter(antiStaticFilter);
-  }, [advancedAudioFiltering, autoGainControl, antiStaticFilter]);
+    peerService.setAiNoiseSuppression(aiNoiseSuppression);
+    peerService.setNoiseSuppressionMode(noiseSuppressionMode);
+    peerService.setNoiseGateThreshold(noiseGateThreshold);
+  }, [
+    advancedAudioFiltering,
+    autoGainControl,
+    antiStaticFilter,
+    aiNoiseSuppression,
+    noiseSuppressionMode,
+    noiseGateThreshold,
+  ]);
 
   useEffect(() => {
     peerService.setInputVolume(inputVolume);
@@ -602,6 +670,13 @@ export const SettingsProvider = ({ children }) => {
         changeAutoGainControl,
         antiStaticFilter,
         changeAntiStaticFilter,
+        aiNoiseSuppression,
+        changeAiNoiseSuppression,
+        toggleAiNoiseSuppression,
+        noiseSuppressionMode,
+        changeNoiseSuppressionMode,
+        noiseGateThreshold,
+        changeNoiseGateThreshold,
         inputMode,
         changeInputMode,
         pttKey,

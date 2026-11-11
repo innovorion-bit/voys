@@ -1,5 +1,18 @@
 import Peer from 'peerjs';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import {
+  STORAGE_KEYS,
+  DEFAULT_AI_NOISE_SUPPRESSION,
+  DEFAULT_NOISE_GATE_THRESHOLD,
+  normalizeNoiseSuppressionMode,
+  clampNoiseGateThreshold,
+  readStoredBool,
+  readStoredNumber,
+  readStoredNoiseSuppressionMode,
+  buildAudioDspPlan,
+  buildMicDspChain,
+  createVoiceAudioContext,
+} from '../utils/noiseSuppressionPipeline';
 
 export const SCREEN_SHARE_PRESETS = {
   performance: {
@@ -43,28 +56,6 @@ function readInitialScreenSharePreset() {
     }
   } catch {}
   return 'balanced';
-}
-
-function readStoredBool(key, fallback) {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const val = localStorage.getItem(key);
-    return val !== null ? val === 'true' : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function readStoredNumber(key, fallback) {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const val = localStorage.getItem(key);
-    if (val === null) return fallback;
-    const num = Number(val);
-    return Number.isFinite(num) ? num : fallback;
-  } catch {
-    return fallback;
-  }
 }
 
 /**
@@ -135,7 +126,7 @@ export function optimizeOpusSdp(sdp) {
   return lines.join(eol);
 }
 
-class MeshVoiceService {
+export class MeshVoiceService {
   constructor() {
     this.peer = null;
     this.myPeerId = null;
@@ -145,6 +136,9 @@ class MeshVoiceService {
     this.localStream = null;
     this.micAudioCtx = null;
     this.micGainNode = null;
+    this.micChainCleanup = null;
+    this._dspBuildSeq = 0;
+    this._pendingLocalAudioPromise = null;
     this.activeCalls = new Map(); // peerId -> MediaConnection
     this.activeDataConns = new Map(); // peerId -> DataConnection
     this.remoteStreams = new Map(); // peerId -> MediaStream
@@ -157,7 +151,21 @@ class MeshVoiceService {
     this.advancedAudioFiltering = readStoredBool('standupp_advanced_audio_filtering', true);
     this.autoGainControlEnabled = readStoredBool('standupp_auto_gain_control', false);
     this.antiStaticFilterEnabled = readStoredBool('standupp_anti_static_filter', true);
+    this.aiNoiseSuppressionEnabled = readStoredBool(
+      STORAGE_KEYS.aiNoiseSuppression,
+      DEFAULT_AI_NOISE_SUPPRESSION
+    );
+    this.noiseSuppressionMode = readStoredNoiseSuppressionMode();
+    this.noiseGateThreshold = clampNoiseGateThreshold(
+      readStoredNumber(STORAGE_KEYS.noiseGateThreshold, DEFAULT_NOISE_GATE_THRESHOLD)
+    );
     this.inputVolume = Math.max(0, Math.min(100, readStoredNumber('standupp_input_volume', 100)));
+    this.lastDspInfo = {
+      aiNsApplied: false,
+      noiseGateApplied: false,
+      sampleRate: null,
+      mode: this.noiseSuppressionMode,
+    };
 
     // Screen sharing state
     this.screenStream = null;
@@ -225,7 +233,7 @@ class MeshVoiceService {
     return Object.fromEntries(this.peerMetadata);
   }
 
-  // Set advanced audio filtering & voice clarity state
+  // Set advanced audio filtering, AI noise suppression & voice clarity state
   setAdvancedAudioFiltering(enabled) {
     this.advancedAudioFiltering = Boolean(enabled);
   }
@@ -236,6 +244,37 @@ class MeshVoiceService {
 
   setAntiStaticFilter(enabled) {
     this.antiStaticFilterEnabled = Boolean(enabled);
+  }
+
+  setAiNoiseSuppression(enabled) {
+    this.aiNoiseSuppressionEnabled = Boolean(enabled);
+  }
+
+  setNoiseSuppressionMode(mode) {
+    this.noiseSuppressionMode = normalizeNoiseSuppressionMode(mode);
+  }
+
+  setNoiseGateThreshold(threshold) {
+    this.noiseGateThreshold = clampNoiseGateThreshold(threshold);
+  }
+
+  getDspConfig() {
+    return {
+      aiNoiseSuppression: this.aiNoiseSuppressionEnabled,
+      noiseSuppressionMode: this.noiseSuppressionMode,
+      noiseGateThreshold: this.noiseGateThreshold,
+      antiStaticFilter: this.antiStaticFilterEnabled,
+      inputVolume: this.inputVolume,
+    };
+  }
+
+  getNoiseSuppressionStatus() {
+    return {
+      enabled: this.aiNoiseSuppressionEnabled,
+      mode: this.noiseSuppressionMode,
+      gateThreshold: this.noiseGateThreshold,
+      ...this.lastDspInfo,
+    };
   }
 
   getBaseAudioConstraints(deviceIdOverride = this.selectedAudioInputId, customConstraints = null) {
@@ -251,6 +290,12 @@ class MeshVoiceService {
   }
 
   cleanupMicProcessing() {
+    if (this.micChainCleanup) {
+      try {
+        this.micChainCleanup();
+      } catch {}
+      this.micChainCleanup = null;
+    }
     this.micGainNode = null;
     if (this.micAudioCtx) {
       try {
@@ -261,6 +306,8 @@ class MeshVoiceService {
   }
 
   stopLocalAudioTracks() {
+    this._dspBuildSeq += 1;
+    this._pendingLocalAudioPromise = null;
     this.cleanupMicProcessing();
     if (this.localStream) {
       this.localStream.getTracks().forEach((t) => {
@@ -274,67 +321,55 @@ class MeshVoiceService {
       });
       this.rawLocalStream = null;
     }
+    this.lastDspInfo = {
+      aiNsApplied: false,
+      noiseGateApplied: false,
+      sampleRate: null,
+      mode: this.noiseSuppressionMode,
+    };
   }
 
-  buildProcessedLocalStream(rawStream) {
+  async buildProcessedLocalStream(rawStream, dspOverrides = null) {
+    const buildSeq = ++this._dspBuildSeq;
     this.cleanupMicProcessing();
     if (!rawStream || rawStream.getAudioTracks().length === 0) return rawStream;
 
-    const needsDsp = this.antiStaticFilterEnabled || this.inputVolume !== 100;
-    if (!needsDsp || typeof window === 'undefined') {
+    const dspConfig = this.getDspConfig();
+    const plan = buildAudioDspPlan(dspConfig);
+    if (!plan.needsDsp || (typeof window === 'undefined' && !dspOverrides?.audioContext)) {
+      this.lastDspInfo = {
+        aiNsApplied: false,
+        noiseGateApplied: false,
+        sampleRate: null,
+        mode: plan.mode,
+      };
       return rawStream;
     }
 
+    let ctx = null;
+    let chain = null;
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return rawStream;
+      ctx = dspOverrides?.audioContext || createVoiceAudioContext();
+      if (!ctx) return rawStream;
 
-      let ctx;
-      try {
-        ctx = new AudioCtx({ latencyHint: 'interactive' });
-      } catch {
-        ctx = new AudioCtx();
-      }
-      if (ctx.state === 'suspended') {
+      if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
         ctx.resume().catch(() => {});
       }
 
       const source = ctx.createMediaStreamSource(rawStream);
-      let head = source;
+      chain = await buildMicDspChain(ctx, source, dspConfig, dspOverrides);
 
-      if (this.antiStaticFilterEnabled) {
-        // Cut 50/60Hz mains hum, PC fan rumble, and breath pops below 85Hz
-        const highpass = ctx.createBiquadFilter();
-        highpass.type = 'highpass';
-        highpass.frequency.value = 85;
-        highpass.Q.value = 0.707;
-
-        // Roll off high-frequency USB/ground hiss and GPU coil whine above 12.5kHz
-        const lowpass = ctx.createBiquadFilter();
-        lowpass.type = 'lowpass';
-        lowpass.frequency.value = 12500;
-        lowpass.Q.value = 0.707;
-
-        // Soft dynamic compressor prevents mic clipping & digital crackling pops
-        const compressor = ctx.createDynamicsCompressor();
-        compressor.threshold.value = -18;
-        compressor.knee.value = 12;
-        compressor.ratio.value = 3.5;
-        compressor.attack.value = 0.005;
-        compressor.release.value = 0.12;
-
-        head.connect(highpass);
-        highpass.connect(lowpass);
-        lowpass.connect(compressor);
-        head = compressor;
+      // Guard against concurrent toggles, device swaps, or call disconnect during async worklet setup
+      if (buildSeq !== this._dspBuildSeq || this.rawLocalStream !== rawStream || !rawStream.active) {
+        try { chain?.cleanup?.(); } catch {}
+        if (typeof ctx.close === 'function') {
+          try { await ctx.close(); } catch {}
+        }
+        return this.localStream || rawStream;
       }
 
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = Math.max(0, Math.min(1.5, Number(this.inputVolume) / 100));
-      head.connect(gainNode);
-
       const dest = ctx.createMediaStreamDestination();
-      gainNode.connect(dest);
+      chain.outputNode.connect(dest);
 
       const rawTrack = rawStream.getAudioTracks()[0];
       const outTrack = dest.stream.getAudioTracks()[0];
@@ -343,13 +378,53 @@ class MeshVoiceService {
       }
 
       this.micAudioCtx = ctx;
-      this.micGainNode = gainNode;
+      this.micGainNode = chain.gainNode;
+      this.micChainCleanup = chain.cleanup;
+      this.lastDspInfo = {
+        aiNsApplied: chain.aiNsApplied,
+        noiseGateApplied: chain.noiseGateApplied,
+        sampleRate: chain.sampleRate,
+        mode: plan.mode,
+      };
       return dest.stream;
     } catch (err) {
       console.warn('Audio DSP pipeline fallback to raw mic stream:', err);
+      try { chain?.cleanup?.(); } catch {}
+      if (ctx && typeof ctx.close === 'function') {
+        try { await ctx.close(); } catch {}
+      }
       this.cleanupMicProcessing();
+      this.lastDspInfo = {
+        aiNsApplied: false,
+        noiseGateApplied: false,
+        sampleRate: null,
+        mode: plan.mode,
+      };
       return rawStream;
     }
+  }
+
+  async rebuildProcessedStream() {
+    if (!this.rawLocalStream || !this.rawLocalStream.active) return null;
+    const targetRaw = this.rawLocalStream;
+    const expectedSeq = this._dspBuildSeq + 1;
+    const processed = await this.buildProcessedLocalStream(targetRaw);
+
+    if (
+      expectedSeq !== this._dspBuildSeq ||
+      this.rawLocalStream !== targetRaw ||
+      !targetRaw.active
+    ) {
+      return this.localStream;
+    }
+
+    this.localStream = processed;
+    const nextTrack = processed?.getAudioTracks?.()[0];
+    if (nextTrack) {
+      this.replaceOutgoingAudioTrack(nextTrack);
+    }
+    this.emit('localStreamChanged', processed);
+    return processed;
   }
 
   replaceOutgoingAudioTrack(newTrack) {
@@ -384,10 +459,7 @@ class MeshVoiceService {
       }
     } else if (this.rawLocalStream && this.rawLocalStream.active && clamped !== 100) {
       // Lazily attach DSP/gain pipeline when user adjusts mic slider from 100%
-      const processed = this.buildProcessedLocalStream(this.rawLocalStream);
-      this.localStream = processed;
-      this.replaceOutgoingAudioTrack(processed.getAudioTracks()[0]);
-      this.emit('localStreamChanged', processed);
+      this.rebuildProcessedStream().catch(() => {});
     }
   }
 
@@ -396,21 +468,35 @@ class MeshVoiceService {
     if (this.localStream && this.localStream.active) {
       return this.localStream;
     }
-
-    try {
-      const audioConstraints = this.getBaseAudioConstraints(this.selectedAudioInputId, customConstraints);
-      const rawStream = await navigator.mediaDevices.getUserMedia({
-        audio: audioConstraints,
-        video: false,
-      });
-
-      this.rawLocalStream = rawStream;
-      this.localStream = this.buildProcessedLocalStream(rawStream);
-      return this.localStream;
-    } catch (err) {
-      console.warn('Microphone access denied or unavailable:', err);
-      throw err;
+    if (this._pendingLocalAudioPromise && !customConstraints) {
+      return this._pendingLocalAudioPromise;
     }
+
+    const task = (async () => {
+      try {
+        const audioConstraints = this.getBaseAudioConstraints(this.selectedAudioInputId, customConstraints);
+        const rawStream = await navigator.mediaDevices.getUserMedia({
+          audio: audioConstraints,
+          video: false,
+        });
+
+        this.rawLocalStream = rawStream;
+        this.localStream = await this.buildProcessedLocalStream(rawStream);
+        return this.localStream;
+      } catch (err) {
+        console.warn('Microphone access denied or unavailable:', err);
+        throw err;
+      } finally {
+        if (this._pendingLocalAudioPromise === task) {
+          this._pendingLocalAudioPromise = null;
+        }
+      }
+    })();
+
+    if (!customConstraints) {
+      this._pendingLocalAudioPromise = task;
+    }
+    return task;
   }
 
   // Seamlessly switch microphone input device or reacquire stream without interrupting active WebRTC calls
@@ -436,7 +522,7 @@ class MeshVoiceService {
       this.stopLocalAudioTracks();
 
       this.rawLocalStream = rawNewStream;
-      const newStream = this.buildProcessedLocalStream(rawNewStream);
+      const newStream = await this.buildProcessedLocalStream(rawNewStream);
       this.localStream = newStream;
 
       const newTrack = newStream.getAudioTracks()[0];
@@ -450,49 +536,81 @@ class MeshVoiceService {
     }
   }
 
-  // Dynamically update audio processing settings (EC/NS, AGC, Anti-Static DSP) seamlessly
-  async applyAudioSettings({ advancedAudioFiltering, autoGainControl, antiStaticFilter } = {}) {
+  // Dynamically update audio processing settings (EC/NS, AGC, Anti-Static, AI RNNoise, Noise Gate) seamlessly
+  async applyAudioSettings({
+    advancedAudioFiltering,
+    autoGainControl,
+    antiStaticFilter,
+    aiNoiseSuppression,
+    noiseSuppressionMode,
+    noiseGateThreshold,
+  } = {}) {
+    let constraintsChanged = false;
     if (advancedAudioFiltering !== undefined) {
-      this.advancedAudioFiltering = Boolean(advancedAudioFiltering);
+      const nextFiltering = Boolean(advancedAudioFiltering);
+      if (nextFiltering !== this.advancedAudioFiltering) {
+        constraintsChanged = true;
+      }
+      this.advancedAudioFiltering = nextFiltering;
     }
     if (autoGainControl !== undefined) {
-      this.autoGainControlEnabled = Boolean(autoGainControl);
+      const nextAgc = Boolean(autoGainControl);
+      if (nextAgc !== this.autoGainControlEnabled) {
+        constraintsChanged = true;
+      }
+      this.autoGainControlEnabled = nextAgc;
     }
-    const dspChanged =
-      antiStaticFilter !== undefined && this.antiStaticFilterEnabled !== Boolean(antiStaticFilter);
+
+    let dspChanged = false;
     if (antiStaticFilter !== undefined) {
-      this.antiStaticFilterEnabled = Boolean(antiStaticFilter);
+      const nextAntiStatic = Boolean(antiStaticFilter);
+      if (nextAntiStatic !== this.antiStaticFilterEnabled) dspChanged = true;
+      this.antiStaticFilterEnabled = nextAntiStatic;
+    }
+    if (aiNoiseSuppression !== undefined) {
+      const nextAiNs = Boolean(aiNoiseSuppression);
+      if (nextAiNs !== this.aiNoiseSuppressionEnabled) dspChanged = true;
+      this.aiNoiseSuppressionEnabled = nextAiNs;
+    }
+    if (noiseSuppressionMode !== undefined) {
+      const nextMode = normalizeNoiseSuppressionMode(noiseSuppressionMode);
+      if (nextMode !== this.noiseSuppressionMode) dspChanged = true;
+      this.noiseSuppressionMode = nextMode;
+    }
+    if (noiseGateThreshold !== undefined) {
+      const nextGate = clampNoiseGateThreshold(noiseGateThreshold);
+      if (nextGate !== this.noiseGateThreshold) dspChanged = true;
+      this.noiseGateThreshold = nextGate;
     }
 
     if (!this.rawLocalStream || !this.rawLocalStream.active) return;
 
-    const rawTrack = this.rawLocalStream.getAudioTracks()[0];
-    const constraints = this.getBaseAudioConstraints(this.selectedAudioInputId);
+    if (constraintsChanged) {
+      const rawTrack = this.rawLocalStream.getAudioTracks()[0];
+      const constraints = this.getBaseAudioConstraints(this.selectedAudioInputId);
 
-    let applied = false;
-    if (rawTrack && typeof rawTrack.applyConstraints === 'function') {
-      try {
-        await rawTrack.applyConstraints(constraints);
-        applied = true;
-      } catch (err) {
-        console.warn('[Voys] applyConstraints warning, recreating audio stream:', err);
+      let applied = false;
+      if (rawTrack && typeof rawTrack.applyConstraints === 'function') {
+        try {
+          await rawTrack.applyConstraints(constraints);
+          applied = true;
+        } catch (err) {
+          console.warn('[Voys] applyConstraints warning, recreating audio stream:', err);
+        }
       }
-    }
 
-    if (!applied) {
-      try {
-        await this.switchAudioInput(this.selectedAudioInputId);
-        return;
-      } catch (swapErr) {
-        console.warn('[Voys] Seamless stream recreate warning:', swapErr);
+      if (!applied) {
+        try {
+          await this.switchAudioInput(this.selectedAudioInputId);
+          return;
+        } catch (swapErr) {
+          console.warn('[Voys] Seamless stream recreate warning:', swapErr);
+        }
       }
     }
 
     if (dspChanged) {
-      const processed = this.buildProcessedLocalStream(this.rawLocalStream);
-      this.localStream = processed;
-      this.replaceOutgoingAudioTrack(processed.getAudioTracks()[0]);
-      this.emit('localStreamChanged', processed);
+      await this.rebuildProcessedStream();
     }
   }
 

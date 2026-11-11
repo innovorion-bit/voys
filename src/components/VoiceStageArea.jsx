@@ -13,7 +13,6 @@ import {
   ScreenShare, 
   PhoneOff, 
   ChevronDown, 
-  Sparkles,
   UserPlus,
   MessageSquare
 } from 'lucide-react';
@@ -21,6 +20,7 @@ import { UserAvatar } from './UserAvatar';
 import { ConnectionQualityIndicator } from './ConnectionQualityIndicator';
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
+import { NoiseSuppressionButton } from './NoiseSuppressionButton';
 
 export const VoiceStageArea = ({
   activeChannelName = 'Sesli Sohbet',
@@ -47,7 +47,6 @@ export const VoiceStageArea = ({
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [streamVolume, setStreamVolume] = useState(80);
-  const [isAiNsActive, setIsAiNsActive] = useState(true);
   const [isCamActive, setIsCamActive] = useState(false);
 
   // Connect MediaStream to the video element if an active stream exists
@@ -394,19 +393,7 @@ export const VoiceStageArea = ({
           </button>
 
           {/* 3. AI Noise Suppression (AI NS) */}
-          <button
-            type="button"
-            onClick={() => setIsAiNsActive(!isAiNsActive)}
-            className={`px-3 h-10 rounded-full flex items-center space-x-1.5 transition-all text-xs font-bold ${
-              isAiNsActive
-                ? 'bg-[#153423] text-[#22c55e] border border-[#22c55e]/40 shadow-[0_0_15px_rgba(34,197,94,0.25)]'
-                : 'bg-[#1a1a22] text-gray-400 hover:text-white'
-            }`}
-            title="Yapay Zeka Gürültü Engelleme (AI Noise Suppression)"
-          >
-            <Sparkles size={14} className={isAiNsActive ? 'text-[#22c55e]' : 'text-gray-400'} />
-            <span>AI NS</span>
-          </button>
+          <NoiseSuppressionButton variant="stage" />
 
           {/* 4. Camera Toggle */}
           <div className="flex items-center space-x-0.5">

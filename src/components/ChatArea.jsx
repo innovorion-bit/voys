@@ -115,6 +115,7 @@ function formatFullDateTime(rawDate) {
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
 import { VoiceControls } from './VoiceControls';
+import { NoiseSuppressionButton } from './NoiseSuppressionButton';
 import { ScreenShareStage } from './ScreenShareStage';
 import { InChatCallStage } from './InChatCallStage';
 import { dbService } from '../lib/supabase';
@@ -2677,6 +2678,9 @@ export const ChatArea = ({
                           : 'Sustur'}
                       </span>
                     </button>
+
+                    {/* Yapay Zeka Gürültü Engelleme */}
+                    <NoiseSuppressionButton variant="sidebar" />
 
                     {/* Ayrıl Butonu */}
                     <button
