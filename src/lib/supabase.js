@@ -1,6 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { compressAvatarImage } from '../utils/imageCompressor';
 import { pickDisplayName, getCachedUserProfile, cacheUserProfiles, isUuidLike } from '../utils/userDisplay';
+import {
+  normalizeParticipantId,
+  parseDmRoomPair,
+  getCanonicalDmRoomId,
+  isDirectMessageForPair,
+  resolveDirectMessagePartner,
+  sanitizeDmMessagesList,
+  sanitizeDmMessagesMap,
+} from '../utils/dmIsolation';
 
 // Retrieve environment variables from Vite
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -15,13 +24,7 @@ export const isSupabaseConfigured = Boolean(
 );
 
 // Canonical Symmetric DM Room ID Helper (Ensures both participants share the exact same room_id)
-export const getDmRoomId = (user1Id, user2Id) => {
-  if (!user1Id || !user2Id) {
-    return `dm-${user2Id || user1Id || 'unknown'}`;
-  }
-  const [first, second] = [String(user1Id), String(user2Id)].sort();
-  return `dm-${first}--${second}`;
-};
+export const getDmRoomId = (user1Id, user2Id) => getCanonicalDmRoomId(user1Id, user2Id);
 
 // Timeout wrapper helper to prevent network requests from hanging indefinitely
 export const withTimeout = (promise, ms = 25000, errorMsg = 'Sunucu yanıt vermedi (Zaman aşımı).') => {
@@ -195,6 +198,17 @@ class StanduppLocalEngine {
   constructor() {
     this.authListeners = [];
     this.tableSubscribers = new Map();
+    this._dmCacheCleaned = false;
+  }
+
+  ensureCleanDmCache() {
+    if (this._dmCacheCleaned) return;
+    this._dmCacheCleaned = true;
+    const raw = this.getItem('standupp_db_dm_msgs', {});
+    const { cleanedMap, changed } = sanitizeDmMessagesMap(raw);
+    if (changed) {
+      this.setItem('standupp_db_dm_msgs', cleanedMap);
+    }
   }
 
   getItem(key, fallback) {
@@ -425,33 +439,57 @@ class StanduppLocalEngine {
   }
 
   getDmMessages(roomId) {
+    this.ensureCleanDmCache();
     const all = this.getItem('standupp_db_dm_msgs', {});
-    if (all[roomId]) return all[roomId];
-    if (roomId && roomId.startsWith('dm-')) {
-      const parts = roomId.replace(/^dm-/, '').split('--');
-      if (parts.length === 2) {
-        const alt = `dm-${parts[1]}--${parts[0]}`;
-        const legacy1 = `dm-${parts[0]}`;
-        const legacy2 = `dm-${parts[1]}`;
-        return all[alt] || all[legacy1] || all[legacy2] || [];
-      }
+    const pair = parseDmRoomPair(roomId);
+    if (!pair) {
+      return [];
     }
-    return [];
+    const [u1, u2] = pair;
+    const canonical = getCanonicalDmRoomId(u1, u2);
+    const alt = `dm-${u2}--${u1}`;
+    const combined = [
+      ...(Array.isArray(all[canonical]) ? all[canonical] : []),
+      ...(roomId !== canonical && Array.isArray(all[roomId]) ? all[roomId] : []),
+      ...(alt !== canonical && alt !== roomId && Array.isArray(all[alt]) ? all[alt] : []),
+    ];
+    const seenIds = new Set();
+    const deduped = combined.filter((msg) => {
+      if (!msg?.id) return true;
+      if (seenIds.has(msg.id)) return false;
+      seenIds.add(msg.id);
+      return true;
+    });
+    return sanitizeDmMessagesList(deduped, u1, u2);
   }
 
   saveDmMessages(roomId, messages) {
+    this.ensureCleanDmCache();
+    const pair = parseDmRoomPair(roomId);
+    if (!pair) return;
+    const canonical = getCanonicalDmRoomId(pair[0], pair[1]);
+    const sanitized = sanitizeDmMessagesList(messages, pair[0], pair[1]);
     const all = this.getItem('standupp_db_dm_msgs', {});
-    all[roomId] = messages;
+    all[canonical] = sanitized;
     this.setItem('standupp_db_dm_msgs', all);
   }
 
   addDmMessage(roomId, message) {
+    this.ensureCleanDmCache();
+    const pair = parseDmRoomPair(roomId);
+    if (!pair) return message;
+    const [u1, u2] = pair;
+    const canonical = getCanonicalDmRoomId(u1, u2);
+    if (!isDirectMessageForPair(message, u1, u2)) {
+      return message;
+    }
     const all = this.getItem('standupp_db_dm_msgs', {});
-    const list = all[roomId] || [];
-    const updated = [...list, message];
-    all[roomId] = updated;
-    this.setItem('standupp_db_dm_msgs', all);
-    this.notifyTable('direct_messages', { eventType: 'INSERT', new: message, roomId });
+    const list = sanitizeDmMessagesList(all[canonical] || [], u1, u2);
+    if (!message?.id || !list.some((m) => m?.id === message.id)) {
+      all[canonical] = [...list, message];
+      this.setItem('standupp_db_dm_msgs', all);
+      this.notifyTable('direct_messages', { eventType: 'INSERT', new: message, roomId: canonical });
+    }
     return message;
   }
 
@@ -1546,130 +1584,91 @@ export const dbService = {
 
   // Direct Messages (DM) Operations
   async fetchDmMessages(roomId, currentUserId = null, otherUserId = null) {
-    let user1 = currentUserId;
-    let user2 = otherUserId;
+    let user1 = normalizeParticipantId(currentUserId);
+    let user2 = normalizeParticipantId(otherUserId);
 
-    if (user1 === 'undefined' || user1 === 'null' || !user1) user1 = null;
-    if (user2 === 'undefined' || user2 === 'null' || !user2) user2 = null;
+    if (user1 === 'you') user1 = null;
+    if (user2 === 'you') user2 = null;
 
-    if ((!user1 || !user2) && roomId && roomId.startsWith('dm-')) {
-      const parts = roomId.replace(/^dm-/, '').split('--');
-      if (parts.length === 2) {
-        if (!user1) user1 = parts[0];
-        if (!user2) user2 = parts[1];
+    if (!user1 || !user2) {
+      const roomPair = parseDmRoomPair(roomId);
+      if (roomPair) {
+        if (!user1) user1 = roomPair[0];
+        if (!user2) user2 = roomPair[1];
       }
     }
 
-    const canonical = (user1 && user2) ? getDmRoomId(user1, user2) : roomId;
+    if (!user1 || !user2) {
+      return [];
+    }
+
+    const canonical = getDmRoomId(user1, user2);
 
     if (isSupabaseConfigured) {
       try {
         const dmColumns =
           'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, created_at';
-        const roomIdsToMatch = Array.from(new Set([
-          canonical,
-          roomId,
-          user1 ? `dm-${user1}` : null,
-          user2 ? `dm-${user2}` : null,
-        ].filter(Boolean)));
+        const pairRoomIds = Array.from(new Set([canonical, `dm-${user2}--${user1}`]));
 
-        let { data, error } = await withTimeout(
-          supabase
-            .from('direct_messages')
-            .select(dmColumns)
-            .in('room_id', roomIdsToMatch)
-            .order('sent_at', { ascending: true }),
-          12000,
-          'DM mesajları alınırken zaman aşımı oluştu.'
-        );
+        // Query strictly by verified participant pair (captures legacy single-ID `dm-<id>` rows
+        // ONLY when sender_id & receiver_id belong to (user1, user2)) plus canonical pair room IDs.
+        const [sentRes, recvRes, roomRes] = await Promise.all([
+          withTimeout(
+            supabase
+              .from('direct_messages')
+              .select(dmColumns)
+              .eq('sender_id', user1)
+              .eq('receiver_id', user2)
+              .order('sent_at', { ascending: true }),
+            12000,
+            'DM mesajları alınırken zaman aşımı oluştu.'
+          ),
+          withTimeout(
+            supabase
+              .from('direct_messages')
+              .select(dmColumns)
+              .eq('sender_id', user2)
+              .eq('receiver_id', user1)
+              .order('sent_at', { ascending: true }),
+            12000,
+            'DM mesajları alınırken zaman aşımı oluştu.'
+          ),
+          withTimeout(
+            supabase
+              .from('direct_messages')
+              .select(dmColumns)
+              .in('room_id', pairRoomIds)
+              .order('sent_at', { ascending: true }),
+            12000,
+            'DM mesajları alınırken zaman aşımı oluştu.'
+          ),
+        ]);
 
-        // If no messages found by room_id and both participants are known, fallback to sender/receiver query
-        if ((!data || data.length === 0) && user1 && user2) {
-          const [res1, res2] = await Promise.all([
-            withTimeout(
-              supabase
-                .from('direct_messages')
-                .select(dmColumns)
-                .eq('sender_id', user1)
-                .eq('receiver_id', user2)
-                .order('sent_at', { ascending: true }),
-              12000,
-              'DM mesajları alınırken zaman aşımı oluştu.'
-            ),
-            withTimeout(
-              supabase
-                .from('direct_messages')
-                .select(dmColumns)
-                .eq('sender_id', user2)
-                .eq('receiver_id', user1)
-                .order('sent_at', { ascending: true }),
-              12000,
-              'DM mesajları alınırken zaman aşımı oluştu.'
-            ),
-          ]);
-
+        const hadSuccessfulQuery = !sentRes.error || !recvRes.error || !roomRes.error;
+        if (hadSuccessfulQuery) {
           const combined = [
-            ...(Array.isArray(res1.data) ? res1.data : []),
-            ...(Array.isArray(res2.data) ? res2.data : []),
+            ...(Array.isArray(sentRes.data) ? sentRes.data : []),
+            ...(Array.isArray(recvRes.data) ? recvRes.data : []),
+            ...(Array.isArray(roomRes.data) ? roomRes.data : []),
           ];
+          const seen = new Set();
+          const getRowTime = (item) => {
+            const raw = item?.sent_at ?? item?.sentAt;
+            const num = Number(raw);
+            if (!Number.isNaN(num) && num > 0) return num;
+            return item?.created_at ? new Date(item.created_at).getTime() || 0 : 0;
+          };
 
-          if (combined.length > 0) {
-            const seen = new Set();
-            data = combined
-              .filter((item) => {
-                if (!item?.id || seen.has(item.id)) return false;
-                seen.add(item.id);
-                return true;
-              })
-              .sort((a, b) => (Number(a.sent_at) || 0) - (Number(b.sent_at) || 0));
-            error = null;
-          }
-        }
+          const realMessages = combined
+            .filter((row) => {
+              if (!row?.id || seen.has(row.id)) return false;
+              seen.add(row.id);
+              return isDirectMessageForPair(row, user1, user2);
+            })
+            .sort((a, b) => getRowTime(a) - getRowTime(b));
 
-        if (!error && Array.isArray(data)) {
-          // Filter out friendship system requests
-          const realMessages = data.filter((row) => 
-            row.room_id !== 'dm-friendship-requests' && 
-            !(Array.isArray(row.lines) && row.lines[0]?.startsWith('__FRIEND_REQUEST:'))
-          );
-
-          const mapped = realMessages.map((row) => {
-            const rawSentAt = row.sent_at ?? row.sentAt;
-            const parsedSentAt = rawSentAt
-              ? (typeof rawSentAt === 'number' ? rawSentAt : (!isNaN(Number(rawSentAt)) ? Number(rawSentAt) : new Date(rawSentAt).getTime()))
-              : (row.created_at ? new Date(row.created_at).getTime() : undefined);
-
-            const formatTimeHHMM = (msOrDate) => {
-              if (!msOrDate) return '';
-              const d = new Date(msOrDate);
-              if (isNaN(d.getTime())) return '';
-              return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-            };
-
-            return {
-              id: row.id,
-              room_id: row.room_id,
-              user: row.sender_name,
-              userId: row.sender_id,
-              avatar: row.sender_avatar || null,
-              color: row.color || '#90ba3c',
-              hasCrown: row.has_crown || false,
-              lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
-              attachments: Array.isArray(row.attachments) ? row.attachments : [],
-              parent_id: row.parent_id || null,
-              reply_to: row.reply_to ? (typeof row.reply_to === 'string' ? JSON.parse(row.reply_to) : row.reply_to) : null,
-              reactions: row.reactions ? (typeof row.reactions === 'string' ? JSON.parse(row.reactions) : row.reactions) : [],
-              timestamp: row.timestamp_text || formatTimeHHMM(parsedSentAt),
-              sentAt: parsedSentAt,
-              sent_at: parsedSentAt,
-              created_at: row.created_at,
-            };
-          });
-
-          // Synchronize localDb cache for offline/instant access
-          if (canonical) localDb.saveDmMessages(canonical, mapped);
-          if (roomId && roomId !== canonical) localDb.saveDmMessages(roomId, mapped);
-
+          const mapped = realMessages.map(mapDirectMessageRow);
+          localDb.saveDmMessages(canonical, mapped);
           return mapped;
         }
       } catch (err) {
@@ -1677,25 +1676,20 @@ export const dbService = {
       }
     }
 
-    // Local fallback: try canonical first, then roomId
-    const localCanonical = canonical ? localDb.getDmMessages(canonical) : [];
-    if (localCanonical.length > 0) return localCanonical;
-    return localDb.getDmMessages(roomId);
+    return localDb.getDmMessages(canonical);
   },
 
   // Batched latest DM lookup for Sidebar (eliminates N+1 per-friend query bursts)
   async fetchLatestDmMessagesBatch(currentUserId, friendIds = []) {
-    const cleanIds = Array.from(new Set((friendIds || []).filter(Boolean).map(String)));
-    if (!currentUserId || cleanIds.length === 0) return {};
+    const me = normalizeParticipantId(currentUserId);
+    const cleanIds = Array.from(new Set((friendIds || []).map(normalizeParticipantId).filter(Boolean)));
+    if (!me || me === 'you' || cleanIds.length === 0) return {};
 
     const canonicalByFriend = new Map();
-    const roomIdsToMatch = new Set();
     cleanIds.forEach((fid) => {
-      const canonical = getDmRoomId(currentUserId, fid);
-      canonicalByFriend.set(fid, canonical);
-      roomIdsToMatch.add(canonical);
-      roomIdsToMatch.add(`dm-${fid}`);
+      canonicalByFriend.set(fid, getDmRoomId(me, fid));
     });
+    const validFriendSet = new Set(cleanIds);
 
     const latestByCanonicalRoom = {};
 
@@ -1703,30 +1697,49 @@ export const dbService = {
       try {
         const dmColumns =
           'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, created_at';
-        const { data, error } = await withTimeout(
-          supabase
-            .from('direct_messages')
-            .select(dmColumns)
-            .in('room_id', Array.from(roomIdsToMatch))
-            .order('sent_at', { ascending: false })
-            .limit(Math.min(200, Math.max(30, cleanIds.length * 6))),
-          10000,
-          'Son DM özetleri yüklenirken zaman aşımı.'
-        );
+        const limit = Math.min(400, Math.max(40, cleanIds.length * 10));
 
-        if (!error && Array.isArray(data)) {
-          for (const row of data) {
-            if (
-              row.room_id === 'dm-friendship-requests' ||
-              (Array.isArray(row.lines) && row.lines[0]?.startsWith('__FRIEND_REQUEST:'))
-            ) {
-              continue;
-            }
-            const partnerId =
-              String(row.sender_id) === String(currentUserId) ? String(row.receiver_id || '') : String(row.sender_id || '');
-            const canonical =
-              (partnerId && canonicalByFriend.get(partnerId)) ||
-              (row.room_id && String(row.room_id).includes('--') ? row.room_id : null);
+        const [sentRes, recvRes] = await Promise.all([
+          withTimeout(
+            supabase
+              .from('direct_messages')
+              .select(dmColumns)
+              .eq('sender_id', me)
+              .in('receiver_id', cleanIds)
+              .order('sent_at', { ascending: false })
+              .limit(limit),
+            10000,
+            'Son DM özetleri yüklenirken zaman aşımı.'
+          ),
+          withTimeout(
+            supabase
+              .from('direct_messages')
+              .select(dmColumns)
+              .eq('receiver_id', me)
+              .in('sender_id', cleanIds)
+              .order('sent_at', { ascending: false })
+              .limit(limit),
+            10000,
+            'Son DM özetleri yüklenirken zaman aşımı.'
+          ),
+        ]);
+
+        if (!sentRes.error || !recvRes.error) {
+          const getRowTime = (item) => {
+            const raw = item?.sent_at ?? item?.sentAt;
+            const num = Number(raw);
+            if (!Number.isNaN(num) && num > 0) return num;
+            return item?.created_at ? new Date(item.created_at).getTime() || 0 : 0;
+          };
+          const combined = [
+            ...(Array.isArray(sentRes.data) ? sentRes.data : []),
+            ...(Array.isArray(recvRes.data) ? recvRes.data : []),
+          ].sort((a, b) => getRowTime(b) - getRowTime(a));
+
+          for (const row of combined) {
+            const partnerId = resolveDirectMessagePartner(row, me, validFriendSet);
+            if (!partnerId) continue;
+            const canonical = canonicalByFriend.get(partnerId);
             if (!canonical || latestByCanonicalRoom[canonical]) continue;
             latestByCanonicalRoom[canonical] = mapDirectMessageRow(row);
           }
@@ -1783,7 +1796,15 @@ export const dbService = {
         console.warn('Supabase saveDmMessage error:', err);
       }
     }
-    return localDb.addDmMessage(canonicalRoomId, message);
+    const localMsg = {
+      ...message,
+      room_id: canonicalRoomId,
+      room: canonicalRoomId,
+      sender_id: senderId || message.sender_id || message.userId,
+      userId: message.userId || senderId,
+      receiver_id: receiverId || message.receiver_id || null,
+    };
+    return localDb.addDmMessage(canonicalRoomId, localMsg);
   },
 
   // Delete all messages in a DM room or channel

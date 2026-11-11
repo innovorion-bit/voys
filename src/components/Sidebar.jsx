@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
 import { getDmRoomId, localDb, dbService } from '../lib/supabase';
 import { chatService } from '../services/chatService';
+import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } from '../utils/dmIsolation';
 
 // Format message timestamp: 23:14 (today), Dün (yesterday), Day Name (this week), DD.MM.YYYY (older)
 function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
@@ -197,6 +198,30 @@ const STATUS_OPTIONS = [
   },
 ];
 
+function buildInitialLastMessagesMap(effectiveUserId, friends, textChannels) {
+  const initialMap = {};
+  try {
+    if (effectiveUserId && effectiveUserId !== 'you') {
+      friends.forEach((friend) => {
+        if (!friend?.id) return;
+        const roomId = getDmRoomId(effectiveUserId, friend.id);
+        const msgs = localDb.getDmMessages(roomId);
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          initialMap[roomId] = msgs[msgs.length - 1];
+        }
+      });
+    }
+    textChannels.forEach((chan) => {
+      if (!chan?.id) return;
+      const msgs = localDb.getChannelMessages(chan.id);
+      if (Array.isArray(msgs) && msgs.length > 0) {
+        initialMap[chan.id] = msgs[msgs.length - 1];
+      }
+    });
+  } catch {}
+  return initialMap;
+}
+
 export const Sidebar = ({ 
   textChannels = [],
   channelCalls = {}, // { [channelId]: { active: boolean, count: number } }
@@ -217,28 +242,20 @@ export const Sidebar = ({
   onUpdateStatus = null,
   activeMessages = [],
 }) => {
+  const effectiveUserId = currentUserProfile?.id || currentUserId || null;
+
   // Map of last messages for each channel/DM room: { [roomId]: messageObj }
-  const [lastMessagesMap, setLastMessagesMap] = useState(() => {
-    const initialMap = {};
-    try {
-      friends.forEach((friend) => {
-        if (!currentUserProfile?.id || !friend?.id) return;
-        const roomId = getDmRoomId(currentUserProfile.id, friend.id);
-        const msgs = localDb.getDmMessages(roomId);
-        if (Array.isArray(msgs) && msgs.length > 0) {
-          initialMap[roomId] = msgs[msgs.length - 1];
-        }
-      });
-      textChannels.forEach((chan) => {
-        if (!chan?.id) return;
-        const msgs = localDb.getChannelMessages(chan.id);
-        if (Array.isArray(msgs) && msgs.length > 0) {
-          initialMap[chan.id] = msgs[msgs.length - 1];
-        }
-      });
-    } catch {}
-    return initialMap;
-  });
+  const [lastMessagesMap, setLastMessagesMap] = useState(() =>
+    buildInitialLastMessagesMap(effectiveUserId, friends, textChannels)
+  );
+
+  const prevUserIdRef = useRef(effectiveUserId);
+  useEffect(() => {
+    if (prevUserIdRef.current !== effectiveUserId) {
+      prevUserIdRef.current = effectiveUserId;
+      setLastMessagesMap(buildInitialLastMessagesMap(effectiveUserId, friends, textChannels));
+    }
+  }, [effectiveUserId, friends, textChannels]);
 
   // Derive active channel's latest message directly during render (avoids cascading render warnings)
   const activeLastMessage = useMemo(() => {
@@ -257,20 +274,33 @@ export const Sidebar = ({
   // Load latest messages from database & subscribe to realtime updates
   useEffect(() => {
     let cancelled = false;
-    const currentUserId = currentUserProfile?.id;
-    if (!currentUserId) return;
+    const activeUid = effectiveUserId;
+    if (!activeUid || activeUid === 'you') return;
 
     // Single batched query for all friends' latest DMs (avoids N+1 query fan-out)
     const friendIds = friendIdsKey ? friendIdsKey.split(',').filter(Boolean) : [];
     const loadLatestMessagesBatch = async () => {
       if (friendIds.length === 0) return;
       try {
-        const batchMap = await dbService.fetchLatestDmMessagesBatch(currentUserId, friendIds);
-        if (!cancelled && batchMap && Object.keys(batchMap).length > 0) {
-          setLastMessagesMap((prev) => ({
-            ...prev,
-            ...batchMap,
-          }));
+        const batchMap = await dbService.fetchLatestDmMessagesBatch(activeUid, friendIds);
+        if (!cancelled && batchMap) {
+          setLastMessagesMap((prev) => {
+            const next = { ...prev };
+            friendIds.forEach((fid) => {
+              const canonical = getDmRoomId(activeUid, fid);
+              if (batchMap[canonical]) {
+                next[canonical] = batchMap[canonical];
+              } else {
+                const localMsgs = localDb.getDmMessages(canonical);
+                if (Array.isArray(localMsgs) && localMsgs.length > 0) {
+                  next[canonical] = localMsgs[localMsgs.length - 1];
+                } else {
+                  delete next[canonical];
+                }
+              }
+            });
+            return next;
+          });
         }
       } catch {}
     };
@@ -281,40 +311,57 @@ export const Sidebar = ({
       if (!cancelled) loadLatestMessagesBatch();
     });
 
-    // Realtime subscription for direct messages
+    // Realtime subscription for direct messages (strictly scoped to activeUid)
     const unsubDms = dbService.subscribeToTable('direct_messages', (payload) => {
       if (cancelled) return;
       const newMsg = payload?.new;
-      if (newMsg && newMsg.room_id && newMsg.room_id !== 'dm-friendship-requests') {
-        const roomId = newMsg.room_id;
-        const formatted = {
-          id: newMsg.id,
-          room_id: roomId,
-          userId: newMsg.sender_id,
-          sender_id: newMsg.sender_id,
-          user: newMsg.sender_name,
-          lines: Array.isArray(newMsg.lines) ? newMsg.lines : (newMsg.lines ? [newMsg.lines] : []),
-          attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
-          timestamp: newMsg.timestamp_text,
-          sentAt: newMsg.sent_at || (newMsg.created_at ? new Date(newMsg.created_at).getTime() : undefined),
-        };
-        setLastMessagesMap((prev) => ({
-          ...prev,
-          [roomId]: formatted,
-        }));
-      }
+      const partnerId = resolveDirectMessagePartner(newMsg, activeUid);
+      if (!partnerId) return;
+
+      const roomId = getDmRoomId(activeUid, partnerId);
+      const formatted = {
+        id: newMsg.id,
+        room_id: roomId,
+        userId: newMsg.sender_id,
+        sender_id: newMsg.sender_id,
+        receiver_id: newMsg.receiver_id,
+        user: newMsg.sender_name,
+        lines: Array.isArray(newMsg.lines) ? newMsg.lines : (newMsg.lines ? [newMsg.lines] : []),
+        attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
+        timestamp: newMsg.timestamp_text,
+        sentAt: newMsg.sent_at || (newMsg.created_at ? new Date(newMsg.created_at).getTime() : undefined),
+      };
+      setLastMessagesMap((prev) => ({
+        ...prev,
+        [roomId]: formatted,
+      }));
     });
 
     // Realtime broadcast/socket message
     const handleChatMessage = (msg) => {
       if (cancelled || !msg) return;
-      const roomId = msg.room || msg.room_id || msg.channel_id;
-      if (roomId) {
+      const rawRoomId = msg.room || msg.room_id || msg.channel_id;
+      if (!rawRoomId) return;
+
+      if (String(rawRoomId).startsWith('dm-')) {
+        const partnerId = resolveDirectMessagePartner(msg, activeUid);
+        const pair = parseDmRoomPair(rawRoomId);
+        const targetPartner = partnerId || (pair && pair.includes(String(activeUid))
+          ? (pair[0] === String(activeUid) ? pair[1] : pair[0])
+          : null);
+        if (!targetPartner) return;
+        const canonical = getDmRoomId(activeUid, targetPartner);
         setLastMessagesMap((prev) => ({
           ...prev,
-          [roomId]: msg,
+          [canonical]: msg,
         }));
+        return;
       }
+
+      setLastMessagesMap((prev) => ({
+        ...prev,
+        [rawRoomId]: msg,
+      }));
     };
 
     chatService.on('message', handleChatMessage);
@@ -325,7 +372,7 @@ export const Sidebar = ({
       unsubDms?.();
       chatService.off('message', handleChatMessage);
     };
-  }, [currentUserProfile?.id, friendIdsKey]);
+  }, [effectiveUserId, friendIdsKey]);
 
   // Search query state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1477,9 +1524,19 @@ export const Sidebar = ({
               const dmCallInfo = dmRoomId ? channelCalls[dmRoomId] : null;
               const isDmCallActive = dmCallInfo?.active;
 
-              const lastMsg = (activeChannel === dmRoomId && activeLastMessage)
+              const rawLastMsg = (
+                activeChannel === dmRoomId &&
+                activeLastMessage &&
+                isDirectMessageForPair(activeLastMessage, currentUserProfile?.id, friend.id)
+              )
                 ? activeLastMessage
                 : (dmRoomId ? lastMessagesMap[dmRoomId] : null);
+              const lastMsg = (
+                rawLastMsg &&
+                isDirectMessageForPair(rawLastMsg, currentUserProfile?.id, friend.id)
+              )
+                ? rawLastMsg
+                : null;
               const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
               const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
               const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';

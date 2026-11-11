@@ -171,7 +171,8 @@ function StanduppApp() {
 
   const activeChannel = useMemo(() => {
     if (isDm && activeDmUserId) {
-      return getDmRoomId(activeUserProfile?.id, activeDmUserId);
+      if (!activeUserProfile?.id || activeUserProfile.id === 'you') return null;
+      return getDmRoomId(activeUserProfile.id, activeDmUserId);
     }
     if (pathParts[1] === 'channel' && pathParts[2] && pathParts[2] !== 'home') {
       return matchedChannel ? matchedChannel.id : null;

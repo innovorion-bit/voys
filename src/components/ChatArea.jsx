@@ -117,7 +117,7 @@ import { UserAvatar } from './UserAvatar';
 import { VoiceControls } from './VoiceControls';
 import { ScreenShareStage } from './ScreenShareStage';
 import { InChatCallStage } from './InChatCallStage';
-import { dbService } from '../lib/supabase';
+import { dbService, getDmRoomId } from '../lib/supabase';
 import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike, partitionSidebarGroupMembers } from '../utils/userDisplay';
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 
@@ -410,7 +410,7 @@ export const ChatArea = ({
         await onClearChat();
       } else {
         const roomId = isDmMode && rawActiveDmFriend && currentUser
-          ? `dm-${currentUser.id}--${rawActiveDmFriend.id}`
+          ? getDmRoomId(currentUser.id, rawActiveDmFriend.id)
           : activeChannel;
         await dbService.deleteChatMessages(roomId, isDmMode ? null : activeChannel);
       }

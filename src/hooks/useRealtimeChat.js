@@ -4,6 +4,7 @@ import { dbService } from '../lib/supabase';
 import { initialChatMessages, initialDmMessages } from '../data/mockData';
 import { sounds } from '../utils/audio';
 import { pickDisplayName } from '../utils/userDisplay';
+import { isDirectMessageForPair, normalizeParticipantId, parseDmRoomPair } from '../utils/dmIsolation';
 
 // Helper to format current timestamp (HH:mm only)
 const formatTimestamp = () => {
@@ -72,11 +73,15 @@ const parseReplyTo = (replyTo) => {
 // Normalize a database message row into the UI message shape with a safe non-UUID author name
 const formatDbMessageRow = (row, channelId) => {
   const parsedSentAt = parseMessageSentAt(row) || Date.now();
+  const senderId = normalizeParticipantId(row.user_id || row.sender_id || row.userId);
   return {
     id: row.id,
     room: channelId,
+    room_id: row.room_id || channelId,
+    sender_id: senderId,
+    receiver_id: normalizeParticipantId(row.receiver_id ?? row.recipient_id),
     user: pickDisplayName([row.user_name, row.sender_name, row.user], 'Kullanıcı'),
-    userId: row.user_id || row.sender_id || row.userId,
+    userId: senderId,
     avatar: row.user_avatar || row.sender_avatar || row.avatar || row.avatar_url || null,
     color: row.color || '#90ba3c',
     hasCrown: row.has_crown || false,
@@ -102,16 +107,25 @@ export const useRealtimeChat = (
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  // Extract other user ID if this is a DM channel
+  const normalizedCurrentUserId = normalizeParticipantId(currentUser?.id);
+  const validCurrentUserId =
+    normalizedCurrentUserId && normalizedCurrentUserId !== 'you' ? normalizedCurrentUserId : null;
+
+  // Extract other user ID if this is a DM channel (null if active user does not belong to room)
   const isDmChannel = Boolean(channelId && channelId.startsWith('dm-'));
   const otherUserId = useMemo(() => {
     if (!isDmChannel || !channelId) return null;
-    const parts = channelId.replace(/^dm-/, '').split('--');
-    if (parts.length === 2) {
-      return parts[0] === currentUser?.id ? parts[1] : parts[0];
+    const pair = parseDmRoomPair(channelId);
+    if (pair) {
+      if (!validCurrentUserId) return null;
+      if (pair[0] === validCurrentUserId) return pair[1];
+      if (pair[1] === validCurrentUserId) return pair[0];
+      return null;
     }
-    return parts[0];
-  }, [isDmChannel, channelId, currentUser?.id]);
+    const single = normalizeParticipantId(channelId.slice(3));
+    if (!single || single === validCurrentUserId) return null;
+    return single;
+  }, [isDmChannel, channelId, validCurrentUserId]);
 
   // Store messages isolated by channelId & DM rooms
   const [messagesByChannel, setMessagesByChannel] = useState({
@@ -130,23 +144,46 @@ export const useRealtimeChat = (
   ];
   const receivedMsgIdsRef = useRef(new Set(allInitialIds));
 
+  // Clear in-memory chat history when switching authenticated users in the same session
+  const lastUserIdRef = useRef(validCurrentUserId);
+  useEffect(() => {
+    const prev = lastUserIdRef.current;
+    if (prev && validCurrentUserId && prev !== validCurrentUserId) {
+      receivedMsgIdsRef.current = new Set(allInitialIds);
+      setMessagesByChannel({
+        'home': initialChatMessages,
+        'voice-sesli-sohbet': initialChatMessages,
+        ...initialDmMessages,
+      });
+    }
+    lastUserIdRef.current = validCurrentUserId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validCurrentUserId]);
+
   // Add message to specific channel's history
   const appendMessage = useCallback((incoming) => {
     if (!incoming || !incoming.id) return;
     if (receivedMsgIdsRef.current.has(incoming.id)) return;
 
+    const targetRoom = incoming.room || incoming.channel_id || incoming.room_id || 'home';
+    const roomPair = parseDmRoomPair(targetRoom);
+    if (roomPair && !isDirectMessageForPair(incoming, roomPair[0], roomPair[1])) {
+      return;
+    }
+
     receivedMsgIdsRef.current.add(incoming.id);
 
-    const targetRoom = incoming.room || incoming.channel_id || incoming.room_id || 'home';
     const incomingAttachments = Array.isArray(incoming.attachments) ? incoming.attachments : [];
     const replyTo = parseReplyTo(incoming.reply_to || incoming.replyTo);
     const parentId = incoming.parent_id || incoming.parentId || replyTo?.id || null;
     const reactions = parseReactions(incoming.reactions);
+    const incomingSenderId = normalizeParticipantId(incoming.userId || incoming.user_id || incoming.sender_id);
 
     setMessagesByChannel((prevMap) => {
       const channelMsgs = prevMap[targetRoom] || [];
       const lastMsg = channelMsgs[channelMsgs.length - 1];
-      const isSameUser = lastMsg && lastMsg.userId === (incoming.userId || incoming.user_id);
+      const lastSenderId = normalizeParticipantId(lastMsg?.userId || lastMsg?.user_id || lastMsg?.sender_id);
+      const isSameUser = Boolean(lastMsg && incomingSenderId && lastSenderId === incomingSenderId);
       const isRecent = lastMsg && incoming.sentAt && (incoming.sentAt - (lastMsg.sentAt || 0) < 120000);
       const isReply = Boolean(replyTo || parentId);
 
@@ -288,10 +325,11 @@ export const useRealtimeChat = (
 
     // 2. Persist to Supabase / Local Database
     if (channelId.startsWith('dm-')) {
-      const receiverId = otherUserId || channelId.replace('dm-', '');
-      dbService.saveDmMessage(channelId, payload, activeUser?.id, receiverId).catch((err) => {
-        console.warn('DB save DM error:', err);
-      });
+      if (activeUser?.id && activeUser.id !== 'you' && otherUserId) {
+        dbService.saveDmMessage(channelId, payload, activeUser.id, otherUserId).catch((err) => {
+          console.warn('DB save DM error:', err);
+        });
+      }
     } else {
       dbService.saveChannelMessage(channelId, payload).catch((err) => {
         console.warn('DB save channel error:', err);
@@ -384,10 +422,14 @@ export const useRealtimeChat = (
 
     // Initial message load from database
     async function loadDatabaseMessages() {
+      if (!channelId || (isDmChannel && (!validCurrentUserId || !otherUserId))) return;
       try {
         let dbMsgs = [];
-        if (channelId && channelId.startsWith('dm-')) {
-          dbMsgs = await dbService.fetchDmMessages(channelId, currentUserRef.current?.id, otherUserId);
+        if (isDmChannel) {
+          const rawDm = await dbService.fetchDmMessages(channelId, validCurrentUserId, otherUserId);
+          dbMsgs = Array.isArray(rawDm)
+            ? rawDm.filter((row) => isDirectMessageForPair(row, validCurrentUserId, otherUserId))
+            : [];
         } else if (channelId) {
           dbMsgs = await dbService.fetchMessages(channelId);
         }
@@ -419,12 +461,15 @@ export const useRealtimeChat = (
 
     let lastDbSyncAt = Date.now();
     const syncMessagesFromDb = async () => {
-      if (isCancelled || !channelId) return;
+      if (isCancelled || !channelId || (isDmChannel && (!validCurrentUserId || !otherUserId))) return;
       lastDbSyncAt = Date.now();
       try {
         let dbMsgs = [];
-        if (channelId.startsWith('dm-')) {
-          dbMsgs = await dbService.fetchDmMessages(channelId, currentUserRef.current?.id, otherUserId);
+        if (isDmChannel) {
+          const rawDm = await dbService.fetchDmMessages(channelId, validCurrentUserId, otherUserId);
+          dbMsgs = Array.isArray(rawDm)
+            ? rawDm.filter((row) => isDirectMessageForPair(row, validCurrentUserId, otherUserId))
+            : [];
         } else {
           dbMsgs = await dbService.fetchMessages(channelId);
         }
@@ -495,41 +540,29 @@ export const useRealtimeChat = (
     });
 
     const unsubDm = dbService.subscribeToTable('direct_messages', (payload) => {
-      if (!payload.new) return;
+      if (!payload.new || !isDmChannel) return;
       const row = payload.new;
 
-      // Filter out friendship system requests
-      if (
-        row.room_id === 'dm-friendship-requests' ||
-        (Array.isArray(row.lines) && row.lines[0]?.startsWith('__FRIEND_REQUEST:'))
-      ) {
+      const myId = normalizeParticipantId(currentUserRef.current?.id);
+      if (!myId || myId === 'you' || !otherUserId) return;
+      if (!isDirectMessageForPair(row, myId, otherUserId)) {
         return;
       }
 
-      const myId = currentUserRef.current?.id;
-      const matchesRoom =
-        row.room_id === channelId ||
-        (otherUserId && myId && (
-          (row.sender_id === myId && row.receiver_id === otherUserId) ||
-          (row.sender_id === otherUserId && row.receiver_id === myId)
-        ));
-
-      if (matchesRoom) {
-        if (payload.eventType === 'UPDATE') {
-          setMessagesByChannel((prevMap) => {
-            const list = prevMap[channelId] || [];
-            const idx = list.findIndex((m) => m.id === row.id);
-            if (idx === -1) return prevMap;
-            const updated = [...list];
-            updated[idx] = {
-              ...updated[idx],
-              reactions: parseReactions(row.reactions),
-            };
-            return { ...prevMap, [channelId]: updated };
-          });
-        } else {
-          appendMessage(formatDbMessageRow(row, channelId));
-        }
+      if (payload.eventType === 'UPDATE') {
+        setMessagesByChannel((prevMap) => {
+          const list = prevMap[channelId] || [];
+          const idx = list.findIndex((m) => m.id === row.id);
+          if (idx === -1) return prevMap;
+          const updated = [...list];
+          updated[idx] = {
+            ...updated[idx],
+            reactions: parseReactions(row.reactions),
+          };
+          return { ...prevMap, [channelId]: updated };
+        });
+      } else {
+        appendMessage(formatDbMessageRow(row, channelId));
       }
     });
 
@@ -544,7 +577,7 @@ export const useRealtimeChat = (
       unsubChannel?.();
       unsubDm?.();
     };
-  }, [channelId, otherUserId, appendMessage, updateMessageReactions]);
+  }, [channelId, isDmChannel, validCurrentUserId, otherUserId, appendMessage, updateMessageReactions]);
 
   const currentMessages = (channelId && messagesByChannel[channelId]) || [];
 
