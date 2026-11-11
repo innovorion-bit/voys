@@ -15,7 +15,8 @@ import {
   UserCheck,
   Copy,
   Plus,
-  Users
+  Users,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
@@ -380,6 +381,7 @@ export const Sidebar = ({
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [friendFeedback, setFriendFeedback] = useState(null);
 
   // Create group panel internal states
   const [newGroupName, setNewGroupName] = useState('');
@@ -452,6 +454,24 @@ export const Sidebar = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [sidebarView]);
 
+  const openAddFriendView = () => {
+    setFriendFeedback(null);
+    setSidebarView('addFriend');
+  };
+
+  // Sync latest friendships when Add Friend panel opens
+  useEffect(() => {
+    if (sidebarView === 'addFriend') {
+      onFriendshipUpdated?.();
+    }
+  }, [sidebarView, onFriendshipUpdated]);
+
+  const resolvedCurrentUserId = useMemo(() => {
+    if (currentUserId && currentUserId !== 'you') return currentUserId;
+    if (currentUserProfile?.id && currentUserProfile.id !== 'you') return currentUserProfile.id;
+    return null;
+  }, [currentUserId, currentUserProfile?.id]);
+
   // Debounced search for users
   useEffect(() => {
     if (sidebarView !== 'addFriend') return;
@@ -461,10 +481,7 @@ export const Sidebar = ({
     const timer = setTimeout(async () => {
       try {
         setIsSearchingUsers(true);
-        const results = await dbService.searchUsers(
-          q,
-          currentUserId || currentUserProfile?.id
-        );
+        const results = await dbService.searchUsers(q, resolvedCurrentUserId);
         setSearchResults(results || []);
       } catch (err) {
         console.warn('Search users error in sidebar:', err);
@@ -474,49 +491,79 @@ export const Sidebar = ({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [friendSearchQuery, sidebarView, currentUserId, currentUserProfile?.id]);
+  }, [friendSearchQuery, sidebarView, resolvedCurrentUserId]);
 
   const handleSendFriendRequest = async (targetUserId, targetName) => {
+    setFriendFeedback(null);
+    if (!resolvedCurrentUserId) {
+      const msg = 'Kullanıcı oturumu doğrulanamadı. Lütfen sayfayı yenileyin.';
+      setFriendFeedback({ type: 'error', message: msg });
+      toast.error('İstek Gönderilemedi', { description: msg });
+      return;
+    }
+
     try {
       setActionLoadingId(targetUserId);
-      await dbService.sendFriendRequest(currentUserId || currentUserProfile?.id, targetUserId);
+      await dbService.sendFriendRequest(resolvedCurrentUserId, targetUserId);
+      const successMsg = `${targetName || 'Kullanıcı'} kullanıcısına arkadaşlık isteği gönderildi.`;
+      setFriendFeedback({ type: 'success', message: successMsg });
       toast.success('Arkadaşlık İsteği Gönderildi', {
         description: `${targetName || 'Kullanıcı'} kullanıcısına istek iletildi.`,
       });
       onFriendshipUpdated?.();
       setAddFriendTab('outgoing');
     } catch (err) {
+      const msg = err?.message || 'Bir hata oluştu.';
+      setFriendFeedback({ type: 'error', message: msg });
       toast.error('İstek Gönderilemedi', {
-        description: err.message || 'Bir hata oluştu.',
+        description: msg,
       });
+      if (
+        err?.code === 'ALREADY_FRIENDS' ||
+        err?.code === 'PENDING_INCOMING' ||
+        err?.code === 'PENDING_OUTGOING' ||
+        /zaten|mevcut|bekleyen/i.test(msg)
+      ) {
+        onFriendshipUpdated?.();
+      }
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleAcceptRequest = async (friendshipId, targetName) => {
+    setFriendFeedback(null);
     try {
       setActionLoadingId(friendshipId);
       await dbService.acceptFriendRequest(friendshipId);
+      const msg = `${targetName || 'Kullanıcı'} ile artık arkadaşsınız!`;
+      setFriendFeedback({ type: 'success', message: msg });
       toast.success('Arkadaşlık İsteği Kabul Edildi', {
-        description: `${targetName || 'Kullanıcı'} ile artık arkadaşsınız!`,
+        description: msg,
       });
       onFriendshipUpdated?.();
     } catch (err) {
-      toast.error('Hata Oluştu', { description: err.message });
+      const msg = err?.message || 'İstek kabul edilirken hata oluştu.';
+      setFriendFeedback({ type: 'error', message: msg });
+      toast.error('Hata Oluştu', { description: msg });
+      onFriendshipUpdated?.();
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleRejectRequest = async (friendshipId) => {
+    setFriendFeedback(null);
     try {
       setActionLoadingId(friendshipId);
       await dbService.rejectFriendRequest(friendshipId);
+      setFriendFeedback({ type: 'info', message: 'İstek kaldırıldı.' });
       toast.info('İstek Kaldırıldı');
       onFriendshipUpdated?.();
     } catch (err) {
-      toast.error('Hata Oluştu', { description: err.message });
+      const msg = err?.message || 'İstek kaldırılırken hata oluştu.';
+      setFriendFeedback({ type: 'error', message: msg });
+      toast.error('Hata Oluştu', { description: msg });
     } finally {
       setActionLoadingId(null);
     }
@@ -645,7 +692,7 @@ export const Sidebar = ({
             {/* Quick Add Friend Button */}
             <button
               type="button"
-              onClick={() => setSidebarView('addFriend')}
+              onClick={openAddFriendView}
               className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-emerald-400 text-xs font-semibold rounded-lg border border-emerald-500/30 flex items-center space-x-1 transition cursor-pointer"
               title="Yeni Arkadaş Ekle"
             >
@@ -824,6 +871,30 @@ export const Sidebar = ({
 
           {/* Panel Body */}
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 custom-scrollbar min-h-0">
+            {friendFeedback && (
+              <div
+                role="alert"
+                className={`p-2.5 rounded-xl border text-[11px] flex items-start space-x-2 ${
+                  friendFeedback.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                    : friendFeedback.type === 'info'
+                      ? 'bg-indigo-500/10 border-indigo-500/25 text-indigo-300'
+                      : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+                }`}
+              >
+                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                <span className="leading-snug flex-1">{friendFeedback.message}</span>
+                <button
+                  type="button"
+                  onClick={() => setFriendFeedback(null)}
+                  className="text-current/70 hover:text-white transition"
+                  aria-label="Bildirimi kapat"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
             {addFriendTab === 'search' && (
               <>
                 {/* Search Input Box */}
@@ -835,6 +906,7 @@ export const Sidebar = ({
                     onChange={(e) => {
                       const val = e.target.value;
                       setFriendSearchQuery(val);
+                      setFriendFeedback(null);
                       if (!val.trim() || val.trim().length < 2) {
                         setSearchResults([]);
                         setIsSearchingUsers(false);
@@ -851,6 +923,7 @@ export const Sidebar = ({
                         setFriendSearchQuery('');
                         setSearchResults([]);
                         setIsSearchingUsers(false);
+                        setFriendFeedback(null);
                       }}
                       className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition"
                     >
@@ -888,8 +961,11 @@ export const Sidebar = ({
                   ) : searchResults.length > 0 ? (
                     searchResults.map((user) => {
                       const isAlreadyFriend = friends.some((f) => f.id === user.id);
+                      const incomingReq = incomingRequests.find((i) => i.id === user.id);
                       const isPendingOutgoing = outgoingRequests.some((o) => o.id === user.id);
-                      const isLoadingThis = actionLoadingId === user.id;
+                      const isLoadingThis =
+                        actionLoadingId === user.id ||
+                        (incomingReq && actionLoadingId === incomingReq.friendshipId);
 
                       return (
                         <div
@@ -922,6 +998,20 @@ export const Sidebar = ({
                             >
                               <UserCheck size={12} />
                               <span>Arkadaş</span>
+                            </button>
+                          ) : incomingReq ? (
+                            <button
+                              type="button"
+                              disabled={isLoadingThis}
+                              onClick={() => handleAcceptRequest(incomingReq.friendshipId, user.name)}
+                              className="px-2 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition flex-shrink-0 flex items-center space-x-1 disabled:opacity-50"
+                            >
+                              {isLoadingThis ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Check size={12} />
+                              )}
+                              <span>Kabul Et</span>
                             </button>
                           ) : isPendingOutgoing ? (
                             <span className="px-2 py-1 text-[10px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 flex items-center space-x-1">
@@ -1271,7 +1361,7 @@ export const Sidebar = ({
                   type="button"
                   onClick={() => {
                     setIsPlusMenuOpen(false);
-                    setSidebarView('addFriend');
+                    openAddFriendView();
                   }}
                   className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
                 >
@@ -1338,7 +1428,7 @@ export const Sidebar = ({
             <p className="text-gray-300 font-medium">Sohbet bulunamadı</p>
             <button
               type="button"
-              onClick={() => setSidebarView('addFriend')}
+              onClick={openAddFriendView}
               className="px-3.5 py-1.5 bg-[#00a884] hover:bg-[#00a884]/90 text-black font-bold rounded-lg text-xs transition shadow-md"
             >
               + Yeni Sohbet Başlat

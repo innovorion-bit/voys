@@ -8,7 +8,9 @@ import {
   Inbox, 
   Send,
   Loader2,
-  Copy
+  Copy,
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
@@ -19,6 +21,7 @@ export const AddFriendModal = ({
   onClose, 
   currentUser,
   onFriendshipUpdated,
+  friends = [],
   incomingRequests = [],
   outgoingRequests = []
 }) => {
@@ -28,9 +31,11 @@ export const AddFriendModal = ({
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
+    setFeedback(null);
     if (!val.trim() || val.length < 2) {
       setSearchResults([]);
     }
@@ -57,22 +62,44 @@ export const AddFriendModal = ({
     return () => clearTimeout(timer);
   }, [searchQuery, currentUser?.id]);
 
-  // ESC key listener to close
+  // ESC key listener & sync latest friendships when modal opens
   useEffect(() => {
     if (!isOpen) return;
+    onFriendshipUpdated?.();
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        setFeedback(null);
+        onClose();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, onFriendshipUpdated]);
+
+  const handleCloseModal = () => {
+    setFeedback(null);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
+  const resolvedCurrentUserId =
+    currentUser?.id && currentUser.id !== 'you' ? currentUser.id : null;
+
   const handleSendRequest = async (targetUserId, targetName) => {
+    setFeedback(null);
+    if (!resolvedCurrentUserId) {
+      const msg = 'Kullanıcı oturumu doğrulanamadı. Lütfen sayfayı yenileyin.';
+      setFeedback({ type: 'error', message: msg });
+      toast.error('İstek Gönderilemedi', { description: msg });
+      return;
+    }
+
     try {
       setIsSending(true);
-      await dbService.sendFriendRequest(currentUser?.id, targetUserId);
+      await dbService.sendFriendRequest(resolvedCurrentUserId, targetUserId);
+      const successMsg = `${targetName || 'Kullanıcı'} kullanıcısına arkadaşlık isteği gönderildi.`;
+      setFeedback({ type: 'success', message: successMsg });
       toast.success('Arkadaşlık İsteği Gönderildi', {
         description: `${targetName || 'Kullanıcı'} kullanıcısına istek iletildi.`,
       });
@@ -81,37 +108,57 @@ export const AddFriendModal = ({
       onFriendshipUpdated?.();
       setActiveTab('outgoing');
     } catch (err) {
+      const msg = err?.message || 'Bir hata oluştu.';
+      setFeedback({ type: 'error', message: msg });
       toast.error('İstek Gönderilemedi', {
-        description: err.message || 'Bir hata oluştu.',
+        description: msg,
       });
+      if (
+        err?.code === 'ALREADY_FRIENDS' ||
+        err?.code === 'PENDING_INCOMING' ||
+        err?.code === 'PENDING_OUTGOING' ||
+        /zaten|mevcut|bekleyen/i.test(msg)
+      ) {
+        onFriendshipUpdated?.();
+      }
     } finally {
       setIsSending(false);
     }
   };
 
   const handleAccept = async (friendshipId, friendName) => {
+    setFeedback(null);
     try {
       setActionLoadingId(friendshipId);
       await dbService.acceptFriendRequest(friendshipId);
+      const msg = `${friendName || 'Kullanıcı'} artık arkadaş listenizde!`;
+      setFeedback({ type: 'success', message: msg });
       toast.success('Arkadaşlık İsteği Kabul Edildi', {
-        description: `${friendName || 'Kullanıcı'} artık arkadaş listenizde!`,
+        description: msg,
       });
       onFriendshipUpdated?.();
     } catch (err) {
-      toast.error('Hata Oluştu', { description: err.message });
+      const msg = err?.message || 'İstek kabul edilirken hata oluştu.';
+      setFeedback({ type: 'error', message: msg });
+      toast.error('Hata Oluştu', { description: msg });
+      onFriendshipUpdated?.();
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleReject = async (friendshipId) => {
+    setFeedback(null);
     try {
       setActionLoadingId(friendshipId);
       await dbService.rejectFriendRequest(friendshipId);
+      setFeedback({ type: 'info', message: 'İstek kaldırıldı.' });
       toast.info('İstek Kaldırıldı');
       onFriendshipUpdated?.();
     } catch (err) {
-      toast.error('Hata Oluştu', { description: err.message });
+      const msg = err?.message || 'İstek kaldırılırken hata oluştu.';
+      setFeedback({ type: 'error', message: msg });
+      toast.error('Hata Oluştu', { description: msg });
     } finally {
       setActionLoadingId(null);
     }
@@ -136,7 +183,7 @@ export const AddFriendModal = ({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleCloseModal}
           className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition border border-white/10 group shadow-sm"
           title="Kapat (ESC)"
         >
@@ -201,6 +248,32 @@ export const AddFriendModal = ({
       {/* Main Fullscreen Body */}
       <div className="flex-1 h-full overflow-y-auto bg-[#08080a]">
         <div className="max-w-2xl mx-auto p-6 md:p-8 space-y-6">
+          {feedback && (
+            <div
+              role="alert"
+              className={`p-3 rounded-2xl border text-xs flex items-center justify-between space-x-2 ${
+                feedback.type === 'success'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                  : feedback.type === 'info'
+                    ? 'bg-indigo-500/10 border-indigo-500/25 text-indigo-300'
+                    : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2 min-w-0">
+                <AlertCircle size={15} className="flex-shrink-0" />
+                <span>{feedback.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFeedback(null)}
+                className="text-current/70 hover:text-white transition flex-shrink-0"
+                aria-label="Bildirimi kapat"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           {/* TAB 1: Search & Add Friend */}
           {activeTab === 'search' && (
             <div className="space-y-4">
@@ -263,32 +336,61 @@ export const AddFriendModal = ({
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block px-1">
                       Arama Sonuçları ({searchResults.length})
                     </span>
-                    {searchResults.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-indigo-500/30 transition"
-                      >
-                        <div className="flex items-center space-x-3 min-w-0">
-                          <UserAvatar user={user} size="md" showStatus={true} status={user.status} />
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-white truncate">{user.name}</div>
-                            <div className="text-[11px] text-indigo-300/80 font-mono truncate">
-                              @{user.username}
+                    {searchResults.map((user) => {
+                      const isAlreadyFriend = friends.some((f) => f.id === user.id);
+                      const incomingReq = incomingRequests.find((i) => i.id === user.id);
+                      const isPendingOutgoing = outgoingRequests.some((o) => o.id === user.id);
+                      const isAcceptingThis = incomingReq && actionLoadingId === incomingReq.friendshipId;
+
+                      return (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-indigo-500/30 transition"
+                        >
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <UserAvatar user={user} size="md" showStatus={true} status={user.status} />
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-white truncate">{user.name}</div>
+                              <div className="text-[11px] text-indigo-300/80 font-mono truncate">
+                                @{user.username}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <button
-                          type="button"
-                          disabled={isSending}
-                          onClick={() => handleSendRequest(user.id, user.name)}
-                          className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex-shrink-0 disabled:opacity-50"
-                        >
-                          <Send size={12} />
-                          <span>İstek Gönder</span>
-                        </button>
-                      </div>
-                    ))}
+                          {isAlreadyFriend ? (
+                            <span className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-semibold flex-shrink-0">
+                              <UserCheck size={13} />
+                              <span>Arkadaş</span>
+                            </span>
+                          ) : incomingReq ? (
+                            <button
+                              type="button"
+                              disabled={isAcceptingThis}
+                              onClick={() => handleAccept(incomingReq.friendshipId, user.name)}
+                              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-600/20 transition flex-shrink-0 disabled:opacity-50"
+                            >
+                              {isAcceptingThis ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                              <span>Kabul Et</span>
+                            </button>
+                          ) : isPendingOutgoing ? (
+                            <span className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-xl text-xs font-medium flex-shrink-0">
+                              <Clock size={12} />
+                              <span>İletildi</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={isSending}
+                              onClick={() => handleSendRequest(user.id, user.name)}
+                              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex-shrink-0 disabled:opacity-50"
+                            >
+                              {isSending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                              <span>İstek Gönder</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : searchQuery.length >= 2 && !isSearching ? (
                   <div className="py-8 text-center text-xs text-gray-400 bg-white/[0.02] rounded-2xl border border-white/5">

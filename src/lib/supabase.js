@@ -41,6 +41,48 @@ export const withTimeout = (promise, ms = 25000, errorMsg = 'Sunucu yanıt verme
   ]);
 };
 
+const isMissingRelationError = (err) => {
+  if (!err) return false;
+  const code = String(err.code || '');
+  const msg = String(err.message || '').toLowerCase();
+  return (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    msg.includes('does not exist') ||
+    msg.includes('schema cache')
+  );
+};
+
+const createFriendshipError = (message, code) => {
+  const err = new Error(message);
+  if (code) err.code = code;
+  return err;
+};
+
+const throwIfFriendshipConflict = (row, currentUserId) => {
+  if (!row) return;
+  const status = String(row.status || '').toLowerCase();
+  if (status === 'accepted') {
+    throw createFriendshipError('Bu kullanıcı ile zaten arkadaşsınız.', 'ALREADY_FRIENDS');
+  }
+  if (status === 'pending') {
+    const isIncoming = row.friend_id === currentUserId || (row.receiver_id && row.receiver_id === currentUserId);
+    if (isIncoming) {
+      throw createFriendshipError(
+        'Bu kullanıcı size zaten bir arkadaşlık isteği göndermiş. İstekler sekmesinden kabul edebilirsiniz.',
+        'PENDING_INCOMING'
+      );
+    }
+    throw createFriendshipError(
+      'Bu kullanıcıya zaten bekleyen bir arkadaşlık isteği gönderdiniz.',
+      'PENDING_OUTGOING'
+    );
+  }
+  if (status === 'blocked') {
+    throw createFriendshipError('Bu kullanıcıya şu anda arkadaşlık isteği gönderilemiyor.', 'BLOCKED');
+  }
+};
+
 // Primary Supabase Client instance
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -1947,8 +1989,8 @@ export const dbService = {
       tagPart = parts[1].trim();
     }
 
-    const cleanName = namePart.toLowerCase();
-    const cleanTag = tagPart ? tagPart.toLowerCase() : null;
+    const cleanName = namePart.toLowerCase().replace(/[(),]/g, '');
+    const cleanTag = tagPart ? tagPart.toLowerCase().replace(/[(),]/g, '') : null;
     const foundMap = new Map();
 
     // 1. Search in Supabase profiles if configured
@@ -1959,55 +2001,70 @@ export const dbService = {
           filterStr = `and(username.ilike.%${cleanName}%,tag.eq.${cleanTag}),and(display_name.ilike.%${cleanName}%,tag.eq.${cleanTag})`;
         } else if (cleanTag && !cleanName) {
           filterStr = `tag.eq.${cleanTag}`;
-        } else {
+        } else if (cleanName) {
           filterStr = `username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`;
         }
 
-        let { data, error } = await supabase
-          .from('profiles')
-          .select('id, username, tag, display_name, avatar_url, status, substatus')
-          .or(filterStr)
-          .limit(15);
-
-        // Fallback: If user searched name#tag but no exact tag match was found, search by name only
-        if ((!data || data.length === 0) && cleanTag && cleanName) {
-          try {
-            const fallbackRes = await supabase
+        if (filterStr) {
+          let { data, error } = await withTimeout(
+            supabase
               .from('profiles')
               .select('id, username, tag, display_name, avatar_url, status, substatus')
-              .or(`username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`)
-              .limit(15);
-            if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
-              data = fallbackRes.data;
-            }
-          } catch {}
-        }
+              .or(filterStr)
+              .limit(15),
+            8000,
+            'Kullanıcı araması zaman aşımına uğradı.'
+          );
 
-        // Fallback: If tag column does not exist in Supabase profiles yet
-        if (error && error.message && error.message.includes('tag')) {
-          const fallbackFilter = `username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`;
-          const res = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url, status, substatus')
-            .or(fallbackFilter)
-            .limit(15);
-          data = res.data;
-          error = res.error;
-        }
+          // Fallback: If user searched name#tag but no exact tag match was found, search by name only
+          if ((!data || data.length === 0) && cleanTag && cleanName) {
+            try {
+              const fallbackRes = await withTimeout(
+                supabase
+                  .from('profiles')
+                  .select('id, username, tag, display_name, avatar_url, status, substatus')
+                  .or(`username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`)
+                  .limit(15),
+                8000,
+                'Kullanıcı araması zaman aşımına uğradı.'
+              );
+              if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
+                data = fallbackRes.data;
+              }
+            } catch {}
+          }
 
-        if (!error && Array.isArray(data)) {
-          data.forEach((u) => {
-            if (u.id !== currentUserId) {
-              foundMap.set(u.id, {
-                id: u.id,
-                name: u.display_name || u.username,
-                username: u.username,
-                tag: u.tag || '0001',
-                avatar: u.avatar_url,
-                status: u.status || 'offline',
-              });
-            }
-          });
+          // Fallback: If tag column does not exist in Supabase profiles yet
+          if (error && error.message && error.message.includes('tag') && cleanName) {
+            const fallbackFilter = `username.ilike.%${cleanName}%,display_name.ilike.%${cleanName}%`;
+            const res = await withTimeout(
+              supabase
+                .from('profiles')
+                .select('id, username, display_name, avatar_url, status, substatus')
+                .or(fallbackFilter)
+                .limit(15),
+              8000,
+              'Kullanıcı araması zaman aşımına uğradı.'
+            );
+            data = res.data;
+            error = res.error;
+          }
+
+          if (!error && Array.isArray(data)) {
+            cacheUserProfiles(data);
+            data.forEach((u) => {
+              if (u.id !== currentUserId) {
+                foundMap.set(u.id, {
+                  id: u.id,
+                  name: pickDisplayName([u.display_name, u.username], 'Kullanıcı'),
+                  username: (!isUuidLike(u.username) && u.username) || 'user',
+                  tag: u.tag || '0001',
+                  avatar: u.avatar_url,
+                  status: u.status || 'offline',
+                });
+              }
+            });
+          }
         }
       } catch (err) {
         console.warn('Supabase searchUsers error:', err);
@@ -2037,8 +2094,8 @@ export const dbService = {
         if (matches) {
           foundMap.set(u.id, {
             id: u.id,
-            name: u.display_name || u.username,
-            username: u.username,
+            name: pickDisplayName([u.display_name, u.username], 'Kullanıcı'),
+            username: (!isUuidLike(u.username) && u.username) || 'user',
             tag: u.tag || '0001',
             avatar: u.avatar_url,
             status: u.status || 'offline',
@@ -2052,8 +2109,8 @@ export const dbService = {
 
   // Friendship Operations
   async sendFriendRequest(currentUserId, targetQueryOrId) {
-    if (!currentUserId || !targetQueryOrId) {
-      throw new Error('Eksik kullanıcı bilgisi.');
+    if (!currentUserId || currentUserId === 'you' || !targetQueryOrId) {
+      throw new Error('Eksik veya geçersiz kullanıcı bilgisi.');
     }
 
     let targetUserId = targetQueryOrId;
@@ -2073,58 +2130,127 @@ export const dbService = {
     if (isSupabaseConfigured) {
       let friendshipsTableAvailable = true;
       try {
-        const { data: existing, error: existErr } = await supabase
-          .from('friendships')
-          .select('*')
-          .or(`and(user_id.eq.${currentUserId},friend_id.eq.${targetUserId}),and(user_id.eq.${targetUserId},friend_id.eq.${currentUserId})`);
+        const pairFilter = `and(user_id.eq.${currentUserId},friend_id.eq.${targetUserId}),and(user_id.eq.${targetUserId},friend_id.eq.${currentUserId})`;
+        const { data: existing, error: existErr } = await withTimeout(
+          supabase
+            .from('friendships')
+            .select('*')
+            .or(pairFilter),
+          8000,
+          'Arkadaşlık durumu kontrol edilirken zaman aşımı oluştu.'
+        );
 
         if (existErr) {
-          friendshipsTableAvailable = false;
+          if (isMissingRelationError(existErr)) {
+            friendshipsTableAvailable = false;
+          } else {
+            throw existErr;
+          }
         } else if (existing && existing.length > 0) {
-          const f = existing[0];
-          if (f.status === 'accepted') throw new Error('Bu kullanıcı ile zaten arkadaşsınız.');
-          if (f.status === 'pending') throw new Error('Bekleyen bir arkadaşlık isteği zaten mevcut.');
+          existing.forEach((f) => throwIfFriendshipConflict(f, currentUserId));
+
+          const rejectedIds = existing
+            .filter((f) => String(f.status || '').toLowerCase() === 'rejected')
+            .map((f) => f.id)
+            .filter(Boolean);
+
+          if (rejectedIds.length > 0) {
+            const { error: delErr } = await withTimeout(
+              supabase
+                .from('friendships')
+                .delete()
+                .in('id', rejectedIds),
+              8000,
+              'Önceki istek temizlenirken zaman aşımı oluştu.'
+            );
+            if (delErr) throw delErr;
+          }
         }
 
         if (friendshipsTableAvailable) {
-          const { data, error } = await supabase
-            .from('friendships')
-            .insert([
-              {
-                user_id: currentUserId,
-                friend_id: targetUserId,
-                status: 'pending',
-              },
-            ])
-            .select()
-            .single();
+          const { data, error } = await withTimeout(
+            supabase
+              .from('friendships')
+              .insert([
+                {
+                  user_id: currentUserId,
+                  friend_id: targetUserId,
+                  status: 'pending',
+                },
+              ])
+              .select()
+              .single(),
+            8000,
+            'Arkadaşlık isteği gönderilirken zaman aşımı oluştu.'
+          );
 
-          if (error) throw error;
-          return data;
+          if (error) {
+            if (isMissingRelationError(error)) {
+              friendshipsTableAvailable = false;
+            } else if (String(error.code || '') === '23505') {
+              const { data: latest } = await withTimeout(
+                supabase
+                  .from('friendships')
+                  .select('*')
+                  .or(pairFilter),
+                5000
+              );
+              if (latest && latest.length > 0) {
+                latest.forEach((f) => throwIfFriendshipConflict(f, currentUserId));
+              }
+              throw createFriendshipError('Bekleyen bir arkadaşlık isteği zaten mevcut.', 'PENDING_OUTGOING');
+            } else {
+              throw error;
+            }
+          } else {
+            return data;
+          }
         }
       } catch (err) {
-        if (err.message && (err.message.includes('zaten') || err.message.includes('Kendinize') || err.message.includes('bulunamadı'))) throw err;
-        friendshipsTableAvailable = false;
+        if (err?.code === 'ALREADY_FRIENDS' || err?.code === 'PENDING_INCOMING' || err?.code === 'PENDING_OUTGOING' || err?.code === 'BLOCKED') {
+          throw err;
+        }
+        if (err?.message && (err.message.includes('zaten') || err.message.includes('Kendinize') || err.message.includes('bulunamadı'))) {
+          throw err;
+        }
+        if (isMissingRelationError(err)) {
+          friendshipsTableAvailable = false;
+        } else {
+          throw new Error(err?.message || 'Arkadaşlık isteği gönderilirken sunucu hatası oluştu. Lütfen tekrar deneyin.');
+        }
       }
 
       // Realtime Bridge via direct_messages if friendships table is not yet created in Supabase
       if (!friendshipsTableAvailable) {
-        try {
-          const { data: existingDm } = await supabase
+        const { data: existingDm, error: dmSelectErr } = await withTimeout(
+          supabase
             .from('direct_messages')
             .select('*')
             .eq('room_id', 'dm-friendship-requests')
-            .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUserId})`);
+            .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUserId})`),
+          8000,
+          'Arkadaşlık istekleri kontrol edilirken zaman aşımı oluştu.'
+        );
 
-          if (existingDm && existingDm.length > 0) {
-            const last = existingDm[0];
+        if (dmSelectErr) {
+          throw new Error(dmSelectErr.message || 'Arkadaşlık isteği gönderilemedi.');
+        }
+
+        if (existingDm && existingDm.length > 0) {
+          existingDm.forEach((last) => {
             const statusLine = (last.lines && last.lines[0]) || '';
-            if (statusLine.includes('accepted')) throw new Error('Bu kullanıcı ile zaten arkadaşsınız.');
-            if (statusLine.includes('pending')) throw new Error('Bekleyen bir arkadaşlık isteği zaten mevcut.');
-          }
+            const status = statusLine.includes('accepted')
+              ? 'accepted'
+              : statusLine.includes('pending')
+                ? 'pending'
+                : 'rejected';
+            throwIfFriendshipConflict({ ...last, status }, currentUserId);
+          });
+        }
 
-          const reqId = `fr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-          const { data: dmData, error: dmErr } = await supabase
+        const reqId = `fr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        const { data: dmData, error: dmErr } = await withTimeout(
+          supabase
             .from('direct_messages')
             .insert([
               {
@@ -2138,32 +2264,45 @@ export const dbService = {
               },
             ])
             .select()
-            .single();
+            .single(),
+          8000,
+          'Arkadaşlık isteği gönderilirken zaman aşımı oluştu.'
+        );
 
-          if (!dmErr && dmData) {
-            return {
-              id: dmData.id,
-              user_id: currentUserId,
-              friend_id: targetUserId,
-              status: 'pending',
-            };
-          }
-        } catch (dmErr) {
-          if (dmErr.message && (dmErr.message.includes('zaten') || dmErr.message.includes('Kendinize') || dmErr.message.includes('bulunamadı'))) throw dmErr;
-          console.warn('DM friendship bridge error:', dmErr);
+        if (dmErr || !dmData) {
+          throw new Error(dmErr?.message || 'Arkadaşlık isteği gönderilirken hata oluştu.');
         }
+
+        return {
+          id: dmData.id,
+          user_id: currentUserId,
+          friend_id: targetUserId,
+          status: 'pending',
+        };
       }
+
+      throw new Error('Arkadaşlık isteği gönderilemedi. Lütfen tekrar deneyin.');
     }
 
-    // Local fallback
+    // Local fallback (offline / unconfigured mode only)
     const list = localDb.getFriendships();
-    const existing = list.find((f) => 
+    const existing = list.find((f) =>
       (f.user_id === currentUserId && f.friend_id === targetUserId) ||
       (f.user_id === targetUserId && f.friend_id === currentUserId)
     );
     if (existing) {
-      if (existing.status === 'accepted') throw new Error('Bu kullanıcı ile zaten arkadaşsınız.');
-      throw new Error('Bekleyen bir arkadaşlık isteği zaten mevcut.');
+      throwIfFriendshipConflict(existing, currentUserId);
+      const filtered = list.filter((f) => f.id !== existing.id);
+      const refreshed = {
+        id: `f-${Date.now()}`,
+        user_id: currentUserId,
+        friend_id: targetUserId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      };
+      filtered.push(refreshed);
+      localDb.saveFriendships(filtered);
+      return refreshed;
     }
 
     const newF = {
@@ -2179,32 +2318,35 @@ export const dbService = {
   },
 
   async fetchFriendships(currentUserId) {
-    if (!currentUserId) {
+    if (!currentUserId || currentUserId === 'you') {
       return { friends: [], incoming: [], outgoing: [] };
     }
 
     if (isSupabaseConfigured) {
       let rows = null;
+      let missingTable = false;
 
       // 1. Try friendships table
-      try {
-        const { data, error } = await withTimeout(
-          supabase
-            .from('friendships')
-            .select('*')
-            .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`),
-          8000,
-          'Arkadaş listesi alınırken zaman aşımı oluştu.'
-        );
-        if (!error && Array.isArray(data)) {
-          rows = data;
+      const { data, error } = await withTimeout(
+        supabase
+          .from('friendships')
+          .select('*')
+          .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`),
+        8000,
+        'Arkadaş listesi alınırken zaman aşımı oluştu.'
+      );
+      if (error) {
+        if (isMissingRelationError(error)) {
+          missingTable = true;
+        } else {
+          throw error;
         }
-      } catch (err) {
-        console.warn('Supabase fetchFriendships error:', err);
+      } else if (Array.isArray(data)) {
+        rows = data;
       }
 
       // 2. Fallback to direct_messages bridge if friendships table is not present
-      if (!rows) {
+      if (!rows && missingTable) {
         try {
           const { data: dmRows, error: dmErr } = await withTimeout(
             supabase
@@ -2364,31 +2506,45 @@ export const dbService = {
   },
 
   async acceptFriendRequest(friendshipId) {
+    if (!friendshipId) {
+      throw new Error('Geçersiz arkadaşlık isteği.');
+    }
+
     if (isSupabaseConfigured) {
       if (typeof friendshipId === 'string' && friendshipId.startsWith('fr-')) {
-        try {
-          await supabase
+        const { error } = await withTimeout(
+          supabase
             .from('direct_messages')
             .update({ lines: ['__FRIEND_REQUEST:accepted__'] })
-            .eq('id', friendshipId);
-          return { id: friendshipId, status: 'accepted' };
-        } catch (e) {
-          console.warn('acceptFriendRequest DM bridge error:', e);
+            .eq('id', friendshipId),
+          8000,
+          'Arkadaşlık isteği onaylanırken zaman aşımı oluştu.'
+        );
+        if (error) {
+          throw new Error(error.message || 'Arkadaşlık isteği onaylanamadı.');
         }
-      } else {
-        try {
-          const { data, error } = await supabase
-            .from('friendships')
-            .update({ status: 'accepted', updated_at: new Date().toISOString() })
-            .eq('id', friendshipId)
-            .select()
-            .single();
-          if (!error && data) return data;
-        } catch (err) {
-          console.warn('Supabase acceptFriendRequest error:', err);
-        }
+        return { id: friendshipId, status: 'accepted' };
       }
+
+      const { data, error } = await withTimeout(
+        supabase
+          .from('friendships')
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
+          .eq('id', friendshipId)
+          .select()
+          .maybeSingle(),
+        8000,
+        'Arkadaşlık isteği onaylanırken zaman aşımı oluştu.'
+      );
+      if (error) {
+        throw new Error(error.message || 'Arkadaşlık isteği onaylanamadı.');
+      }
+      if (!data) {
+        throw new Error('Arkadaşlık isteği bulunamadı veya zaten işlenmiş.');
+      }
+      return data;
     }
+
     const list = localDb.getFriendships();
     const item = list.find((f) => f.id === friendshipId);
     if (item) {
@@ -2399,29 +2555,40 @@ export const dbService = {
   },
 
   async rejectFriendRequest(friendshipId) {
+    if (!friendshipId) {
+      throw new Error('Geçersiz arkadaşlık isteği.');
+    }
+
     if (isSupabaseConfigured) {
       if (typeof friendshipId === 'string' && friendshipId.startsWith('fr-')) {
-        try {
-          await supabase
+        const { error } = await withTimeout(
+          supabase
             .from('direct_messages')
             .delete()
-            .eq('id', friendshipId);
-          return true;
-        } catch (e) {
-          console.warn('rejectFriendRequest DM bridge error:', e);
+            .eq('id', friendshipId),
+          8000,
+          'Arkadaşlık isteği kaldırılırken zaman aşımı oluştu.'
+        );
+        if (error) {
+          throw new Error(error.message || 'Arkadaşlık isteği kaldırılamadı.');
         }
-      } else {
-        try {
-          await supabase
-            .from('friendships')
-            .delete()
-            .eq('id', friendshipId);
-          return true;
-        } catch (err) {
-          console.warn('Supabase rejectFriendRequest error:', err);
-        }
+        return true;
       }
+
+      const { error } = await withTimeout(
+        supabase
+          .from('friendships')
+          .delete()
+          .eq('id', friendshipId),
+        8000,
+        'Arkadaşlık isteği kaldırılırken zaman aşımı oluştu.'
+      );
+      if (error) {
+        throw new Error(error.message || 'Arkadaşlık isteği kaldırılamadı.');
+      }
+      return true;
     }
+
     const list = localDb.getFriendships().filter((f) => f.id !== friendshipId);
     localDb.saveFriendships(list);
     return true;

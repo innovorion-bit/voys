@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { WindowHeader } from './components/WindowHeader';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
@@ -260,9 +260,10 @@ function StanduppApp() {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer = null;
 
-    const fetchAsync = async () => {
-      if (!currentUserId) return;
+    const fetchAsync = async (isRetry = false) => {
+      if (!currentUserId || currentUserId === 'you') return;
       try {
         const data = await dbService.fetchFriendships(currentUserId);
         if (!cancelled && data && Array.isArray(data.friends)) {
@@ -270,6 +271,11 @@ function StanduppApp() {
         }
       } catch (err) {
         console.warn('Friendships fetch warning:', err);
+        if (!isRetry && !cancelled) {
+          retryTimer = setTimeout(() => {
+            if (!cancelled) fetchAsync(true);
+          }, 2500);
+        }
       }
     };
 
@@ -292,6 +298,7 @@ function StanduppApp() {
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
       unsubFriendships?.();
       unsubProfiles?.();
       unsubDms?.();
@@ -1478,6 +1485,7 @@ function StanduppApp() {
         onClose={() => setIsAddFriendModalOpen(false)}
         currentUser={activeUserProfile}
         onFriendshipUpdated={loadFriendships}
+        friends={friends}
         incomingRequests={friendshipsData.incoming}
         outgoingRequests={friendshipsData.outgoing}
       />
@@ -1506,6 +1514,13 @@ function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
+        <Toaster
+          theme="dark"
+          richColors
+          position="bottom-right"
+          closeButton
+          toastOptions={{ style: { zIndex: 9999 } }}
+        />
         <Routes>
           {/* Public Auth Routes (Guest Only) */}
           <Route
