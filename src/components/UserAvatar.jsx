@@ -77,8 +77,8 @@ export const UserAvatar = ({
         className={`${sizeClasses} flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-gray-200 select-none ${
           hasImage ? 'bg-transparent' : 'bg-[#18181b]'
         } ${
-          isSpeaking ? 'ring-2 ring-emerald-400 scale-105' : ''
-        } transition-all ${className}`}
+          isSpeaking ? 'ring-[2.5px] ring-emerald-400 ring-offset-[1.5px] ring-offset-[#0c0c0e] shadow-[0_0_12px_rgba(52,211,153,0.7)]' : ''
+        } transition-all duration-150 ${className}`}
       >
         {hasImage ? (
           <img 

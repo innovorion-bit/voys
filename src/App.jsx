@@ -942,6 +942,71 @@ function StanduppApp() {
     presences,
   ]);
 
+  // Per-user audio volume & local mute preferences persisted in localStorage
+  const [peerAudioPrefs, setPeerAudioPrefs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('voys_peer_audio_prefs');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleSetPeerVolume = useCallback((member, volumePercent) => {
+    const keys = [member?.id, member?.peerId].filter(Boolean).map(String);
+    if (keys.length === 0) return;
+    const clamped = Math.max(0, Math.min(100, Math.round(Number(volumePercent) || 0)));
+
+    setPeerAudioPrefs((prev) => {
+      const next = { ...prev };
+      keys.forEach((k) => {
+        next[k] = {
+          volume: clamped,
+          muted: clamped === 0,
+        };
+      });
+      try {
+        localStorage.setItem('voys_peer_audio_prefs', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleTogglePeerMute = useCallback((member) => {
+    const keys = [member?.id, member?.peerId].filter(Boolean).map(String);
+    if (keys.length === 0) return;
+
+    setPeerAudioPrefs((prev) => {
+      const existing = keys.map((k) => prev[k]).find(Boolean) || { volume: 100, muted: false };
+      const nextMuted = !existing.muted;
+      const nextVol = !nextMuted && existing.volume === 0 ? 100 : (existing.volume ?? 100);
+      const next = { ...prev };
+      keys.forEach((k) => {
+        next[k] = {
+          volume: nextVol,
+          muted: nextMuted,
+        };
+      });
+      try {
+        localStorage.setItem('voys_peer_audio_prefs', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Resolve active WebRTC peerId -> audio volume/mute preference
+  const peerAudioMap = useMemo(() => {
+    const map = {};
+    voiceMembers.forEach((m) => {
+      if (!m?.peerId) return;
+      const pref = peerAudioPrefs[String(m.id)] || peerAudioPrefs[String(m.peerId)];
+      if (pref) {
+        map[m.peerId] = pref;
+      }
+    });
+    return map;
+  }, [voiceMembers, peerAudioPrefs]);
+
   // Channel Creation Handler with database persistence
   const handleCreateChannel = async ({ name, members = [] }) => {
     const slug = name
@@ -1088,6 +1153,7 @@ function StanduppApp() {
         remotePeers={remotePeers} 
         isDeafened={isDeafened} 
         volume={outputVolume / 100}
+        peerAudioMap={peerAudioMap}
         sinkId={selectedAudioOutput}
       />
 
@@ -1196,6 +1262,10 @@ function StanduppApp() {
             onToggleDeafen={toggleDeafen}
             onDisconnect={handleLeaveCall}
             onConnect={() => handleStartCall(activeChannel)}
+            peerAudioPrefs={peerAudioPrefs}
+            onSetPeerVolume={handleSetPeerVolume}
+            onTogglePeerMute={handleTogglePeerMute}
+            onSelectDm={handleSelectDm}
           />
         </div>
       </div>

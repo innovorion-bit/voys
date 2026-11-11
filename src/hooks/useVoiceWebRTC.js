@@ -3,6 +3,19 @@ import { toast } from 'sonner';
 import { peerService } from '../services/peerService';
 import { sounds } from '../utils/audio';
 
+const VAD_RMS_THRESHOLD = 3.2;
+const VAD_HANGOVER_MS = 260;
+
+function measureSpeechLevel(analyser, dataArray) {
+  analyser.getByteTimeDomainData(dataArray);
+  let sumSq = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const centered = dataArray[i] - 128;
+    sumSq += centered * centered;
+  }
+  return Math.sqrt(sumSq / dataArray.length);
+}
+
 export const useVoiceWebRTC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -25,51 +38,20 @@ export const useVoiceWebRTC = () => {
   const [audioError, setAudioError] = useState(null);
   const [audioVolume, setAudioVolume] = useState(1);
 
+  const isMutedRef = useRef(false);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+    if (isMuted) setIsSpeaking(false);
+  }, [isMuted]);
+
   const localAudioContextRef = useRef(null);
   const localAnalyserRef = useRef(null);
   const localAnimFrameRef = useRef(null);
+  const localLastSpokeRef = useRef(0);
+  const localSpeakingRef = useRef(false);
 
-  // Setup Voice Activity Detection (VAD) for local microphone
-  const setupLocalVAD = useCallback((stream) => {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx || !stream) return;
-
-      const audioCtx = new AudioCtx();
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.5;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
-
-      localAudioContextRef.current = audioCtx;
-      localAnalyserRef.current = analyser;
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      const checkVolume = () => {
-        if (!localAnalyserRef.current) return;
-        localAnalyserRef.current.getByteFrequencyData(dataArray);
-
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / dataArray.length;
-
-        // True if voice intensity > threshold and mic track is not muted
-        const speakingNow = avg > 14 && !isMuted;
-        setIsSpeaking(speakingNow);
-
-        localAnimFrameRef.current = requestAnimationFrame(checkVolume);
-      };
-
-      checkVolume();
-    } catch (err) {
-      console.warn('Could not setup local audio activity detector:', err);
-    }
-  }, [isMuted]);
+  const remoteAudioContextRef = useRef(null);
+  const remoteAnalysersRef = useRef(new Map());
 
   // Clean up local VAD
   const cleanupLocalVAD = useCallback(() => {
@@ -82,8 +64,63 @@ export const useVoiceWebRTC = () => {
       localAudioContextRef.current = null;
     }
     localAnalyserRef.current = null;
+    localSpeakingRef.current = false;
     setIsSpeaking(false);
   }, []);
+
+  // Setup Voice Activity Detection (VAD) for local microphone
+  const setupLocalVAD = useCallback((stream) => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx || !stream || stream.getAudioTracks().length === 0) return;
+
+      cleanupLocalVAD();
+
+      const audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.45;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      localAudioContextRef.current = audioCtx;
+      localAnalyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.fftSize);
+
+      const checkVolume = () => {
+        if (!localAnalyserRef.current) return;
+
+        let speakingNow = false;
+        if (!isMutedRef.current) {
+          const rms = measureSpeechLevel(localAnalyserRef.current, dataArray);
+          const now = Date.now();
+          if (rms > VAD_RMS_THRESHOLD) {
+            localLastSpokeRef.current = now;
+            speakingNow = true;
+          } else if (now - localLastSpokeRef.current < VAD_HANGOVER_MS) {
+            speakingNow = true;
+          }
+        }
+
+        if (localSpeakingRef.current !== speakingNow) {
+          localSpeakingRef.current = speakingNow;
+          setIsSpeaking(speakingNow);
+        }
+
+        localAnimFrameRef.current = requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+    } catch (err) {
+      console.warn('Could not setup local audio activity detector:', err);
+    }
+  }, [cleanupLocalVAD]);
 
   // Connect to voice mesh
   const connectVoice = useCallback(async (customPeerId = null, userName = 'Sen (You)', userMeta = null) => {
@@ -128,16 +165,73 @@ export const useVoiceWebRTC = () => {
     }
   }, [setupLocalVAD]);
 
+  const cleanupRemoteVAD = useCallback(() => {
+    remoteAnalysersRef.current.forEach((entry) => {
+      try {
+        entry.source?.disconnect();
+        entry.analyser?.disconnect();
+      } catch {}
+    });
+    remoteAnalysersRef.current.clear();
+    if (remoteAudioContextRef.current) {
+      remoteAudioContextRef.current.close().catch(() => {});
+      remoteAudioContextRef.current = null;
+    }
+  }, []);
+
+  const attachRemoteAnalyser = useCallback((peerId, stream) => {
+    if (!peerId || !stream || stream.getAudioTracks().length === 0) return;
+    try {
+      const existing = remoteAnalysersRef.current.get(peerId);
+      if (existing && existing.stream === stream) return;
+      if (existing) {
+        try {
+          existing.source?.disconnect();
+          existing.analyser?.disconnect();
+        } catch {}
+      }
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      if (!remoteAudioContextRef.current || remoteAudioContextRef.current.state === 'closed') {
+        remoteAudioContextRef.current = new AudioCtx();
+      }
+      const ctx = remoteAudioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.45;
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      remoteAnalysersRef.current.set(peerId, {
+        stream,
+        source,
+        analyser,
+        dataArray: new Uint8Array(analyser.fftSize),
+        lastSpokeAt: 0,
+        isSpeaking: false,
+      });
+    } catch (err) {
+      console.warn(`Remote VAD attach warning for ${peerId}:`, err);
+    }
+  }, []);
+
   // Disconnect from voice mesh
   const disconnectVoice = useCallback(() => {
     sounds.playLeave();
     cleanupLocalVAD();
+    cleanupRemoteVAD();
     peerService.disconnect();
     setIsConnected(false);
     setRemotePeers([]);
     setPeerMetadata({});
     setIsSpeaking(false);
-  }, [cleanupLocalVAD]);
+  }, [cleanupLocalVAD, cleanupRemoteVAD]);
 
   // Toggle Microphone Mute: controls stream audioTrack.enabled (true/false)
   const toggleMute = useCallback(() => {
@@ -194,10 +288,11 @@ export const useVoiceWebRTC = () => {
 
   // Switch active voice room for room isolation
   const switchVoiceRoom = useCallback((roomName) => {
+    cleanupRemoteVAD();
     peerService.setVoiceRoom(roomName);
     setRemotePeers([]);
     setPeerMetadata({});
-  }, []);
+  }, [cleanupRemoteVAD]);
 
   // Call another peer directly
   const callPeer = useCallback(async (targetPeerId) => {
@@ -208,10 +303,24 @@ export const useVoiceWebRTC = () => {
     }
   }, []);
 
-  // Listen to incoming remote streams and peer leaves
+  const myPeerIdRef = useRef(myPeerId);
+  useEffect(() => {
+    myPeerIdRef.current = myPeerId;
+  }, [myPeerId]);
+
+  // Clean up audio contexts on hook unmount
+  useEffect(() => {
+    return () => {
+      cleanupLocalVAD();
+      cleanupRemoteVAD();
+    };
+  }, [cleanupLocalVAD, cleanupRemoteVAD]);
+
+  // Listen to incoming remote streams, remote speaking VAD, and peer leaves
   useEffect(() => {
     const handleStream = ({ peerId, stream }) => {
       setPeerMetadata(peerService.getAllPeerMetadata());
+      attachRemoteAnalyser(peerId, stream);
       setRemotePeers((prev) => {
         const existingIdx = prev.findIndex((p) => p.peerId === peerId);
         if (existingIdx >= 0) {
@@ -226,6 +335,14 @@ export const useVoiceWebRTC = () => {
 
     const handlePeerLeft = (peerId) => {
       sounds.playLeave();
+      const analyserEntry = remoteAnalysersRef.current.get(peerId);
+      if (analyserEntry) {
+        try {
+          analyserEntry.source?.disconnect();
+          analyserEntry.analyser?.disconnect();
+        } catch {}
+        remoteAnalysersRef.current.delete(peerId);
+      }
       setRemotePeers((prev) => prev.filter((p) => p.peerId !== peerId));
       setPeerMetadata(peerService.getAllPeerMetadata());
     };
@@ -234,9 +351,52 @@ export const useVoiceWebRTC = () => {
       setPeerMetadata(metaMap || {});
     };
 
+    const handleLocalStreamChanged = (newStream) => {
+      if (newStream) {
+        setupLocalVAD(newStream);
+      }
+    };
+
     peerService.on('stream', handleStream);
     peerService.on('peerLeft', handlePeerLeft);
     peerService.on('peerMetadataUpdated', handlePeerMetadataUpdated);
+    peerService.on('localStreamChanged', handleLocalStreamChanged);
+
+    // Poll remote peer audio analysers for real-time Voice Activity Detection (green speaking ring)
+    const remoteVadInterval = setInterval(() => {
+      if (remoteAnalysersRef.current.size === 0) return;
+
+      const now = Date.now();
+      let changed = false;
+      const speakingUpdates = {};
+
+      remoteAnalysersRef.current.forEach((entry, peerId) => {
+        if (!entry?.analyser || !entry.stream?.active) return;
+        const rms = measureSpeechLevel(entry.analyser, entry.dataArray);
+        let speakingNow = false;
+        if (rms > VAD_RMS_THRESHOLD) {
+          entry.lastSpokeAt = now;
+          speakingNow = true;
+        } else if (now - entry.lastSpokeAt < VAD_HANGOVER_MS) {
+          speakingNow = true;
+        }
+        if (entry.isSpeaking !== speakingNow) {
+          entry.isSpeaking = speakingNow;
+          changed = true;
+        }
+        speakingUpdates[peerId] = entry.isSpeaking;
+      });
+
+      if (changed) {
+        setRemotePeers((prev) =>
+          prev.map((p) =>
+            speakingUpdates[p.peerId] !== undefined && p.isSpeaking !== speakingUpdates[p.peerId]
+              ? { ...p, isSpeaking: speakingUpdates[p.peerId] }
+              : p
+          )
+        );
+      }
+    }, 85);
 
     const handleScreenShareStarted = (info) => {
       setActiveScreenShare(info);
@@ -257,7 +417,7 @@ export const useVoiceWebRTC = () => {
         }
         return prev;
       });
-      if (peerId === myPeerId) {
+      if (peerId === myPeerIdRef.current) {
         setIsScreenSharing(false);
       }
     };
@@ -276,15 +436,16 @@ export const useVoiceWebRTC = () => {
     peerService.on('latenciesUpdated', handleLatencies);
 
     return () => {
+      clearInterval(remoteVadInterval);
       peerService.off('stream', handleStream);
       peerService.off('peerLeft', handlePeerLeft);
       peerService.off('peerMetadataUpdated', handlePeerMetadataUpdated);
+      peerService.off('localStreamChanged', handleLocalStreamChanged);
       peerService.off('screenShareStarted', handleScreenShareStarted);
       peerService.off('screenShareStopped', handleScreenShareStopped);
       peerService.off('latenciesUpdated', handleLatencies);
-      cleanupLocalVAD();
     };
-  }, [cleanupLocalVAD, myPeerId]);
+  }, [attachRemoteAnalyser, setupLocalVAD]);
 
   // Screen Sharing Actions
   const startScreenShare = useCallback(async () => {

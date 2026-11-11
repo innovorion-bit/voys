@@ -30,6 +30,12 @@ import {
   UserPlus,
   Gamepad2,
   Volume2,
+  Volume1,
+  VolumeX,
+  Headphones,
+  MessageSquare,
+  RotateCcw,
+  Settings2,
   Eye,
   MoreVertical,
   User,
@@ -253,12 +259,49 @@ export const ChatArea = ({
   onToggleDeafen,
   onDisconnect,
   onConnect,
+  peerAudioPrefs = {},
+  onSetPeerVolume,
+  onTogglePeerMute,
+  onSelectDm,
 }) => {
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
+
+  // Voice participant right-click context menu state
+  const [voiceContextMenu, setVoiceContextMenu] = useState(null); // { x, y, member }
+  const voiceContextMenuRef = useRef(null);
+
+  const openVoiceContextMenu = useCallback((e, member) => {
+    if (!member) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const menuW = 256;
+    const menuH = 260;
+    const x = Math.min(e.clientX, Math.max(8, window.innerWidth - menuW - 12));
+    const y = Math.min(e.clientY, Math.max(8, window.innerHeight - menuH - 12));
+    setVoiceContextMenu({ x, y, member });
+  }, []);
+
+  useEffect(() => {
+    if (!voiceContextMenu) return;
+    const handleOutside = (e) => {
+      if (voiceContextMenuRef.current && !voiceContextMenuRef.current.contains(e.target)) {
+        setVoiceContextMenu(null);
+      }
+    };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setVoiceContextMenu(null);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [voiceContextMenu]);
 
   // Chat Settings Context
   const { chatSettings, updateChatSetting } = useSettings();
@@ -1044,27 +1087,46 @@ export const ChatArea = ({
                     </button>
                   )}
 
-              {/* Friend Avatar (Tıklandığında büyük ekranda açar) */}
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const avatarUrl = activeDmFriend?.avatar || activeDmFriend?.avatar_url || activeDmFriend?.avatarUrl || null;
-                  setActiveMediaModal({
-                    url: avatarUrl,
-                    name: `${activeDmFriend?.name || 'Kullanıcı'} - Profil Fotoğrafı`,
-                    fallbackUser: activeDmFriend,
-                  });
-                }}
-                className="relative flex-shrink-0 cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 transition"
-                title="Profil fotoğrafını büyüt"
-              >
-                <UserAvatar
-                  user={activeDmFriend}
-                  size="md"
-                  showStatus={false}
-                  status={activeDmFriend.status}
-                />
-              </div>
+              {/* Friend Avatar (Tıklandığında büyük ekranda açar, sesli aramada konuşma halkası ve sağ tık menüsü gösterir) */}
+              {(() => {
+                const dmCallMember = (callMembers || []).find(
+                  (m) => m?.id === activeDmFriend?.id || (m?.name && m.name === activeDmFriend?.name)
+                );
+                const dmPref = dmCallMember
+                  ? (peerAudioPrefs[String(dmCallMember.id)] || (dmCallMember.peerId ? peerAudioPrefs[String(dmCallMember.peerId)] : null))
+                  : null;
+                const dmMuted = Boolean(dmPref?.muted || dmPref?.volume === 0);
+                const dmSpeaking = Boolean(isInCall && !isDeafened && !dmMuted && dmCallMember?.isSpeaking);
+
+                return (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const avatarUrl = activeDmFriend?.avatar || activeDmFriend?.avatar_url || activeDmFriend?.avatarUrl || null;
+                      setActiveMediaModal({
+                        url: avatarUrl,
+                        name: `${activeDmFriend?.name || 'Kullanıcı'} - Profil Fotoğrafı`,
+                        fallbackUser: activeDmFriend,
+                      });
+                    }}
+                    onContextMenu={(e) => {
+                      if (isInCall && (dmCallMember || activeDmFriend)) {
+                        openVoiceContextMenu(e, dmCallMember || activeDmFriend);
+                      }
+                    }}
+                    className="relative flex-shrink-0 cursor-pointer hover:opacity-85 hover:scale-105 active:scale-95 transition"
+                    title={isInCall ? 'Profil fotoğrafını büyüt (Ses ayarları için sağ tıkla)' : 'Profil fotoğrafını büyüt'}
+                  >
+                    <UserAvatar
+                      user={activeDmFriend}
+                      size="md"
+                      showStatus={false}
+                      isSpeaking={dmSpeaking}
+                      status={activeDmFriend.status}
+                    />
+                  </div>
+                );
+              })()}
 
               {/* Friend Name & Realtime Presence Status (Tıklandığında Kişi Bilgisini açar) */}
               <div
@@ -2249,26 +2311,74 @@ export const ChatArea = ({
                 <div className="space-y-1">
                   {(callMembers && callMembers.length > 0 ? callMembers : (currentUser ? [currentUser] : [])).map((m, idx) => {
                     const isMe = m.id === currentUser?.id;
+                    const pref = !isMe
+                      ? (peerAudioPrefs[String(m.id)] || (m.peerId ? peerAudioPrefs[String(m.peerId)] : null))
+                      : null;
+                    const isLocallyMuted = Boolean(pref?.muted || pref?.volume === 0);
+                    const memberSpeaking = Boolean(
+                      isMe
+                        ? (!isMuted && !isDeafened && isSpeaking)
+                        : (!isDeafened && !isLocallyMuted && m.isSpeaking)
+                    );
+
                     return (
                       <div
                         key={m.peerId || m.id || `call-member-${idx}`}
-                        className="flex items-center space-x-2.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+                        onContextMenu={(e) => openVoiceContextMenu(e, m)}
+                        className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/[0.06] transition cursor-context-menu group"
+                        title="Ses seviyesini ve seçenekleri ayarlamak için sağ tıklayın"
                       >
                         <div className="relative flex-shrink-0">
-                          <UserAvatar user={m} size="sm" showStatus={false} />
-                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0c0c0e]" />
+                          <UserAvatar
+                            user={m}
+                            size="sm"
+                            showStatus={false}
+                            isSpeaking={memberSpeaking}
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-1">
-                            <span className="text-xs font-semibold text-white truncate">
+                            <span className="text-xs font-semibold text-gray-100 group-hover:text-white truncate">
                               {m.name || 'Katılımcı'}
                             </span>
                             {isMe && (
-                              <span className="text-[10px] text-emerald-400 font-semibold">(Sen)</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">(Sen)</span>
                             )}
                           </div>
-                          <span className="text-[10px] text-emerald-400/80 font-medium">Seste</span>
+                          <span
+                            className={`text-[10px] font-medium block truncate ${
+                              (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
+                                ? 'text-rose-400/90'
+                                : memberSpeaking
+                                  ? 'text-emerald-400'
+                                  : 'text-gray-400'
+                            }`}
+                          >
+                            {isMe && isDeafened
+                              ? 'Sağırlaştırıldı'
+                              : isMe && isMuted
+                                ? 'Mikrofon Kapalı'
+                                : !isMe && isLocallyMuted
+                                  ? 'Sesi Kapatıldı'
+                                  : memberSpeaking
+                                    ? 'Konuşuyor...'
+                                    : 'Seste'}
+                          </span>
                         </div>
+
+                        {isMe && (isMuted || isDeafened) && (
+                          <span
+                            className="text-rose-400 flex-shrink-0"
+                            title={isDeafened ? 'Sağırlaştırıldı' : 'Mikrofon Kapalı'}
+                          >
+                            {isDeafened ? <Headphones size={13} /> : <MicOff size={13} />}
+                          </span>
+                        )}
+                        {!isMe && isLocallyMuted && (
+                          <span className="text-rose-400 flex-shrink-0" title="Sesi Kapatıldı">
+                            <VolumeX size={13} />
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -2464,50 +2574,69 @@ export const ChatArea = ({
 
                 {/* Tüm Grup Üyeleri (Tek Liste) */}
                 <div className="space-y-1">
-                  {[...onlineMembers, ...offlineMembers].map((member) => (
-                    <div
-                      key={member.id}
-                      className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
-                        !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
-                      }`}
-                    >
-                      <UserAvatar
-                        user={member}
-                        size="sm"
-                        showStatus={true}
-                        status={member.isOnline ? member.status : 'offline'}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
-                            {member.name}
-                          </span>
-                          {member.role === 'admin' && (
-                            <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                  {[...onlineMembers, ...offlineMembers].map((member) => {
+                    const isSelfMember = Boolean(currentUser?.id && member.id === currentUser.id);
+                    const callMatch = (callMembers || []).find((cm) => cm?.id === member.id);
+                    const memberPref = callMatch
+                      ? ((callMatch.id && peerAudioPrefs[callMatch.id]) || (callMatch.peerId && peerAudioPrefs[callMatch.peerId]) || { volume: 100, muted: false })
+                      : { volume: 100, muted: false };
+                    const memberCallSpeaking = Boolean(
+                      callMatch && (
+                        isSelfMember
+                          ? (isSpeaking && !isMuted)
+                          : (callMatch.isSpeaking && !isDeafened && !memberPref.muted && (memberPref.volume ?? 100) > 0)
+                      )
+                    );
+
+                    return (
+                      <div
+                        key={member.id}
+                        onContextMenu={(e) => {
+                          if (callMatch) openVoiceContextMenu(e, callMatch);
+                        }}
+                        className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
+                          !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
+                        }`}
+                      >
+                        <UserAvatar
+                          user={member}
+                          size="sm"
+                          isSpeaking={memberCallSpeaking}
+                          showStatus={true}
+                          status={member.isOnline ? member.status : 'offline'}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-1">
+                            <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
+                              {member.name}
+                            </span>
+                            {member.role === 'admin' && (
+                              <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                            )}
+                          </div>
+
+                          {member.isOnline && member.game ? (
+                            <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-medium">
+                              <Gamepad2 size={11} className="flex-shrink-0" />
+                              <span className="truncate">{member.game} Oynuyor</span>
+                            </div>
+                          ) : (
+                            <p className={`text-[10px] truncate mt-0.5 ${
+                              !member.isOnline || member.status === 'offline' || member.status === 'invisible'
+                                ? 'text-gray-500'
+                                : member.status === 'dnd'
+                                  ? 'text-rose-400/90'
+                                  : member.status === 'idle'
+                                    ? 'text-amber-400/90'
+                                    : 'text-gray-400'
+                            }`}>
+                              {getMemberStatusDisplay(member)}
+                            </p>
                           )}
                         </div>
-
-                        {member.isOnline && member.game ? (
-                          <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-medium">
-                            <Gamepad2 size={11} className="flex-shrink-0" />
-                            <span className="truncate">{member.game} Oynuyor</span>
-                          </div>
-                        ) : (
-                          <p className={`text-[10px] truncate mt-0.5 ${
-                            !member.isOnline || member.status === 'offline' || member.status === 'invisible'
-                              ? 'text-gray-500'
-                              : member.status === 'dnd'
-                                ? 'text-rose-400/90'
-                                : member.status === 'idle'
-                                  ? 'text-amber-400/90'
-                                  : 'text-gray-400'
-                          }`}>
-                            {getMemberStatusDisplay(member)}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -2515,6 +2644,190 @@ export const ChatArea = ({
         )}
       </div>
       )}
+
+      {/* Voice Participant Right-Click Context Menu */}
+      {voiceContextMenu?.member && (() => {
+        const targetMember = voiceContextMenu.member;
+        const liveTarget = (callMembers || []).find((cm) =>
+          (targetMember.peerId && cm.peerId === targetMember.peerId) ||
+          (targetMember.id && cm.id === targetMember.id)
+        ) || targetMember;
+        const isMeTarget = Boolean(liveTarget.isMe || (currentUser?.id && liveTarget.id === currentUser.id));
+        const pref = (liveTarget.id && peerAudioPrefs[liveTarget.id])
+          || (liveTarget.peerId && peerAudioPrefs[liveTarget.peerId])
+          || { volume: 100, muted: false };
+        const targetVolume = typeof pref.volume === 'number' ? pref.volume : 100;
+        const targetMuted = Boolean(pref.muted);
+        const targetSpeaking = isMeTarget
+          ? Boolean(isSpeaking && !isMuted)
+          : Boolean(liveTarget.isSpeaking && !isDeafened && !targetMuted && targetVolume > 0);
+        const canSendDm = Boolean(
+          !isMeTarget &&
+          onSelectDm &&
+          liveTarget.id &&
+          (!liveTarget.peerId || liveTarget.id !== liveTarget.peerId) &&
+          !String(liveTarget.id).startsWith('peer-')
+        );
+        const isVolumeModified = targetMuted || targetVolume !== 100;
+
+        return (
+          <div
+            ref={voiceContextMenuRef}
+            style={{ top: voiceContextMenu.y, left: voiceContextMenu.x }}
+            onContextMenu={(e) => e.preventDefault()}
+            className="fixed z-50 w-64 rounded-2xl bg-[#131418]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/75 p-2 text-xs text-gray-200 select-none"
+          >
+            <div className="flex items-center space-x-2.5 px-2 py-1.5 mb-1 border-b border-white/5">
+              <UserAvatar
+                user={liveTarget}
+                size="sm"
+                isSpeaking={targetSpeaking}
+                showStatus={false}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-white truncate">
+                  {liveTarget.name || 'Kullanıcı'}{isMeTarget ? ' (Sen)' : ''}
+                </p>
+                <p className="text-[10px] text-emerald-400/90 truncate">
+                  {targetSpeaking ? 'Konuşuyor' : 'Sesli Sohbette'}
+                </p>
+              </div>
+            </div>
+
+            {!isMeTarget ? (
+              <div className="space-y-1">
+                <div className="px-2 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="flex items-center space-x-1.5 text-[11px] font-medium text-gray-300">
+                      <Volume1 size={14} className="text-emerald-400" />
+                      <span>Kullanıcı Ses Seviyesi</span>
+                    </span>
+                    <span className={`text-[11px] font-semibold tabular-nums ${
+                      targetMuted ? 'text-rose-400' : 'text-emerald-400'
+                    }`}>
+                      {targetMuted ? 'Kapalı' : `%${targetVolume}`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={targetMuted ? 0 : targetVolume}
+                    onChange={(e) => onSetPeerVolume?.(liveTarget, Number(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onTogglePeerMute?.(liveTarget);
+                    setVoiceContextMenu(null);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
+                >
+                  {targetMuted ? (
+                    <Volume1 size={14} className="text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <VolumeX size={14} className="text-rose-400 flex-shrink-0" />
+                  )}
+                  <span className={targetMuted ? 'text-emerald-300 font-medium' : 'text-gray-200'}>
+                    {targetMuted ? 'Kişinin Sesini Aç' : 'Kişinin Sesini Kapat'}
+                  </span>
+                </button>
+
+                {isVolumeModified && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (targetMuted) onTogglePeerMute?.(liveTarget);
+                      if (targetVolume !== 100) onSetPeerVolume?.(liveTarget, 100);
+                      setVoiceContextMenu(null);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-300"
+                  >
+                    <RotateCcw size={14} className="text-gray-400 flex-shrink-0" />
+                    <span>Sesi Sıfırla (%100)</span>
+                  </button>
+                )}
+
+                {canSendDm && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectDm(liveTarget.id);
+                      setVoiceContextMenu(null);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 border-t border-white/5 mt-1 pt-2"
+                  >
+                    <MessageSquare size={14} className="text-indigo-400 flex-shrink-0" />
+                    <span>Mesaj Gönder</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleMute?.();
+                    setVoiceContextMenu(null);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
+                >
+                  {isMuted ? (
+                    <Mic size={14} className="text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <MicOff size={14} className="text-rose-400 flex-shrink-0" />
+                  )}
+                  <span>{isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleDeafen?.();
+                    setVoiceContextMenu(null);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
+                >
+                  <Headphones size={14} className={isDeafened ? 'text-emerald-400 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
+                  <span>{isDeafened ? 'Sağırlaştırmayı Kapat' : 'Sağırlaştır'}</span>
+                </button>
+
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenSettings('devices');
+                      setVoiceContextMenu(null);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left"
+                  >
+                    <Settings2 size={14} className="text-gray-400 flex-shrink-0" />
+                    <span>Ses ve Aygıt Ayarları</span>
+                  </button>
+                )}
+
+                {isInCall && (onLeaveCall || onDisconnect) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      (onLeaveCall || onDisconnect)?.();
+                      setVoiceContextMenu(null);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-rose-500/15 text-rose-400 transition text-left border-t border-white/5 mt-1 pt-2"
+                  >
+                    <PhoneOff size={14} className="flex-shrink-0" />
+                    <span>Sesli Sohbetten Ayrıl</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Fullscreen Lightbox Modal for Image Previews & Profile Pictures */}
       {activeMediaModal && (
