@@ -98,10 +98,12 @@ const RemoteAudioItem = ({
       isPeerMuted,
     });
 
-    let cleanupResumeListener = null;
+    let cleanupResumeListener;
 
     const ensureResumeOnGesture = (ctx) => {
-      if (!ctx || ctx.state !== 'suspended' || typeof window === 'undefined') return;
+      if (cleanupResumeListener || !ctx || ctx.state !== 'suspended' || typeof window === 'undefined') {
+        return;
+      }
       ctx.resume().catch(() => {});
       const onGesture = () => {
         if (ctx.state === 'suspended') {
@@ -181,7 +183,10 @@ const RemoteAudioItem = ({
       audioEl.volume = nativeAudioVolume;
     }
 
-    return cleanupResumeListener;
+    if (typeof cleanupResumeListener === 'function') {
+      return cleanupResumeListener;
+    }
+    return undefined;
   }, [stream, peerId, isDeafened, isPeerMuted, peerVolume, volume, sinkId, teardownBoostGraph]);
 
   // Dynamically route audio output to the selected speaker/headphones (only when sink actually changes)
