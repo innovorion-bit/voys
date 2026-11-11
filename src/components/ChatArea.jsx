@@ -1998,7 +1998,7 @@ export const ChatArea = ({
                         className="relative group/msg flex flex-col w-full py-1.5 px-2 sm:px-3 hover:bg-white/[0.025] transition-colors rounded-xl"
                       >
                       {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + Reply */}
-                      <div className={`absolute ${isMe ? 'left-2 sm:left-4' : 'right-2 sm:right-4'} -top-3 opacity-0 ${isOptionsMenuOpen ? 'pointer-events-none' : 'group-hover/msg:opacity-100'} transition-all duration-150 z-20 flex items-center bg-[#121216]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-1 space-x-1 select-none`}>
+                      <div className={`absolute right-2 sm:right-4 -top-3 opacity-0 ${isOptionsMenuOpen ? 'pointer-events-none' : 'group-hover/msg:opacity-100'} transition-all duration-150 z-20 flex items-center bg-[#121216]/95 border border-white/10 rounded-xl shadow-2xl p-1 space-x-1 select-none`}>
                         {/* Quick Reactions */}
                         {['👍', '❤️', '🔥', '😂', '🎉'].map((emoji) => {
                           const hasReacted = msg.reactions?.some(r => r.emoji === emoji && r.users?.includes(currentUserId));
@@ -2043,7 +2043,7 @@ export const ChatArea = ({
 
                       {/* Floating Emoji Picker Popover anchored to this message */}
                       {activeReactionPickerMsgId === msg.id && (
-                        <div className={`emoji-picker-container absolute z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] animate-in fade-in zoom-in-95 top-7 ${isMe ? 'left-2 sm:left-4' : 'right-2 sm:right-4'}`}>
+                        <div className="emoji-picker-container absolute z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] animate-in fade-in zoom-in-95 top-7 right-2 sm:right-4">
                           <div className="bg-white/[0.02] p-2 px-3 border-b border-white/10 flex items-center justify-between text-xs text-gray-300">
                             <span className="font-semibold text-[11px] text-gray-200">Tepki Ekle</span>
                             <button
@@ -2071,14 +2071,12 @@ export const ChatArea = ({
                       )}
 
                       {/* Message Content */}
-                      <div className={`w-full min-w-0 flex flex-col ${isMe ? 'items-end pl-12 sm:pl-16' : 'items-start pr-12 sm:pr-16'}`}>
+                      <div className="w-full min-w-0 flex flex-col items-start">
                         {/* Quoted Message (Reply Preview) */}
                         {msg.reply_to && (
                           <div
                             onClick={() => scrollToMessage(msg.reply_to.id)}
-                            className={`mb-1 inline-flex items-center gap-2 text-[11px] cursor-pointer py-0.5 px-2 rounded-md border-indigo-500 max-w-full transition group/reply bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-gray-200 ${
-                              isMe ? 'flex-row-reverse border-r-2 text-right' : 'border-l-2'
-                            }`}
+                            className="mb-1 inline-flex items-center gap-2 text-[11px] cursor-pointer py-0.5 px-2 rounded-md border-l-2 border-indigo-500 max-w-full transition group/reply bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-gray-200"
                             title="Orijinal mesaja git"
                           >
                             <CornerDownRight size={11} className="text-indigo-400 flex-shrink-0" />
@@ -2092,7 +2090,7 @@ export const ChatArea = ({
                         )}
 
                         {/* Header: Username + Crown + Timestamp (Saat) */}
-                        <div className={`flex items-center gap-2 leading-none mb-1 select-none ${isMe ? 'flex-row-reverse' : ''}`}>
+                        <div className="flex items-center gap-2 leading-none mb-1 select-none">
                           <span
                             className="font-bold text-[13.5px] tracking-wide hover:underline cursor-pointer"
                             style={{ color: isMe ? '#a36eff' : (msg.color || '#e2e8f0') }}
@@ -2112,7 +2110,7 @@ export const ChatArea = ({
 
                         {/* Lines of text */}
                         {msg.lines && msg.lines.length > 0 && (
-                          <div className={`space-y-0.5 text-[13.5px] leading-relaxed break-words text-gray-200 max-w-full ${isMe ? 'text-right' : ''}`}>
+                          <div className="space-y-0.5 text-[13.5px] leading-relaxed break-words text-gray-200 max-w-full">
                             {msg.lines.map((line, idx) => (
                               <div key={idx} className="font-normal font-sans">
                                 {line}
@@ -2123,7 +2121,7 @@ export const ChatArea = ({
 
                         {/* Media & File Attachments */}
                         {msg.attachments && msg.attachments.length > 0 && (
-                          <div className={`mt-2.5 flex flex-wrap gap-3 ${isMe ? 'justify-end text-left' : ''}`}>
+                          <div className="mt-2.5 flex flex-wrap gap-3">
                             {msg.attachments.map((att, idx) => {
                               const mediaKey = att.id || `${msg.id}_att_${idx}`;
                               const isMediaExpired = expiredMediaKeys.has(mediaKey);
@@ -2307,7 +2305,7 @@ export const ChatArea = ({
 
                         {/* Emoji Reactions Pill Badges */}
                         {msg.reactions && msg.reactions.length > 0 && (
-                          <div className={`mt-2 flex flex-wrap items-center gap-1.5 select-none ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5 select-none justify-start">
                             {msg.reactions.map((r) => {
                               const hasReacted = r.users?.includes(currentUserId);
                               return (
