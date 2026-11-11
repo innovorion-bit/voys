@@ -2604,9 +2604,7 @@ export const ChatArea = ({
                             className={`text-[10px] font-medium block truncate ${
                               (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
                                 ? 'text-rose-400/90'
-                                : memberSpeaking
-                                  ? 'text-emerald-400'
-                                  : 'text-gray-400'
+                                : 'text-gray-400'
                             }`}
                           >
                             {isMe && isDeafened
@@ -2615,9 +2613,7 @@ export const ChatArea = ({
                                 ? 'Mikrofon Kapalı'
                                 : !isMe && isLocallyMuted
                                   ? 'Sesi Kapatıldı'
-                                  : memberSpeaking
-                                    ? 'Konuşuyor...'
-                                    : 'Seste'}
+                                  : 'Seste'}
                           </span>
                         </div>
 
@@ -3104,7 +3100,7 @@ export const ChatArea = ({
                       : 'text-gray-500'
                 }`}>
                   {isTargetInVoice
-                    ? (targetSpeaking ? 'Konuşuyor' : 'Sesli Sohbette')
+                    ? 'Sesli Sohbette'
                     : (liveTarget.username ? `@${liveTarget.username} • ` : '') + getMemberStatusDisplay(liveTarget)}
                 </p>
               </div>

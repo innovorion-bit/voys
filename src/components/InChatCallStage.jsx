@@ -389,7 +389,7 @@ export const InChatCallStage = ({
                     {isLocal ? `${member.name} (Sen)` : member.name}
                   </span>
                   <span className="text-[11px] text-gray-400 block mt-0.5">
-                    {memberSpeaking ? 'Konuşuyor...' : (memberMuted ? 'Susturuldu' : 'Bağlı')}
+                    {memberMuted ? 'Susturuldu' : 'Bağlı'}
                   </span>
                 </div>
               </div>
