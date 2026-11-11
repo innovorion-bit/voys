@@ -1722,12 +1722,12 @@ export const Sidebar = ({
       )}
 
       {/* 4. BOTTOM PROFILE & ACTIONS BAR */}
-      <div className="h-14 px-3.5 bg-[#0a0a0c] sidebar-bottom-bar border-t border-white/[0.06] flex items-center justify-between flex-shrink-0 relative">
+      <div className="h-[68px] px-3.5 bg-[#0a0a0c] sidebar-bottom-bar border-t border-white/[0.06] flex items-center justify-between flex-shrink-0 relative">
         {/* Left: User Avatar (Click to change status) & Profile (Click to open settings) */}
         <div className="flex items-center gap-2.5 min-w-0 relative" ref={statusPickerRef}>
           {/* Status Picker Popover Menu (opens upward) */}
           {isStatusPickerOpen && (
-            <div className="absolute left-0 bottom-14 w-44 bg-[#121216] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute left-0 bottom-[68px] w-44 bg-[#121216] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
               <div className="space-y-0.5">
                 {STATUS_OPTIONS.map((opt) => {
                   const isCurrent = (currentUserProfile?.status || 'online') === opt.id;

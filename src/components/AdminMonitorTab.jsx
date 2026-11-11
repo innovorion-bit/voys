@@ -2,9 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Activity,
-  Database,
-  HardDrive,
-  Users,
   RefreshCw,
   Trash2,
   ShieldAlert,
@@ -12,10 +9,8 @@ import {
   AlertTriangle,
   Wifi,
   WifiOff,
-  Clock,
   ExternalLink,
   Search,
-  Server,
   FileArchive,
   MessageSquare,
   UserPlus,
@@ -55,7 +50,7 @@ function getPercent(used, limit) {
   return Math.min(100, Math.round(((Number(used) || 0) / limit) * 1000) / 10);
 }
 
-function QuotaCard({ icon: Icon, label, usedText, limitText, percent, subText, accent = 'indigo' }) {
+function QuotaCard({ label, usedText, limitText, percent, subText, accent = 'indigo' }) {
   const barColor =
     percent >= 85
       ? 'bg-rose-500'
@@ -72,10 +67,7 @@ function QuotaCard({ icon: Icon, label, usedText, limitText, percent, subText, a
   return (
     <div className="p-3.5 rounded-xl bg-[#111115] border border-white/10 space-y-2.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-          <Icon size={14} className="text-indigo-400" />
-          <span>{label}</span>
-        </div>
+        <span className="text-xs font-semibold text-gray-300">{label}</span>
         <span className="text-[11px] font-mono font-semibold text-gray-400">%{percent}</span>
       </div>
       <div>
@@ -322,30 +314,13 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
       {/* Üst Başlık ve Kontroller */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
         <div>
-          <div className="flex items-center space-x-2">
-            <h3 className="text-base font-bold text-white">Sistem, Üye ve Supabase İzleme</h3>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              Admin Özel
-            </span>
-          </div>
+          <h3 className="text-base font-bold text-white">Sistem, Üye ve Supabase İzleme</h3>
           <p className="text-xs text-gray-400 mt-0.5">
             Anlık kotalar, kayıtlı kullanıcılar, veritabanı işlemleri ve 2 günlük otomatik dosya temizliği
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => setAutoRefresh((v) => !v)}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition ${
-              autoRefresh
-                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
-            }`}
-          >
-            {autoRefresh ? 'Otomatik 30s: Açık' : 'Otomatik: Kapalı'}
-          </button>
-
           <button
             type="button"
             onClick={() => loadTelemetry(true)}
@@ -378,14 +353,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
               <span className="text-gray-400 font-mono text-[11px]">
                 {realtimeHealth?.activeChannels || 0} aktif kanal
               </span>
-              {typeof data?.client_roundtrip_ms === 'number' && (
-                <>
-                  <span className="text-gray-600">•</span>
-                  <span className="text-indigo-300 font-mono text-[11px]">
-                    Gecikme: {data.client_roundtrip_ms} ms (Sunucu {data.server_latency_ms} ms)
-                  </span>
-                </>
-              )}
             </div>
             <p className="text-[11px] text-gray-500">
               Yeniden bağlanma: {realtimeHealth?.reconnectCount || 0} kez
@@ -424,7 +391,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           {/* Supabase Kullanım Limitleri Kartları */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <QuotaCard
-              icon={Database}
               label="Veritabanı Alanı"
               usedText={formatBytes(dbInfo.size_bytes)}
               limitText={formatBytes(dbInfo.limit_bytes || 524288000)}
@@ -433,7 +399,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
               accent="indigo"
             />
             <QuotaCard
-              icon={HardDrive}
               label="Storage Depolama"
               usedText={formatBytes(storageInfo.total_bytes)}
               limitText={formatBytes(storageInfo.limit_bytes || 1073741824)}
@@ -442,7 +407,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
               accent="cyan"
             />
             <QuotaCard
-              icon={Users}
               label="30 Günlük Aktif Kullanıcı (MAU)"
               usedText={String(authInfo.mau_30d ?? 0)}
               limitText={(authInfo.mau_limit || 50000).toLocaleString('tr-TR')}
@@ -451,7 +415,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
               accent="emerald"
             />
             <QuotaCard
-              icon={Server}
               label="Aktif DB Bağlantıları"
               usedText={String(dbInfo.active_connections ?? 0)}
               limitText={String(dbInfo.max_connections || 60)}
@@ -466,8 +429,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
             <div className="p-3.5 rounded-xl bg-[#111115] border border-white/10 flex flex-col justify-between space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="flex items-center space-x-1.5 text-xs font-semibold text-white">
-                    <Clock size={14} className="text-emerald-400" />
+                  <div className="text-xs font-semibold text-white">
                     <span>2 Günlük Otomatik Depolama Temizliği</span>
                   </div>
                   <p className="text-[11px] text-gray-400 mt-1">
@@ -498,8 +460,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
 
             <div className="p-3.5 rounded-xl bg-[#111115] border border-white/10 flex flex-col justify-between space-y-2">
               <div>
-                <div className="flex items-center space-x-1.5 text-xs font-semibold text-white">
-                  <Activity size={14} className="text-amber-400" />
+                <div className="text-xs font-semibold text-white">
                   <span>Egress (5 GB) & Realtime Kotası Hakkında</span>
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
@@ -545,28 +506,15 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           {/* SEKME 1: Kayıtlı Üyeler */}
           {subTab === 'users' && (
             <div className="space-y-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start space-x-2 text-[11px] text-amber-200/90">
-                <ShieldAlert size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                <span>
-                  Güvenlik notu: Supabase Auth kullanıcı şifrelerini tek yönlü <strong>bcrypt</strong> özeti olarak saklar;
-                  açık metin şifreler teknik olarak okunamaz ve güvenlik gereği hiçbir zaman gösterilmez.
-                </span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div className="relative flex-1">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                  <input
-                    type="text"
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    placeholder="Kullanıcı adı, e-posta veya ID ara..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111115] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
-                  />
-                </div>
-                <span className="text-[11px] text-gray-400 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 whitespace-nowrap">
-                  İşlem için satıra <strong className="text-gray-200">sağ tıklayın</strong>
-                </span>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Kullanıcı adı, e-posta veya ID ara..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111115] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
+                />
               </div>
 
               <div className="rounded-xl border border-white/10 overflow-x-auto bg-[#0e0e12]">
