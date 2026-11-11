@@ -3223,13 +3223,21 @@ export const ChatArea = ({
           >
             {/* Header Info */}
             <div className="flex items-center space-x-2.5 px-2 py-1.5 mb-1 border-b border-white/5">
-              <UserAvatar
-                user={liveTarget}
-                size="sm"
-                isSpeaking={targetSpeaking}
-                showStatus={!isTargetInVoice}
-                status={liveTarget.isOnline ? liveTarget.status : 'offline'}
-              />
+              <button
+                type="button"
+                onClick={handleOpenAvatarModal}
+                title="Profil fotoğrafını görüntüle"
+                aria-label="Profil fotoğrafını görüntüle"
+                className="relative flex-shrink-0 rounded-full cursor-pointer transition hover:opacity-90 hover:scale-105 active:scale-95 focus:outline-none"
+              >
+                <UserAvatar
+                  user={liveTarget}
+                  size="sm"
+                  isSpeaking={targetSpeaking}
+                  showStatus={!isTargetInVoice}
+                  status={liveTarget.isOnline ? liveTarget.status : 'offline'}
+                />
+              </button>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-1">
                   <p className="text-xs font-semibold text-white truncate">
@@ -3238,6 +3246,15 @@ export const ChatArea = ({
                   {liveTarget.role === 'admin' && (
                     <Crown size={11} className="text-amber-400 fill-amber-400 flex-shrink-0" />
                   )}
+                  <button
+                    type="button"
+                    onClick={handleCopyUsername}
+                    title={`Kullanıcı adını kopyala (${copyValue})`}
+                    aria-label="Kullanıcı adını kopyala"
+                    className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer flex-shrink-0"
+                  >
+                    <Copy size={12} />
+                  </button>
                 </div>
                 <p className={`text-[10px] truncate ${
                   isTargetInVoice
@@ -3352,26 +3369,6 @@ export const ChatArea = ({
                     </button>
                   )
                 )}
-
-                {/* Profile & Copy Actions */}
-                <div className="border-t border-white/5 pt-1 mt-1 space-y-1">
-                  <button
-                    type="button"
-                    onClick={handleOpenAvatarModal}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
-                  >
-                    <Eye size={14} className="text-gray-400 flex-shrink-0" />
-                    <span>Profil Fotoğrafını Görüntüle</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCopyUsername}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
-                  >
-                    <Copy size={14} className="text-gray-400 flex-shrink-0" />
-                    <span className="truncate">Kullanıcı Adını Kopyala</span>
-                  </button>
-                </div>
 
                 {/* Voice Call Volume Controls (if target is in active voice session) */}
                 {isTargetInVoice && (
@@ -3553,24 +3550,6 @@ export const ChatArea = ({
                     </button>
                   </>
                 )}
-
-                <button
-                  type="button"
-                  onClick={handleOpenAvatarModal}
-                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
-                >
-                  <Eye size={14} className="text-gray-400 flex-shrink-0" />
-                  <span>Profil Fotoğrafını Görüntüle</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCopyUsername}
-                  className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-white/10 transition text-left text-gray-200 cursor-pointer"
-                >
-                  <Copy size={14} className="text-gray-400 flex-shrink-0" />
-                  <span>Kullanıcı Adını Kopyala</span>
-                </button>
 
                 {isInCall && (onLeaveCall || onDisconnect) && (
                   <button
