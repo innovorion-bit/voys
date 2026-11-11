@@ -47,6 +47,8 @@ import {
   PhoneOff,
   Mic,
   MicOff,
+  ChevronLeft,
+  ChevronRight,
   Check,
   Copy,
   Camera,
@@ -281,6 +283,22 @@ export const ChatArea = ({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
+  const [isRightPanelCompact, setIsRightPanelCompact] = useState(() => {
+    try {
+      return localStorage.getItem('voys_right_panel_compact') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const updateRightPanelCompact = (next) => {
+    setIsRightPanelCompact(next);
+    if (next) setIsAddingMember(false);
+    try {
+      localStorage.setItem('voys_right_panel_compact', next ? 'true' : 'false');
+    } catch {
+      // Ignore storage write errors
+    }
+  };
   const [expiredMediaKeys, setExpiredMediaKeys] = useState(() => new Set());
 
   const markMediaExpired = useCallback((mediaKey) => {
@@ -1818,6 +1836,17 @@ export const ChatArea = ({
         /* Main Content Area: Left = Chat messages & input; Right = Channel Members */
         <div className="flex-1 flex min-h-0 relative overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
+          {!isDmMode && hasActiveChat && (
+            <button
+              type="button"
+              onClick={() => updateRightPanelCompact(!isRightPanelCompact)}
+              className="absolute top-2.5 right-3 z-20 w-7 h-7 rounded-lg bg-[#13141a]/90 hover:bg-[#1e1f28] border border-white/10 hover:border-white/20 text-gray-400 hover:text-white shadow-md backdrop-blur-sm flex items-center justify-center transition cursor-pointer"
+              title={isRightPanelCompact ? 'Üye menüsünü genişlet' : 'Üye menüsünü daralt'}
+              aria-label={isRightPanelCompact ? 'Üye menüsünü genişlet' : 'Üye menüsünü daralt'}
+            >
+              {isRightPanelCompact ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+            </button>
+          )}
 
           {/* Steam-Style Active Voice Chat Banner (Sadece DM modunda gösterilir, grupta sağ panelde yer alır) */}
           {isDmMode && isCallActive && !isInCall && (
@@ -2544,23 +2573,48 @@ export const ChatArea = ({
 
         {/* Right Side: Channel Members Panel (Sabit panel) */}
         {!isDmMode && hasActiveChat && (
-          <aside className="w-56 md:w-64 flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e]/95 voys-glass-right-panel backdrop-blur-md flex flex-col select-none overflow-y-auto p-3 space-y-3.5 z-10 animate-in slide-in-from-right duration-150 custom-scrollbar">
+          <aside
+            className={`flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e]/95 voys-glass-right-panel backdrop-blur-md flex flex-col select-none overflow-y-auto z-10 animate-in slide-in-from-right duration-150 custom-scrollbar transition-[width,padding] ease-out ${
+              isRightPanelCompact
+                ? 'w-[64px] px-1.5 py-2.5 items-center space-y-3'
+                : 'w-56 md:w-64 p-3 space-y-3.5'
+            }`}
+          >
             {/* Sesli Sohbette Olan Kişiler (Yalnızca sesli sohbette birileri varken gösterilir) */}
             {showVoiceSection && (
-              <div className="space-y-1.5 pb-2.5 border-b border-white/10 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="relative flex h-2 w-2">
+              <div
+                className={`w-full border-b border-white/10 pb-2.5 animate-in fade-in duration-150 ${
+                  isRightPanelCompact ? 'flex flex-col items-center space-y-2' : 'space-y-1.5'
+                }`}
+              >
+                {isRightPanelCompact ? (
+                  <div
+                    className="flex items-center justify-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20"
+                    title={`Sesli Sohbet — ${sidebarVoiceMembers.length}`}
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
                     </span>
-                    <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                      SESLİ SOHBET — {sidebarVoiceMembers.length}
+                    <span className="text-[10px] font-bold text-emerald-400 leading-none">
+                      {sidebarVoiceMembers.length}
                     </span>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                        SESLİ SOHBET — {sidebarVoiceMembers.length}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-                <div className="space-y-1">
+                <div className={isRightPanelCompact ? 'space-y-1.5 flex flex-col items-center w-full' : 'space-y-1'}>
                   {sidebarVoiceMembers.map((m, idx) => {
                     const isMe = m.id === currentUser?.id;
                     const pref = !isMe
@@ -2572,10 +2626,59 @@ export const ChatArea = ({
                         ? (!isMuted && !isDeafened && isSpeaking)
                         : (!isDeafened && !isLocallyMuted && m.isSpeaking)
                     );
+                    const voiceStatusLabel = isMe && isDeafened
+                      ? 'Sağırlaştırıldı'
+                      : isMe && isMuted
+                        ? 'Mikrofon Kapalı'
+                        : !isMe && isLocallyMuted
+                          ? 'Sesi Kapatıldı'
+                          : !isMe && typeof pref?.volume === 'number' && pref.volume !== 100
+                            ? `Seste • %${pref.volume}`
+                            : 'Seste';
+                    const voiceStatusColorClass =
+                      (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
+                        ? 'text-rose-400/90'
+                        : !isMe && typeof pref?.volume === 'number' && pref.volume > 100
+                          ? 'text-amber-400/90'
+                          : 'text-gray-400';
+                    const iconSize = isRightPanelCompact ? 10 : 13;
+                    const voiceBadgeIcon = isMe && (isMuted || isDeafened)
+                      ? (isDeafened ? <Headphones size={iconSize} /> : <MicOff size={iconSize} />)
+                      : (!isMe && isLocallyMuted ? <VolumeX size={iconSize} /> : null);
+                    const voiceBadgeTitle = isMe && (isMuted || isDeafened)
+                      ? (isDeafened ? 'Sağırlaştırıldı' : 'Mikrofon Kapalı')
+                      : 'Sesi Kapatıldı';
+                    const memberKey = m.peerId || m.id || `call-member-${idx}`;
+
+                    if (isRightPanelCompact) {
+                      return (
+                        <div
+                          key={memberKey}
+                          onContextMenu={(e) => openVoiceContextMenu(e, m)}
+                          className="relative p-1 rounded-xl hover:bg-white/[0.06] transition cursor-context-menu flex items-center justify-center"
+                          title={`${m.name || 'Katılımcı'}${isMe ? ' (Sen)' : ''} • ${voiceStatusLabel} (Sağ tıkla)`}
+                        >
+                          <UserAvatar
+                            user={m}
+                            size="sm"
+                            showStatus={false}
+                            isSpeaking={memberSpeaking}
+                          />
+                          {voiceBadgeIcon && (
+                            <span
+                              className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#13141a] border border-rose-500/40 text-rose-400 flex items-center justify-center shadow"
+                              title={voiceBadgeTitle}
+                            >
+                              {voiceBadgeIcon}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
-                        key={m.peerId || m.id || `call-member-${idx}`}
+                        key={memberKey}
                         onContextMenu={(e) => openVoiceContextMenu(e, m)}
                         className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/[0.06] transition cursor-context-menu group"
                         title="Ses seviyesini ve seçenekleri ayarlamak için sağ tıklayın"
@@ -2600,38 +2703,14 @@ export const ChatArea = ({
                               <span className="text-[10px] text-gray-400 font-semibold">(Sen)</span>
                             )}
                           </div>
-                          <span
-                            className={`text-[10px] font-medium block truncate ${
-                              (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
-                                ? 'text-rose-400/90'
-                                : !isMe && typeof pref?.volume === 'number' && pref.volume > 100
-                                  ? 'text-amber-400/90'
-                                  : 'text-gray-400'
-                            }`}
-                          >
-                            {isMe && isDeafened
-                              ? 'Sağırlaştırıldı'
-                              : isMe && isMuted
-                                ? 'Mikrofon Kapalı'
-                                : !isMe && isLocallyMuted
-                                  ? 'Sesi Kapatıldı'
-                                  : !isMe && typeof pref?.volume === 'number' && pref.volume !== 100
-                                    ? `Seste • %${pref.volume}`
-                                    : 'Seste'}
+                          <span className={`text-[10px] font-medium block truncate ${voiceStatusColorClass}`}>
+                            {voiceStatusLabel}
                           </span>
                         </div>
 
-                        {isMe && (isMuted || isDeafened) && (
-                          <span
-                            className="text-rose-400 flex-shrink-0"
-                            title={isDeafened ? 'Sağırlaştırıldı' : 'Mikrofon Kapalı'}
-                          >
-                            {isDeafened ? <Headphones size={13} /> : <MicOff size={13} />}
-                          </span>
-                        )}
-                        {!isMe && isLocallyMuted && (
-                          <span className="text-rose-400 flex-shrink-0" title="Sesi Kapatıldı">
-                            <VolumeX size={13} />
+                        {voiceBadgeIcon && (
+                          <span className="text-rose-400 flex-shrink-0" title={voiceBadgeTitle}>
+                            {voiceBadgeIcon}
                           </span>
                         )}
                       </div>
@@ -2641,12 +2720,22 @@ export const ChatArea = ({
 
                 {/* Sesli Sohbet Kontrolleri (Ayrılma ve Mikrofon Kapatma) */}
                 {isInCall ? (
-                  <div className="flex items-center space-x-2 pt-1.5">
+                  <div
+                    className={
+                      isRightPanelCompact
+                        ? 'flex flex-col items-center space-y-1.5 pt-1 w-full'
+                        : 'flex items-center space-x-2 pt-1.5'
+                    }
+                  >
                     {/* Mikrofon Kapat / Aç Butonu */}
                     <button
                       type="button"
                       onClick={onToggleMute}
-                      className={`flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                      className={`${
+                        isRightPanelCompact
+                          ? 'w-9 h-8 flex items-center justify-center'
+                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 text-xs font-semibold'
+                      } rounded-xl transition cursor-pointer border ${
                         inputMode === 'ptt'
                           ? isPttActive
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
@@ -2668,42 +2757,53 @@ export const ChatArea = ({
                       ) : (
                         <Mic size={14} className={isPttActive ? 'text-emerald-400' : ''} />
                       )}
-                      <span className="truncate">
-                        {inputMode === 'ptt'
-                          ? isPttActive
-                            ? 'Konuşuyor'
-                            : `Bas-Konuş (${formatShortcutLabel(pttKey)})`
-                          : isMuted
-                          ? 'Susturuldu'
-                          : 'Sustur'}
-                      </span>
+                      {!isRightPanelCompact && (
+                        <span className="truncate">
+                          {inputMode === 'ptt'
+                            ? isPttActive
+                              ? 'Konuşuyor'
+                              : `Bas-Konuş (${formatShortcutLabel(pttKey)})`
+                            : isMuted
+                            ? 'Susturuldu'
+                            : 'Sustur'}
+                        </span>
+                      )}
                     </button>
 
                     {/* Ayrıl Butonu */}
                     <button
                       type="button"
                       onClick={onLeaveCall || onDisconnect}
-                      className="flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition active:scale-95 cursor-pointer"
+                      className={`${
+                        isRightPanelCompact
+                          ? 'w-9 h-8 flex items-center justify-center'
+                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 text-xs font-semibold'
+                      } rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition active:scale-95 cursor-pointer`}
                       title="Sesli Sohbetten Ayrıl"
                     >
                       <PhoneOff size={14} />
-                      <span>Ayrıl</span>
+                      {!isRightPanelCompact && <span>Ayrıl</span>}
                     </button>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={onStartCall || onConnect}
-                    className="w-full mt-1.5 flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer"
+                    className={`${
+                      isRightPanelCompact
+                        ? 'w-9 h-8 mt-1 flex items-center justify-center'
+                        : 'w-full mt-1.5 flex items-center justify-center space-x-1.5 py-1.5 px-3 text-xs font-bold'
+                    } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer`}
+                    title="Sese Katıl"
                   >
                     <Phone size={13} />
-                    <span>Sese Katıl</span>
+                    {!isRightPanelCompact && <span>Sese Katıl</span>}
                   </button>
                 )}
               </div>
             )}
 
-            {isAddingMember ? (
+            {isAddingMember && !isRightPanelCompact ? (
               <div className="flex flex-col space-y-3 animate-in fade-in duration-150">
                 {/* Header: Geri & Kapat */}
                 <div className="flex items-center justify-between px-1 pb-1.5 border-b border-white/10">
@@ -2834,75 +2934,131 @@ export const ChatArea = ({
             ) : (
               <>
                 {/* Header: GRUP ÜYELERİ */}
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                    Grup Üyeleri — {sidebarGroupMembers.length}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingMember(true)}
-                    className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 cursor-pointer transition"
-                    title="Yeni Üye Ekle"
-                  >
-                    <UserPlus size={12} />
-                    <span>Ekle</span>
-                  </button>
-                </div>
+                {isRightPanelCompact ? (
+                  <div className="flex flex-col items-center space-y-1.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateRightPanelCompact(false);
+                        setIsAddingMember(true);
+                      }}
+                      className="w-9 h-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 flex items-center justify-center transition cursor-pointer"
+                      title={`Yeni Üye Ekle (Grup Üyeleri — ${sidebarGroupMembers.length})`}
+                      aria-label="Yeni Üye Ekle"
+                    >
+                      <UserPlus size={14} />
+                    </button>
+                    <span
+                      className="text-[10px] font-bold text-gray-500 tracking-wider select-none"
+                      title={`Grup Üyeleri — ${sidebarGroupMembers.length}`}
+                    >
+                      {sidebarGroupMembers.length}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                      Grup Üyeleri — {sidebarGroupMembers.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingMember(true)}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 cursor-pointer transition"
+                      title="Yeni Üye Ekle"
+                    >
+                      <UserPlus size={12} />
+                      <span>Ekle</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Sesli Sohbette Olmayan Grup Üyeleri */}
-                <div className="space-y-1">
+                <div className={isRightPanelCompact ? 'space-y-1.5 flex flex-col items-center w-full' : 'space-y-1'}>
                   {sidebarGroupMembers.length === 0 ? (
-                    <div className="py-3 px-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-500 text-center">
-                      Tüm grup üyeleri sesli sohbette.
-                    </div>
-                  ) : (
-                    [...sidebarOnlineMembers, ...sidebarOfflineMembers].map((member) => (
+                    isRightPanelCompact ? (
                       <div
-                        key={member.id}
-                        onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
-                        title="Seçenekler için sağ tıklayın"
-                        className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${
-                          !member.isOnline ? 'opacity-60 hover:opacity-100' : ''
-                        }`}
+                        className="py-2 flex items-center justify-center text-gray-600"
+                        title="Tüm grup üyeleri sesli sohbette."
                       >
-                        <UserAvatar
-                          user={member}
-                          size="sm"
-                          isSpeaking={false}
-                          showStatus={true}
-                          status={member.isOnline ? member.status : 'offline'}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
-                              {member.name}
-                            </span>
-                            {member.role === 'admin' && (
-                              <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                        <Users size={14} />
+                      </div>
+                    ) : (
+                      <div className="py-3 px-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-500 text-center">
+                        Tüm grup üyeleri sesli sohbette.
+                      </div>
+                    )
+                  ) : (
+                    [...sidebarOnlineMembers, ...sidebarOfflineMembers].map((member) => {
+                      const memberStatusLabel = member.isOnline && member.game
+                        ? `${member.game} Oynuyor`
+                        : getMemberStatusDisplay(member);
+                      const offlineOpacityClass = !member.isOnline ? 'opacity-60 hover:opacity-100' : '';
+
+                      if (isRightPanelCompact) {
+                        return (
+                          <div
+                            key={member.id}
+                            onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                            title={`${member.name}${member.role === 'admin' ? ' (Yönetici)' : ''} • ${memberStatusLabel} — Seçenekler için sağ tıklayın`}
+                            className={`relative p-1 rounded-xl hover:bg-white/5 transition cursor-pointer flex items-center justify-center ${offlineOpacityClass}`}
+                          >
+                            <UserAvatar
+                              user={member}
+                              size="sm"
+                              isSpeaking={false}
+                              showStatus={true}
+                              status={member.isOnline ? member.status : 'offline'}
+                            />
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={member.id}
+                          onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                          title="Seçenekler için sağ tıklayın"
+                          className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${offlineOpacityClass}`}
+                        >
+                          <UserAvatar
+                            user={member}
+                            size="sm"
+                            isSpeaking={false}
+                            showStatus={true}
+                            status={member.isOnline ? member.status : 'offline'}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center space-x-1">
+                              <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
+                                {member.name}
+                              </span>
+                              {member.role === 'admin' && (
+                                <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                              )}
+                            </div>
+
+                            {member.isOnline && member.game ? (
+                              <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-medium">
+                                <Gamepad2 size={11} className="flex-shrink-0" />
+                                <span className="truncate">{memberStatusLabel}</span>
+                              </div>
+                            ) : (
+                              <p className={`text-[10px] truncate mt-0.5 ${
+                                !member.isOnline || member.status === 'offline' || member.status === 'invisible'
+                                  ? 'text-gray-500'
+                                  : member.status === 'dnd'
+                                    ? 'text-rose-400/90'
+                                    : member.status === 'idle'
+                                      ? 'text-amber-400/90'
+                                      : 'text-gray-400'
+                              }`}>
+                                {memberStatusLabel}
+                              </p>
                             )}
                           </div>
-
-                          {member.isOnline && member.game ? (
-                            <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-medium">
-                              <Gamepad2 size={11} className="flex-shrink-0" />
-                              <span className="truncate">{member.game} Oynuyor</span>
-                            </div>
-                          ) : (
-                            <p className={`text-[10px] truncate mt-0.5 ${
-                              !member.isOnline || member.status === 'offline' || member.status === 'invisible'
-                                ? 'text-gray-500'
-                                : member.status === 'dnd'
-                                  ? 'text-rose-400/90'
-                                  : member.status === 'idle'
-                                    ? 'text-amber-400/90'
-                                    : 'text-gray-400'
-                            }`}>
-                              {getMemberStatusDisplay(member)}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </>
