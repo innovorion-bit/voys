@@ -346,12 +346,12 @@ export const SettingsProvider = ({ children }) => {
       fontSize: 'normal',
       timeFormat24h: false,
       showTyping: true,
-      gamePerformanceMode: 'auto', // 'auto' | 'on' | 'off'
+      gamePerformanceMode: 'auto', // Locked to 'auto' (activates automatically while a game is running)
       screenSharePreset: 'balanced', // 'performance' | 'balanced' | 'high'
     };
     try {
       const saved = localStorage.getItem('standupp_chat_settings');
-      return saved ? { ...fallback, ...JSON.parse(saved) } : fallback;
+      return saved ? { ...fallback, ...JSON.parse(saved), gamePerformanceMode: 'auto' } : fallback;
     } catch {
       return fallback;
     }
@@ -363,15 +363,16 @@ export const SettingsProvider = ({ children }) => {
   const [soundCategories, setSoundCategories] = useState(() => sounds.getCategories());
 
   const updateChatSetting = useCallback((key, value) => {
+    const normalizedValue = key === 'gamePerformanceMode' ? 'auto' : value;
     setChatSettings((prev) => {
-      const next = { ...prev, [key]: value };
+      const next = { ...prev, [key]: normalizedValue };
       try {
         localStorage.setItem('standupp_chat_settings', JSON.stringify(next));
       } catch {}
       return next;
     });
     if (key === 'messageSound') {
-      sounds.setCategoryEnabled('message', Boolean(value));
+      sounds.setCategoryEnabled('message', Boolean(normalizedValue));
       setSoundCategories(sounds.getCategories());
     }
   }, []);
@@ -414,11 +415,8 @@ export const SettingsProvider = ({ children }) => {
     peerService.setScreenSharePreset(chatSettings?.screenSharePreset || 'balanced');
   }, [chatSettings?.screenSharePreset]);
 
-  // Game Performance Mode: Auto (when game detected in profile.game), Always On, or Off
-  const gamePerformanceMode = chatSettings?.gamePerformanceMode || 'auto';
-  const isGameDetected = Boolean((profile?.game || '').trim());
-  const isPerformanceModeActive =
-    gamePerformanceMode === 'on' || (gamePerformanceMode === 'auto' && isGameDetected);
+  // Game Performance Mode: locked to Automatic (activates while a game is detected in profile.game)
+  const isPerformanceModeActive = Boolean((profile?.game || '').trim());
 
   useEffect(() => {
     if (typeof document === 'undefined') return;

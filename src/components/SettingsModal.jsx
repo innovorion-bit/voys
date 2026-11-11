@@ -40,7 +40,6 @@ import {
   RotateCcw,
   VolumeX,
   Monitor,
-  Zap,
   AudioLines
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -143,7 +142,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
     closeSettings,
     chatSettings,
     updateChatSetting,
-    isPerformanceModeActive,
   } = useSettings();
 
   // Normalize active tab (Hesap, Özelleştirme, Aygıt, Dil ve Saat)
@@ -1328,87 +1326,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     <span>%75 (Hafif)</span>
                     <span>%100 (Katı Opak)</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Section: OYUN PERFORMANS MODU (CS2 / FPS KORUMASI) */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider block opacity-90">
-                      OYUN PERFORMANS MODU (FPS KORUMASI)
-                    </label>
-                    <p className="text-xs opacity-60 mt-0.5">
-                      CS2 gibi oyunlar çalışırken bulanıklık (blur), saydamlık birleştirme ve konuşma animasyonlarını kapatarak GPU/CPU yükünü düşürür.
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center space-x-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${
-                      isPerformanceModeActive
-                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                        : 'bg-white/5 border-white/10 opacity-70'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isPerformanceModeActive ? 'bg-emerald-400' : 'bg-gray-400'
-                      }`}
-                    />
-                    <span>
-                      {isPerformanceModeActive
-                        ? `Aktif${profile?.game ? ` (${profile.game})` : ''}`
-                        : 'Beklemede'}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    {
-                      id: 'auto',
-                      title: 'Otomatik (Önerilen)',
-                      desc: 'Oyun algılandığında otomatik devreye girer, oyundan çıkınca normal görünüme döner.',
-                    },
-                    {
-                      id: 'on',
-                      title: 'Her Zaman Açık',
-                      desc: 'Blur ve ağır efektleri kalıcı olarak devre dışı bırakır.',
-                    },
-                    {
-                      id: 'off',
-                      title: 'Kapalı',
-                      desc: 'Oyun oynarken bile cam ve blur efektlerini korumaya devam eder.',
-                    },
-                  ].map((opt) => {
-                    const currentPerf = chatSettings?.gamePerformanceMode || 'auto';
-                    const selected = currentPerf === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          updateChatSetting('gamePerformanceMode', opt.id);
-                          toast.success(`Oyun Performans Modu: ${opt.title}`);
-                        }}
-                        className={`p-3.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-2 ${
-                          selected
-                            ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_16px_rgba(99,102,241,0.12)]'
-                            : isLight
-                            ? 'bg-[#f8f9fa] border-black/10 hover:border-black/25'
-                            : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center space-x-1.5 text-xs font-semibold">
-                            <Zap size={13} className={selected ? 'text-indigo-400' : 'opacity-60'} />
-                            <span>{opt.title}</span>
-                          </span>
-                          {selected && <Check size={14} className="text-indigo-400 flex-shrink-0" />}
-                        </div>
-                        <p className="text-[11px] opacity-60 leading-relaxed">{opt.desc}</p>
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             </div>
