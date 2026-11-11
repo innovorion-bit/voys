@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useSettings } from '../context/useSettings';
+import { formatShortcutLabel } from '../services/shortcutService';
 
 // Helper to extract a valid Date object from message timestamp/sentAt/created_at
 function getMessageDate(msg) {
@@ -330,7 +331,7 @@ export const ChatArea = ({
   }, [voiceContextMenu]);
 
   // Chat Settings Context
-  const { chatSettings, updateChatSetting } = useSettings();
+  const { chatSettings, updateChatSetting, inputMode, pttKey, isPttActive } = useSettings();
 
   // Chat inner view state: 'messages' (default) | 'userInfo'
   const [chatInnerView, setChatInnerView] = useState('messages');
@@ -2594,14 +2595,36 @@ export const ChatArea = ({
                       type="button"
                       onClick={onToggleMute}
                       className={`flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                        isMuted
+                        inputMode === 'ptt'
+                          ? isPttActive
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                            : 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 hover:bg-indigo-500/25'
+                          : isMuted
                           ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
                           : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
                       }`}
-                      title={isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
+                      title={
+                        inputMode === 'ptt'
+                          ? `Bas-Konuş [${formatShortcutLabel(pttKey)}]: ${isPttActive ? 'Konuşuluyor' : 'Basılı tutarak konuşun'}`
+                          : isMuted
+                          ? 'Mikrofonu Aç'
+                          : 'Mikrofonu Kapat'
+                      }
                     >
-                      {isMuted ? <MicOff size={14} className="text-rose-400" /> : <Mic size={14} />}
-                      <span>{isMuted ? 'Susturuldu' : 'Sustur'}</span>
+                      {isMuted ? (
+                        <MicOff size={14} className={inputMode === 'ptt' ? 'text-indigo-300' : 'text-rose-400'} />
+                      ) : (
+                        <Mic size={14} className={isPttActive ? 'text-emerald-400' : ''} />
+                      )}
+                      <span className="truncate">
+                        {inputMode === 'ptt'
+                          ? isPttActive
+                            ? 'Konuşuyor'
+                            : `Bas-Konuş (${formatShortcutLabel(pttKey)})`
+                          : isMuted
+                          ? 'Susturuldu'
+                          : 'Sustur'}
+                      </span>
                     </button>
 
                     {/* Ayrıl Butonu */}

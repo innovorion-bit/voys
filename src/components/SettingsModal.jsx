@@ -34,7 +34,10 @@ import {
   Moon,
   Sun,
   Pencil,
-  Activity
+  Activity,
+  Keyboard,
+  Radio,
+  RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
@@ -42,6 +45,13 @@ import { useAuth } from '../context/useAuth';
 import { sounds } from '../utils/audio';
 import { dbService, isAuthorizedAdminUser } from '../lib/supabase';
 import { AdminMonitorTab } from './AdminMonitorTab';
+import {
+  DEFAULT_PTT_KEY,
+  formatShortcutLabel,
+  formatKeyboardEventToShortcut,
+  formatMouseEventToShortcut,
+} from '../services/shortcutService';
+import { isTauriEnvironment } from '../utils/windowManager';
 
 export const TurkeyFlag = ({ className = "w-5 h-3.5" }) => (
   <svg viewBox="0 0 1200 800" className={`${className} rounded-[2px] shadow-sm flex-shrink-0 inline-block`}>
@@ -100,6 +110,9 @@ export const SettingsModal = ({ onLogout = null }) => {
     pttKey,
     changePttKey,
     isPttActive,
+    isRecordingPttKey,
+    setIsRecordingPttKey,
+    pttStatus,
     refreshDevices,
     isSettingsOpen,
     settingsTab,
@@ -231,6 +244,112 @@ export const SettingsModal = ({ onLogout = null }) => {
   const [micVolumeLevel, setMicVolumeLevel] = useState(0); // 0 to 100
   const testAudioCtxRef = useRef(null);
   const testAnimFrameRef = useRef(null);
+
+  // Push-to-Talk Keybind Recorder State
+  const [pendingPttModifiers, setPendingPttModifiers] = useState([]);
+  const pendingSoloModifierRef = useRef(null);
+  const pttRecorderBoxRef = useRef(null);
+
+  const stopPttRecording = useCallback(() => {
+    pendingSoloModifierRef.current = null;
+    setPendingPttModifiers([]);
+    setIsRecordingPttKey(false);
+  }, [setIsRecordingPttKey]);
+
+  const isPttRecordingActive = Boolean(isRecordingPttKey && isSettingsOpen && activeTab === 'devices');
+
+  useEffect(() => {
+    if (!isPttRecordingActive) return undefined;
+
+    const getModifierLabels = (ev) => {
+      const mods = [];
+      if (ev.ctrlKey) mods.push('Ctrl');
+      if (ev.altKey) mods.push('Alt');
+      if (ev.shiftKey) mods.push('Shift');
+      if (ev.metaKey) mods.push('Win');
+      return mods;
+    };
+
+    const commitKeybind = (nextKey) => {
+      pendingSoloModifierRef.current = null;
+      setPendingPttModifiers([]);
+      changePttKey(nextKey);
+      setIsRecordingPttKey(false);
+      toast.success(`Bas-Konuş tuşu ayarlandı: ${formatShortcutLabel(nextKey)}`);
+    };
+
+    const handleKeyDown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === 'Escape') {
+        stopPttRecording();
+        return;
+      }
+
+      if (e.repeat) return;
+
+      const combo = formatKeyboardEventToShortcut(e, { allowModifierOnly: false });
+      if (combo) {
+        commitKeybind(combo);
+        return;
+      }
+
+      const mods = getModifierLabels(e);
+      setPendingPttModifiers(mods);
+      const soloMod = formatKeyboardEventToShortcut(e, { allowModifierOnly: true });
+      pendingSoloModifierRef.current = mods.length === 1 && soloMod ? soloMod : null;
+    };
+
+    const handleKeyUp = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (pendingSoloModifierRef.current) {
+        commitKeybind(pendingSoloModifierRef.current);
+        return;
+      }
+      setPendingPttModifiers(getModifierLabels(e));
+    };
+
+    const handleMouseDown = (e) => {
+      const mouseShortcut = formatMouseEventToShortcut(e);
+      if (mouseShortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        commitKeybind(mouseShortcut);
+        return;
+      }
+      if ((e.button === 0 || e.button === 2) && pttRecorderBoxRef.current && !pttRecorderBoxRef.current.contains(e.target)) {
+        stopPttRecording();
+      }
+    };
+
+    const handleAuxClick = (e) => {
+      if (e.button === 1 || e.button === 3 || e.button === 4) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const handleBlur = () => {
+      stopPttRecording();
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
+    window.addEventListener('mousedown', handleMouseDown, true);
+    window.addEventListener('auxclick', handleAuxClick, true);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('mousedown', handleMouseDown, true);
+      window.removeEventListener('auxclick', handleAuxClick, true);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [isPttRecordingActive, changePttKey, setIsRecordingPttKey, stopPttRecording]);
 
   // Stop mic test helper
   const stopMicTest = () => {
@@ -466,12 +585,13 @@ export const SettingsModal = ({ onLogout = null }) => {
 
   const handleClose = useCallback(() => {
     stopMicTest();
+    stopPttRecording();
     closeSettings();
-  }, [closeSettings]);
+  }, [closeSettings, stopPttRecording]);
 
-  // ESC key listener to close fullscreen settings
+  // ESC key listener to close fullscreen settings (paused while recording a PTT keybind)
   useEffect(() => {
-    if (!isSettingsOpen) return;
+    if (!isSettingsOpen || isPttRecordingActive) return undefined;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         handleClose();
@@ -479,7 +599,7 @@ export const SettingsModal = ({ onLogout = null }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSettingsOpen, handleClose]);
+  }, [isSettingsOpen, isPttRecordingActive, handleClose]);
 
   if (!isSettingsOpen) return null;
 
@@ -1319,6 +1439,254 @@ export const SettingsModal = ({ onLogout = null }) => {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Giriş Modu & Bas-Konuş (Push-to-Talk) */}
+              <div className="pt-6 border-t border-white/[0.08] space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      GİRİŞ MODU
+                    </label>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Sesinizin karşı tarafa ne zaman iletileceğini seçin.
+                    </p>
+                  </div>
+
+                  {inputMode === 'ptt' && (
+                    <span
+                      className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                        isPttActive
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25'
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isPttActive ? 'bg-emerald-400 animate-ping' : 'bg-indigo-400'
+                        }`}
+                      />
+                      <span>{isPttActive ? 'Konuşma Aktif (İletiliyor)' : `Bas-Konuş Hazır [${formatShortcutLabel(pttKey)}]`}</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Mod Seçim Kartları */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopPttRecording();
+                      changeInputMode('open');
+                      toast.success('Giriş modu: Ses Aktivitesi (Açık Mikrofon)');
+                    }}
+                    className={`flex items-start space-x-3 p-4 rounded-xl border text-left transition cursor-pointer ${
+                      inputMode === 'open'
+                        ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_20px_rgba(99,102,241,0.12)]'
+                        : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
+                    }`}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        inputMode === 'open' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-gray-400'
+                      }`}
+                    >
+                      <Radio size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-white">Ses Aktivitesi</span>
+                        {inputMode === 'open' && <Check size={15} className="text-indigo-400 flex-shrink-0" />}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Mikrofon açık kalır ve konuştuğunuz anda sesi otomatik iletir.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      changeInputMode('ptt');
+                      toast.success(`Bas-Konuş aktif edildi (${formatShortcutLabel(pttKey)})`);
+                    }}
+                    className={`flex items-start space-x-3 p-4 rounded-xl border text-left transition cursor-pointer ${
+                      inputMode === 'ptt'
+                        ? 'bg-indigo-600/15 border-indigo-500/60 shadow-[0_0_20px_rgba(99,102,241,0.12)]'
+                        : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
+                    }`}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        inputMode === 'ptt' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-gray-400'
+                      }`}
+                    >
+                      <Keyboard size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-white">Bas-Konuş</span>
+                        {inputMode === 'ptt' && <Check size={15} className="text-indigo-400 flex-shrink-0" />}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Mikrofon yalnızca seçtiğiniz tuşa basılı tuttuğunuzda açılır.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Bas-Konuş Kısayol Tuşu Ayarı */}
+                {inputMode === 'ptt' && (
+                  <div className="p-4 rounded-xl bg-[#101015] border border-white/[0.08] space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                          KISAYOL TUŞU
+                        </label>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Klavye tuşu, tuş kombinasyonu (örn. Alt+V) veya Mouse yan tuşu (Mouse 4 / 5) atayabilirsiniz.
+                        </p>
+                      </div>
+
+                      {pttKey !== DEFAULT_PTT_KEY && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            stopPttRecording();
+                            changePttKey(DEFAULT_PTT_KEY);
+                            toast.success(`Varsayılan tuşa sıfırlandı: ${formatShortcutLabel(DEFAULT_PTT_KEY)}`);
+                          }}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition self-start sm:self-auto flex-shrink-0 cursor-pointer"
+                        >
+                          <RotateCcw size={12} />
+                          <span>Varsayılana Sıfırla ({DEFAULT_PTT_KEY})</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Etkileşimli Tuş Atama Kutusu */}
+                    <div
+                      ref={pttRecorderBoxRef}
+                      onClick={() => {
+                        if (isRecordingPttKey) {
+                          stopPttRecording();
+                        } else {
+                          pendingSoloModifierRef.current = null;
+                          setPendingPttModifiers([]);
+                          setIsRecordingPttKey(true);
+                        }
+                      }}
+                      className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition cursor-pointer select-none ${
+                        isRecordingPttKey
+                          ? 'bg-rose-500/10 border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.18)]'
+                          : isPttActive
+                          ? 'bg-emerald-500/10 border-emerald-500/50'
+                          : 'bg-[#17171d] border-white/10 hover:border-indigo-500/50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <Keyboard
+                          size={18}
+                          className={
+                            isRecordingPttKey
+                              ? 'text-rose-400 animate-pulse flex-shrink-0'
+                              : isPttActive
+                              ? 'text-emerald-400 flex-shrink-0'
+                              : 'text-indigo-400 flex-shrink-0'
+                          }
+                        />
+                        {isRecordingPttKey ? (
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-rose-300 block">
+                              {pendingPttModifiers.length > 0
+                                ? `${pendingPttModifiers.join(' + ')} + ... (veya bırakın)`
+                                : 'İstediğiniz klavye tuşuna veya Mouse yan tuşuna basın...'}
+                            </span>
+                            <span className="text-[11px] text-rose-300/70">İptal etmek için ESC tuşuna basın</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2.5 min-w-0">
+                            <span className="inline-flex items-center px-3 py-1 rounded-lg bg-[#23242b] border border-white/15 text-sm font-mono font-bold text-white shadow-inner">
+                              {formatShortcutLabel(pttKey, { detailed: true })}
+                            </span>
+                            <span className="text-xs text-gray-400 truncate">
+                              Değiştirmek için tıklayın ve tuşa basın
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isRecordingPttKey) {
+                            stopPttRecording();
+                          } else {
+                            pendingSoloModifierRef.current = null;
+                            setPendingPttModifiers([]);
+                            setIsRecordingPttKey(true);
+                          }
+                        }}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex-shrink-0 cursor-pointer ${
+                          isRecordingPttKey
+                            ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                            : 'bg-[#5865F2] hover:bg-[#4752c4] text-white'
+                        }`}
+                      >
+                        {isRecordingPttKey ? 'Kaydı Durdur' : 'Tuş Ata'}
+                      </button>
+                    </div>
+
+                    {/* Hızlı Öneri Tuşları */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-medium text-gray-500 mr-1">Hızlı Seçim:</span>
+                      {['Alt', 'CapsLock', 'Alt+V', 'Control+Space', 'F4', 'Mouse4', 'Mouse5'].map((preset) => {
+                        const selected = pttKey === preset;
+                        return (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => {
+                              stopPttRecording();
+                              changePttKey(preset);
+                              toast.success(`Bas-Konuş tuşu ayarlandı: ${formatShortcutLabel(preset)}`);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold border transition cursor-pointer ${
+                              selected
+                                ? 'bg-indigo-500/25 text-indigo-200 border-indigo-400/60'
+                                : 'bg-white/[0.04] text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {formatShortcutLabel(preset)}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Kapsam & Canlı Çalışma Durumu */}
+                    <div
+                      className={`text-[11px] px-3 py-2 rounded-lg border flex items-start space-x-2 ${
+                        pttStatus?.isTauriGlobal
+                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                          : 'bg-amber-500/10 border-amber-500/20 text-amber-200/90'
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                          pttStatus?.isTauriGlobal ? 'bg-emerald-400' : 'bg-amber-400'
+                        }`}
+                      />
+                      <span>
+                        {pttStatus?.isTauriGlobal
+                          ? 'Sistem geneli (Global) kısayol aktif — başka bir uygulama veya oyundayken de Bas-Konuş çalışır.'
+                          : isTauriEnvironment()
+                          ? `Uygulama içi kısayol aktif (${pttStatus?.warning || 'seçilen tuş sistem genelinde yakalanamaz'}). Oyun içinde arka planda da çalışması için Alt+V, Ctrl+Space, CapsLock veya F1–F12 seçebilirsiniz.`
+                          : 'Tarayıcı modunda Bas-Konuş, Voys sekmesi aktifken çalışır. Oyun içi arka plan desteği için masaüstü uygulamasını kullanın.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

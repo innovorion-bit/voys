@@ -20,6 +20,7 @@ import {
 import { UserAvatar } from './UserAvatar';
 import { ConnectionQualityIndicator } from './ConnectionQualityIndicator';
 import { useSettings } from '../context/useSettings';
+import { formatShortcutLabel } from '../services/shortcutService';
 
 export const VoiceStageArea = ({
   activeChannelName = 'Sesli Sohbet',
@@ -360,7 +361,7 @@ export const VoiceStageArea = ({
               }`}
               title={
                 inputMode === 'ptt'
-                  ? `Bas-Konuş [ ${pttKey} ]: ${isPttActive ? 'Konuşuluyor' : 'Basılı tutarak konuşun'}`
+                  ? `Bas-Konuş [ ${formatShortcutLabel(pttKey)} ]: ${isPttActive ? 'Konuşuluyor' : 'Basılı tutarak konuşun'}`
                   : isMuted 
                   ? 'Mikrofonu Aç' 
                   : 'Mikrofonu Kapat'

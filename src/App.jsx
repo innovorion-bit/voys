@@ -23,6 +23,7 @@ import { useAuth } from './context/useAuth';
 import { chatService } from './services/chatService';
 import { dbService, getDmRoomId, isSupabaseConfigured } from './lib/supabase';
 import { sounds } from './utils/audio';
+import { formatShortcutLabel } from './services/shortcutService';
 import { pickDisplayName, getCachedUserProfile, isUuidLike } from './utils/userDisplay';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
@@ -42,6 +43,7 @@ function StanduppApp() {
     outputVolume,
     openSettings,
     inputMode,
+    pttKey,
     isPttActive,
   } = useSettings();
 
@@ -803,31 +805,41 @@ function StanduppApp() {
     };
   }, []);
 
+  const prevPttActiveRef = useRef(isPttActive);
+  const prevInputModeRef = useRef(inputMode);
+
   // Push-to-Talk (PTT) Synchronization with WebRTC Audio Stream
   useEffect(() => {
-    if (inputMode === 'ptt' && isConnected) {
+    const wasPttActive = prevPttActiveRef.current;
+    const prevMode = prevInputModeRef.current;
+    prevPttActiveRef.current = isPttActive;
+    prevInputModeRef.current = inputMode;
+
+    if (!isConnected) return;
+
+    if (inputMode === 'ptt') {
       if (isPttActive) {
         if (isMuted && !isDeafened) {
-          setMuted(false, true);
+          setMuted(false, !wasPttActive);
         }
-      } else {
-        if (!isMuted) {
-          setMuted(true, true);
-        }
+      } else if (!isMuted) {
+        setMuted(true, wasPttActive);
       }
+    } else if (prevMode === 'ptt' && isMuted && !isDeafened) {
+      setMuted(false, false);
     }
   }, [inputMode, isConnected, isPttActive, isMuted, isDeafened, setMuted]);
 
-  // Initial mute state when toggling between PTT and Open Mic
-  useEffect(() => {
-    if (isConnected) {
-      if (inputMode === 'ptt') {
-        setMuted(true);
-      } else {
-        setMuted(false);
-      }
+  // Manual Mute toggle wrapper (informs user when Push-to-Talk owns mic gating)
+  const handleToggleMute = useCallback(() => {
+    if (inputMode === 'ptt') {
+      toast.info('Bas-Konuş modu aktif', {
+        description: `Konuşmak için [${formatShortcutLabel(pttKey)}] tuşuna basılı tutun veya Aygıt ayarlarından Açık Mikrofon'a geçin.`,
+      });
+      return;
     }
-  }, [inputMode, isConnected, setMuted]);
+    toggleMute();
+  }, [inputMode, pttKey, toggleMute]);
 
   // Isolated Realtime Chat Hook for the active channel or DM room
   const {
@@ -882,6 +894,9 @@ function StanduppApp() {
       const callRoom = `standupp-call-${targetChannelId}`;
       switchVoiceRoom(callRoom);
       await connectVoice(null, activeUserProfile.name, activeUserProfile);
+      if (inputMode === 'ptt') {
+        setMuted(true, false);
+      }
       setActiveCallChannelId(targetChannelId);
 
       const targetFriend = isDm ? activeDmFriend : null;
@@ -911,7 +926,7 @@ function StanduppApp() {
     } catch (err) {
       console.warn('Call start error:', err);
     }
-  }, [activeChannel, switchVoiceRoom, connectVoice, activeUserProfile, isDm, activeDmUserId, activeDmFriend]);
+  }, [activeChannel, switchVoiceRoom, connectVoice, activeUserProfile, isDm, activeDmUserId, activeDmFriend, inputMode, setMuted]);
 
   // Handle in-chat voice call leave / disconnect
   const handleLeaveCall = useCallback(() => {
@@ -1448,7 +1463,7 @@ function StanduppApp() {
             isMuted={isMuted}
             isDeafened={isDeafened}
             isSpeaking={isSpeaking}
-            onToggleMute={toggleMute}
+            onToggleMute={handleToggleMute}
             onToggleDeafen={toggleDeafen}
             onDisconnect={handleLeaveCall}
             onConnect={() => handleStartCall(activeChannel)}

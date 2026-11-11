@@ -9,6 +9,7 @@ import {
   ScreenShare
 } from 'lucide-react';
 import { useSettings } from '../context/useSettings';
+import { formatShortcutLabel } from '../services/shortcutService';
 
 export const VoiceControls = ({
   isConnected = false,
@@ -70,7 +71,7 @@ export const VoiceControls = ({
         onClick={onToggleMute}
         title={
           inputMode === 'ptt'
-            ? `Bas-Konuş [ ${pttKey} ]: ${isPttActive ? 'Konuşuluyor' : 'Basılı tutarak konuşun'}`
+            ? `Bas-Konuş [ ${formatShortcutLabel(pttKey)} ]: ${isPttActive ? 'Konuşuluyor' : 'Basılı tutarak konuşun'}`
             : isMuted 
             ? 'Mikrofonu Aç' 
             : 'Mikrofonu Kapat'

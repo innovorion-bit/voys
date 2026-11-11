@@ -15,6 +15,7 @@ import {
 import { UserAvatar } from './UserAvatar';
 import { ConnectionQualityIndicator } from './ConnectionQualityIndicator';
 import { useSettings } from '../context/useSettings';
+import { formatShortcutLabel } from '../services/shortcutService';
 
 export const InChatCallStage = ({
   channelName = 'Sohbet',
@@ -424,7 +425,7 @@ export const InChatCallStage = ({
                 : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
             }`}>
               <span>Bas-Konuş:</span>
-              <strong className="text-white">[{pttKey}]</strong>
+              <strong className="text-white">[{formatShortcutLabel(pttKey)}]</strong>
               {isPttActive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />}
             </span>
           ) : (

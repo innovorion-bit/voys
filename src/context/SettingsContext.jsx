@@ -6,9 +6,11 @@ import { dbService } from '../lib/supabase';
 import { SettingsContext } from './settingsContextDef';
 import { useAuth } from './useAuth';
 import { 
-  registerPttShortcut, 
-  unregisterPttShortcut, 
-  unregisterAllShortcuts 
+  DEFAULT_PTT_KEY,
+  normalizeShortcutKey,
+  registerPttShortcut,
+  unregisterPttShortcut,
+  unregisterAllShortcuts
 } from '../services/shortcutService';
 import { applyWindowTransparency } from '../utils/windowManager';
 
@@ -118,22 +120,36 @@ export const SettingsProvider = ({ children }) => {
 
   // Input Mode & Push-to-Talk (PTT) Configuration
   const [inputMode, setInputModeState] = useState(() => {
-    return localStorage.getItem('standupp_input_mode') || 'open'; // 'open' | 'ptt'
+    const savedMode = localStorage.getItem('standupp_input_mode');
+    return savedMode === 'ptt' ? 'ptt' : 'open'; // 'open' | 'ptt'
   });
   const [pttKey, setPttKeyState] = useState(() => {
-    return localStorage.getItem('standupp_ptt_key') || 'Alt';
+    const savedKey = localStorage.getItem('standupp_ptt_key');
+    return normalizeShortcutKey(savedKey) || DEFAULT_PTT_KEY;
   });
   const [isPttActive, setIsPttActive] = useState(false);
+  const [isRecordingPttKey, setIsRecordingPttKey] = useState(false);
+  const [pttStatus, setPttStatus] = useState({
+    registered: false,
+    mode: 'window',
+    isTauriGlobal: false,
+    warning: null,
+  });
 
   const changeInputMode = useCallback((mode) => {
-    setInputModeState(mode);
+    const safeMode = mode === 'ptt' ? 'ptt' : 'open';
+    setInputModeState(safeMode);
+    if (safeMode !== 'ptt') {
+      setIsPttActive(false);
+    }
     try {
-      localStorage.setItem('standupp_input_mode', mode);
+      localStorage.setItem('standupp_input_mode', safeMode);
     } catch {}
   }, []);
 
   const changePttKey = useCallback((key) => {
-    const safeKey = key || 'Alt';
+    const safeKey = normalizeShortcutKey(key) || DEFAULT_PTT_KEY;
+    setIsPttActive(false);
     setPttKeyState(safeKey);
     try {
       localStorage.setItem('standupp_ptt_key', safeKey);
@@ -142,28 +158,58 @@ export const SettingsProvider = ({ children }) => {
 
   // Register / Unregister Push-to-Talk Global Shortcut dynamically
   useEffect(() => {
-    if (inputMode === 'ptt' && pttKey) {
+    let isCancelled = false;
+
+    if (inputMode === 'ptt' && pttKey && !isRecordingPttKey) {
       registerPttShortcut(pttKey, (isPressed) => {
-        setIsPttActive(isPressed);
-      }).catch((err) => {
-        console.warn('PTT shortcut register warning:', err);
-      });
+        if (!isCancelled) {
+          setIsPttActive(Boolean(isPressed));
+        }
+      })
+        .then((result) => {
+          if (isCancelled || result?.cancelled) return;
+          setPttStatus({
+            registered: Boolean(result?.success),
+            mode: result?.mode || 'window',
+            isTauriGlobal: Boolean(result?.isTauriGlobal),
+            warning: result?.warning || result?.error || null,
+          });
+        })
+        .catch((err) => {
+          if (isCancelled) return;
+          console.warn('PTT shortcut register warning:', err);
+          setPttStatus({
+            registered: false,
+            mode: 'window',
+            isTauriGlobal: false,
+            warning: err?.message || 'Kısayol kaydedilemedi.',
+          });
+        });
     } else {
       unregisterPttShortcut()
         .then(() => {
-          setIsPttActive(false);
+          if (!isCancelled) {
+            setIsPttActive(false);
+            setPttStatus({
+              registered: false,
+              mode: 'window',
+              isTauriGlobal: false,
+              warning: null,
+            });
+          }
         })
         .catch(() => {});
     }
 
     return () => {
+      isCancelled = true;
       unregisterPttShortcut()
         .then(() => {
           setIsPttActive(false);
         })
         .catch(() => {});
     };
-  }, [inputMode, pttKey]);
+  }, [inputMode, pttKey, isRecordingPttKey]);
 
   // Clean up global shortcuts when app closes or unloads
   useEffect(() => {
@@ -406,13 +452,20 @@ export const SettingsProvider = ({ children }) => {
   }, [refreshDevices]);
 
   const openSettings = useCallback((tab = 'account') => {
+    setIsRecordingPttKey(false);
     setSettingsTab(tab);
     setIsSettingsOpen(true);
     refreshDevices();
   }, [refreshDevices]);
 
   const closeSettings = useCallback(() => {
+    setIsRecordingPttKey(false);
     setIsSettingsOpen(false);
+  }, []);
+
+  const updateSettingsTab = useCallback((tab) => {
+    setIsRecordingPttKey(false);
+    setSettingsTab(tab);
   }, []);
 
   const [isChatSettingsOpen, setIsChatSettingsOpen] = useState(false);
@@ -451,10 +504,13 @@ export const SettingsProvider = ({ children }) => {
         pttKey,
         changePttKey,
         isPttActive,
+        isRecordingPttKey,
+        setIsRecordingPttKey,
+        pttStatus,
         refreshDevices,
         isSettingsOpen,
         settingsTab,
-        setSettingsTab,
+        setSettingsTab: updateSettingsTab,
         openSettings,
         closeSettings,
         isChatSettingsOpen,
