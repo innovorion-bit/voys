@@ -2001,9 +2001,7 @@ export const ChatArea = ({
                       )}
                       <div
                         id={`msg-${msg.id}`}
-                        className={`relative group/msg flex items-start w-full py-1.5 px-2 sm:px-3 hover:bg-white/[0.025] transition-colors rounded-xl ${
-                          isMe ? 'flex-row-reverse' : ''
-                        }`}
+                        className="relative group/msg flex flex-col w-full py-1.5 px-2 sm:px-3 hover:bg-white/[0.025] transition-colors rounded-xl"
                       >
                       {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + Reply */}
                       <div className={`absolute ${isMe ? 'left-2 sm:left-4' : 'right-2 sm:right-4'} -top-3 opacity-0 ${isOptionsMenuOpen ? 'pointer-events-none' : 'group-hover/msg:opacity-100'} transition-all duration-150 z-20 flex items-center bg-[#121216]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-1 space-x-1 select-none`}>
@@ -2078,22 +2076,8 @@ export const ChatArea = ({
                         </div>
                       )}
 
-                      {/* Sender Avatar */}
-                      <div className={`${isMe ? 'ml-3' : 'mr-3'} flex-shrink-0 pt-0.5 select-none`}>
-                        <UserAvatar
-                          user={{
-                            id: resolvedProfile?.id || senderId,
-                            name: messageUser,
-                            avatar: resolvedProfile?.avatar || msg.avatar,
-                            avatar_url: resolvedProfile?.avatar || msg.avatar,
-                          }}
-                          size="md"
-                          showStatus={false}
-                        />
-                      </div>
-
                       {/* Message Content */}
-                      <div className={`flex-1 min-w-0 flex flex-col ${isMe ? 'items-end pl-12 sm:pl-16' : 'items-start pr-12 sm:pr-16'}`}>
+                      <div className={`w-full min-w-0 flex flex-col ${isMe ? 'items-end pl-12 sm:pl-16' : 'items-start pr-12 sm:pr-16'}`}>
                         {/* Quoted Message (Reply Preview) */}
                         {msg.reply_to && (
                           <div
