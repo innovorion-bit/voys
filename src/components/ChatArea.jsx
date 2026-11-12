@@ -1574,24 +1574,186 @@ export const ChatArea = ({
 
       {/* Main Content Area OR Inline User/Group Info */}
       {chatInnerView === 'userInfo' && hasActiveChat ? (
-        /* Inline Kişi Bilgisi / Kanal Bilgisi (Sohbet Ekranının Tamamında) */
-        <div className="flex-1 flex flex-col h-full min-h-0 overflow-y-auto bg-[#0a0a0d] custom-scrollbar p-6 select-none">
+        /* Inline Kişi Bilgisi / Kanal Bilgisi (Hesap Ayarları Düzeni) */
+        <div className="flex-1 flex flex-col h-full min-h-0 overflow-y-auto bg-[#08080a] custom-scrollbar px-6 md:px-10 py-8 select-none">
           <div className="max-w-2xl mx-auto w-full space-y-6">
-            {/* Tek Birleşik Profil ve Detay Kartı */}
-            <div className="relative overflow-hidden rounded-3xl bg-[#121217] border border-white/10 p-6 shadow-2xl space-y-6">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-5 text-center sm:text-left">
-                {isDmMode && activeDmFriend ? (
-                  <div className="relative flex-shrink-0">
-                    <UserAvatar
-                      user={activeDmFriend}
-                      size="xl"
-                      showStatus={true}
-                      status={activeDmFriend.status}
-                    />
+            {/* Header: Kişi Bilgisi veya Grup Bilgisi */}
+            <div className="pb-4 border-b border-white/[0.08] flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {isDmMode ? 'Kişi Bilgisi' : 'Grup Bilgisi'}
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  {isDmMode
+                    ? 'Kişisel profil detayları, kullanıcı bilgileri ve doğrudan iletişim seçenekleri.'
+                    : 'Grup profili, katılımcı yönetimi ve grup ayarları.'}
+                </p>
+              </div>
+            </div>
+
+            {isDmMode && activeDmFriend ? (
+              <>
+                {/* Bölüm 1: Profil Fotoğrafı & Kimlik */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      PROFİL FOTOĞRAFI
+                    </label>
                   </div>
-                ) : (
-                  /* Group Profile Avatar with Upload Support */
-                  <div className="relative flex-shrink-0">
+                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-col sm:flex-row items-center gap-5">
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const avatarUrl = activeDmFriend?.avatar || activeDmFriend?.avatar_url || activeDmFriend?.avatarUrl || null;
+                        setActiveMediaModal({
+                          url: avatarUrl,
+                          name: `${activeDmFriend?.name || 'Kullanıcı'} - Profil Fotoğrafı`,
+                          fallbackUser: activeDmFriend,
+                        });
+                      }}
+                      className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
+                      title="Profil fotoğrafını büyüt"
+                    >
+                      <UserAvatar
+                        user={activeDmFriend}
+                        size="xl"
+                        showStatus={false}
+                      />
+                    </div>
+
+                    <div className="flex-1 space-y-1.5 text-center sm:text-left min-w-0">
+                      <div className="flex items-center justify-center sm:justify-start space-x-2">
+                        <h3 className="text-base font-bold text-white truncate">
+                          {activeDmFriend.name}
+                        </h3>
+                        {activeDmFriend?.hasCrown && (
+                          <Crown size={14} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 font-mono truncate">
+                        {activeDmFriend.username ? `@${activeDmFriend.username}` : (activeDmFriend.email || 'Voys Kullanıcısı')}
+                      </p>
+                      <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
+                          activeDmFriend.status === 'dnd'
+                            ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                            : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
+                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                            : activeDmFriend.isOnline
+                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            activeDmFriend.status === 'dnd'
+                              ? 'bg-rose-400'
+                              : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
+                              ? 'bg-amber-400'
+                              : activeDmFriend.isOnline
+                              ? 'bg-emerald-400'
+                              : 'bg-zinc-500'
+                          }`} />
+                          <span>
+                            {activeDmFriend.status === 'dnd'
+                              ? 'Rahatsız Etmeyin'
+                              : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
+                              ? 'Boşta'
+                              : activeDmFriend.isOnline
+                              ? 'Çevrimiçi'
+                              : 'Çevrimdışı'}
+                          </span>
+                        </span>
+
+                        {activeDmFriend.game && (
+                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            <Gamepad2 size={12} className="text-emerald-400" />
+                            <span className="truncate">{activeDmFriend.game}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bölüm 2: Kullanıcı Bilgileri */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      HESAP BİLGİLERİ
+                    </label>
+                  </div>
+                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                          Görünen İsim
+                        </label>
+                        <div className="w-full rounded-lg px-3.5 py-2.5 text-xs bg-[#161719]/80 text-gray-200 border border-white/5 select-text">
+                          {activeDmFriend.name}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                          Kullanıcı Adı
+                        </label>
+                        <div className="w-full rounded-lg px-3.5 py-2.5 text-xs font-mono bg-[#161719]/80 text-gray-200 border border-white/5 select-text">
+                          {activeDmFriend.username ? `@${activeDmFriend.username}` : '@kullanici'}
+                        </div>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                          Biyografi / Durum
+                        </label>
+                        <div className="w-full rounded-lg px-3.5 py-2.5 text-xs bg-[#161719]/80 text-gray-300 border border-white/5 select-text leading-relaxed">
+                          {activeDmFriend.substatus || activeDmFriend.bio || 'Henüz bir durum veya biyografi eklenmemiş.'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bölüm 3: İletişim ve İşlemler */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      HIZLI İŞLEMLER
+                    </label>
+                  </div>
+                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onStartCall) onStartCall();
+                        else if (onToggleDmCall) onToggleDmCall();
+                      }}
+                      className="inline-flex items-center space-x-2 px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer"
+                    >
+                      <Phone size={14} />
+                      <span>Sesli Arama Başlat</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmDeleteOpen(true)}
+                      className="inline-flex items-center space-x-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg text-xs font-semibold border border-rose-500/20 transition active:scale-95 cursor-pointer"
+                    >
+                      <Trash2 size={14} className="text-rose-400" />
+                      <span>Sohbet Geçmişini Temizle</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Bölüm 1: Grup Profili & Fotoğrafı */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      GRUP FOTOĞRAFI
+                    </label>
+                  </div>
+                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-col sm:flex-row items-center gap-5">
                     <input
                       ref={groupFileInputRef}
                       type="file"
@@ -1601,166 +1763,80 @@ export const ChatArea = ({
                     />
                     <div
                       onClick={() => !isUploadingGroupAvatar && groupFileInputRef.current?.click()}
-                      className="relative group w-20 h-20 rounded-2xl overflow-hidden border-2 border-indigo-500/30 hover:border-indigo-400 bg-indigo-500/10 flex flex-col items-center justify-center cursor-pointer transition shadow-lg"
-                      title="Grup fotoğrafı yüklemek/değiştirmek için tıklayın"
+                      className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 ${
+                        currentGroupAvatar
+                          ? 'border-white/10 hover:border-[#8B51FF]'
+                          : 'border-white/10 hover:border-[#8B51FF]'
+                      }`}
+                      title="Grup fotoğrafını değiştirmek için tıklayın"
                     >
                       {currentGroupAvatar ? (
-                        <img
-                          src={currentGroupAvatar}
-                          alt={channelData?.name || 'Grup'}
-                          className="w-full h-full object-cover group-hover:opacity-40 transition"
-                        />
+                        <>
+                          <img
+                            src={currentGroupAvatar}
+                            alt={channelData?.name || 'Grup'}
+                            className="w-full h-full object-cover group-hover:opacity-30 transition"
+                          />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
+                            <Camera size={16} className="mb-0.5 text-white" />
+                            <span>Değiştir</span>
+                          </div>
+                        </>
                       ) : (
-                        <Users size={32} className="text-indigo-400 group-hover:scale-110 transition" />
+                        <>
+                          <Users size={28} className="text-gray-400 group-hover:scale-110 transition" />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
+                            <Camera size={16} className="mb-0.5 text-white" />
+                            <span>Yükle</span>
+                          </div>
+                        </>
                       )}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
-                        <Camera size={18} className="mb-0.5 text-white" />
-                        <span>Değiştir</span>
-                      </div>
                       {isUploadingGroupAvatar && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/70">
                           <Loader2 size={20} className="animate-spin text-white" />
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
 
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center justify-center sm:justify-start space-x-2">
-                    <h2 className="text-xl font-bold text-white truncate">
-                      {isDmMode && activeDmFriend ? activeDmFriend.name : (channelData?.name || (activeChannel === 'home' ? 'Home Kanalı' : (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Sohbet')))}
-                    </h2>
-                    {isDmMode && activeDmFriend?.hasCrown && (
-                      <Crown size={16} className="text-amber-400 fill-amber-400 flex-shrink-0" />
-                    )}
-                  </div>
-
-                  <p className="text-xs text-gray-400 font-mono truncate">
-                    {isDmMode && activeDmFriend ? (
-                      activeDmFriend.username ? `@${activeDmFriend.username}` : (activeDmFriend.email || 'Voys Kullanıcısı')
-                    ) : (
-                      `${liveMembers.length} Aktif Üye`
-                    )}
-                  </p>
-
-                  {/* Durum Rozetleri (Sadece DM modunda) */}
-                  {isDmMode && activeDmFriend && (
-                    <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                      <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
-                        activeDmFriend.status === 'dnd'
-                          ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
-                          : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
-                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-                          : activeDmFriend.isOnline
-                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                          : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          activeDmFriend.status === 'dnd'
-                            ? 'bg-rose-400'
-                            : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
-                            ? 'bg-amber-400'
-                            : activeDmFriend.isOnline
-                            ? 'bg-emerald-400'
-                            : 'bg-zinc-500'
-                        }`} />
-                        <span>
-                          {activeDmFriend.status === 'dnd'
-                            ? 'Rahatsız Etmeyin'
-                            : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
-                            ? 'Boşta'
-                            : activeDmFriend.isOnline
-                            ? 'Çevrimiçi'
-                            : 'Çevrimdışı'}
-                        </span>
-                      </span>
-
-                      {activeDmFriend.game && (
-                        <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                          <Gamepad2 size={12} className="text-emerald-400" />
-                          <span className="truncate">{activeDmFriend.game}</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {!isDmMode && currentGroupAvatar && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        disabled={isUploadingGroupAvatar}
-                        onClick={handleRemoveGroupAvatar}
-                        className="text-[11px] text-rose-400/80 hover:text-rose-300 transition flex items-center space-x-1 cursor-pointer"
-                      >
-                        <Trash2 size={11} />
-                        <span>Fotoğrafı Kaldır</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Hızlı Eylem Butonları (Sadece DM modunda) */}
-              {isDmMode && activeDmFriend && (
-                <div className="pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onStartCall) onStartCall();
-                      else if (onToggleDmCall) onToggleDmCall();
-                    }}
-                    className="flex-1 min-w-[140px] flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/25 transition active:scale-95 cursor-pointer"
-                  >
-                    <Phone size={14} />
-                    <span>Sesli Arama Başlat</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsConfirmDeleteOpen(true)}
-                    className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-medium border border-rose-500/20 transition active:scale-95 cursor-pointer"
-                  >
-                    <Trash2 size={14} className="text-rose-400" />
-                    <span>Sohbeti Temizle</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Bilgi ve Detaylar Bölümü (Sadece DM modunda) */}
-              {isDmMode && activeDmFriend && (
-                <div className="pt-5 border-t border-white/10 space-y-4">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-2">
-                    <User size={14} className="text-indigo-400" />
-                    <span>Hakkında ve Detaylar</span>
-                  </h3>
-
-                  <div className="space-y-3">
-                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
-                      <div className="text-[11px] text-gray-500 uppercase tracking-wide font-medium">Biyografi / Durum</div>
-                      <div className="text-xs text-gray-200 mt-1">
-                        {activeDmFriend.substatus || activeDmFriend.bio || 'Henüz bir durum veya biyografi eklenmemiş.'}
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
-                      <div className="text-[11px] text-gray-500 uppercase tracking-wide font-medium">Kullanıcı Adı</div>
-                      <div className="text-xs font-mono text-gray-200 mt-1 truncate">
-                        {activeDmFriend.username ? `@${activeDmFriend.username}` : activeDmFriend.name}
+                    <div className="flex-1 space-y-1.5 text-center sm:text-left min-w-0">
+                      <h3 className="text-base font-bold text-white truncate">
+                        {channelData?.name || (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Grup')}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        {liveMembers.length} Aktif Katılımcı
+                      </p>
+                      <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <button
+                          type="button"
+                          disabled={isUploadingGroupAvatar}
+                          onClick={() => groupFileInputRef.current?.click()}
+                          className="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                        >
+                          <Upload size={13} />
+                          <span>Fotoğraf Yükle</span>
+                        </button>
+                        {currentGroupAvatar && (
+                          <button
+                            type="button"
+                            disabled={isUploadingGroupAvatar}
+                            onClick={handleRemoveGroupAvatar}
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg text-xs font-medium border border-rose-500/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                            <span>Fotoğrafı Kaldır</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {/* Grup Üyeleri Listesi (Grup Modunda) */}
-              {!isDmMode && (
-                <div className="pt-5 border-t border-white/10 space-y-4">
+                {/* Bölüm 2: Grup Üyeleri */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-2">
-                      <Users size={14} className="text-indigo-400" />
-                      <span>Grup Üyeleri ({liveMembers.length})</span>
-                    </h3>
+                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                      GRUP ÜYELERİ ({liveMembers.length})
+                    </label>
                     <button
                       type="button"
                       onClick={() => {
@@ -1771,64 +1847,72 @@ export const ChatArea = ({
                           setIsAddingMember(true);
                         }
                       }}
-                      className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 transition cursor-pointer"
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer"
                     >
-                      <UserPlus size={12} />
+                      <UserPlus size={13} />
                       <span>Üye Ekle</span>
                     </button>
                   </div>
-                  <div className="divide-y divide-white/5 max-h-60 overflow-y-auto custom-scrollbar">
-                    {liveMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
-                        title="Seçenekler için sağ tıklayın"
-                        className="py-2.5 px-2 -mx-2 rounded-lg hover:bg-white/[0.04] transition flex items-center space-x-3 cursor-context-menu"
-                      >
-                        <UserAvatar user={member} size="sm" showStatus={true} status={member.isOnline ? member.status : 'offline'} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
-                            <span>{member.name}</span>
-                            {member.id === currentUser?.id && (
-                              <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.2 rounded">Sen</span>
-                            )}
+                  <div className="bg-[#111214] border border-white/10 rounded-xl overflow-hidden">
+                    <div className="divide-y divide-white/[0.04] max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                      {liveMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                          title="Seçenekler için sağ tıklayın"
+                          className="p-3 hover:bg-white/[0.03] transition flex items-center justify-between cursor-context-menu"
+                        >
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <UserAvatar user={member} size="sm" showStatus={true} status={member.isOnline ? member.status : 'offline'} />
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
+                                <span>{member.name}</span>
+                                {member.id === currentUser?.id && (
+                                  <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">Sen</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-gray-400 truncate">
+                                {member.isOnline && member.game ? `Oynuyor: ${member.game}` : getMemberStatusDisplay(member)}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[10px] text-gray-400 truncate">
-                            {member.isOnline && member.game ? `Oynuyor: ${member.game}` : getMemberStatusDisplay(member)}
-                          </div>
+                          <span className="text-[10px] text-gray-500 flex-shrink-0 ml-2">
+                            {member.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+                          </span>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Grup Ayarları & Tehlikeli Bölge (Grubu Sil) */}
-              {!isDmMode && activeChannel !== 'home' && (
-                <div className="pt-5 border-t border-white/10 space-y-3">
-                  <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center space-x-2">
-                    <Trash2 size={14} className="text-rose-400" />
-                    <span>Tehlikeli Bölge</span>
-                  </h3>
-                  <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="text-xs font-bold text-white">Grubu Kalıcı Olarak Sil</div>
-                      <div className="text-[11px] text-gray-400">
-                        Bu grup, tüm mesaj geçmişi ve katılımcı listesiyle birlikte kalıcı olarak silinecektir.
-                      </div>
+                      ))}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmDeleteGroupOpen(true)}
-                      className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-rose-600/30 transition active:scale-95 cursor-pointer flex items-center space-x-1.5 flex-shrink-0"
-                    >
-                      <Trash2 size={13} />
-                      <span>Grubu Sil</span>
-                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Bölüm 3: Tehlikeli Bölge */}
+                {activeChannel !== 'home' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-rose-400 uppercase tracking-wider block">
+                        TEHLİKELİ BÖLGE
+                      </label>
+                    </div>
+                    <div className="p-4 bg-rose-500/[0.03] border border-rose-500/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-bold text-white">Grubu Kalıcı Olarak Sil</div>
+                        <p className="text-[11px] text-gray-400">
+                          Bu grup, tüm mesaj geçmişi ve katılımcı listesiyle birlikte kalıcı olarak silinecektir.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsConfirmDeleteGroupOpen(true)}
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer flex items-center space-x-1.5 flex-shrink-0"
+                      >
+                        <Trash2 size={13} />
+                        <span>Grubu Sil</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       ) : (
