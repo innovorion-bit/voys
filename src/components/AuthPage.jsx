@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Sparkles,
+  AtSign,
   Loader2,
   RefreshCw
 } from 'lucide-react';
@@ -138,6 +139,10 @@ export const AuthPage = ({ initialMode = 'login' }) => {
 
     // 3. REGISTER MODE
     if (mode === 'register') {
+      if (!displayName.trim()) {
+        setErrorMsg('Lütfen adınızı girin.');
+        return;
+      }
       if (!username.trim()) {
         setErrorMsg('Lütfen bir kullanıcı adı girin.');
         return;
@@ -305,20 +310,20 @@ export const AuthPage = ({ initialMode = 'login' }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : mode === 'register' ? 'pt-3.5' : ''}`}>
-              {/* Register: Username & Display Name */}
+              {/* Register: Adınız & Kullanıcı adınız */}
               {mode === 'register' && (
                 <>
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                      Kullanıcı Adı
+                      Adınız
                     </label>
                     <div className="relative flex items-center">
                       <User size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
                       <input
                         type="text"
                         required
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
                         className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                       />
                     </div>
@@ -326,14 +331,15 @@ export const AuthPage = ({ initialMode = 'login' }) => {
 
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                      Görünen İsim (İsteğe Bağlı)
+                      Kullanıcı adınız
                     </label>
                     <div className="relative flex items-center">
-                      <Sparkles size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                      <AtSign size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
                       <input
                         type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
+                        required
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                       />
                     </div>
@@ -345,7 +351,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
               {mode !== 'reset' && (
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    E-Posta Adresi
+                    {mode === 'register' ? 'E-posta adresiniz' : 'E-Posta Adresi'}
                   </label>
                   <div className="relative flex items-center">
                     <Mail size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
@@ -365,7 +371,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                      {mode === 'reset' ? 'Yeni Şifre' : 'Şifre'}
+                      {mode === 'register' ? 'Şifreniz' : mode === 'reset' ? 'Yeni Şifre' : 'Şifre'}
                     </label>
                     {mode === 'login' && (
                       <button
@@ -406,7 +412,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
               {(mode === 'register' || mode === 'reset') && (
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    Şifreyi Doğrula
+                    {mode === 'register' ? 'Şifreniz' : 'Şifreyi Doğrula'}
                   </label>
                   <div className="relative flex items-center">
                     <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
