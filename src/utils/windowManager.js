@@ -1,6 +1,6 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 
-export const LOGIN_SIZE = { width: 380, height: 420, minWidth: 360, minHeight: 400 };
+export const LOGIN_SIZE = { width: 380, height: 400, minWidth: 360, minHeight: 380 };
 export const REGISTER_SIZE = { width: 380, height: 600, minWidth: 360, minHeight: 500 };
 export const MAIN_SIZE = { width: 950, height: 580, minWidth: 720, minHeight: 500 };
 
@@ -34,10 +34,10 @@ export async function resizeToAuthWindow(mode = 'login') {
   if (!isTauriEnvironment()) return;
   try {
     const appWindow = getCurrentWindow();
-    const height = mode === 'register' ? 600 : (mode === 'forgot' || mode === 'reset') ? 440 : 420;
+    const height = mode === 'register' ? 600 : (mode === 'forgot' || mode === 'reset') ? 440 : 400;
     const width = 380;
     // Lower min size first so setSize can shrink the window without constraint errors
-    await appWindow.setMinSize(new LogicalSize(360, 400));
+    await appWindow.setMinSize(new LogicalSize(360, 380));
     // Resize to compact auth form resolution
     await appWindow.setSize(new LogicalSize(width, height));
     // Re-center window on screen

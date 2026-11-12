@@ -220,7 +220,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       {/* Header Banner */}
       <div
         data-tauri-drag-region
-        className="pt-6 pb-2 text-center relative cursor-default flex-shrink-0"
+        className="pt-6 pb-1 text-center relative cursor-default flex-shrink-0"
       >
         <div className="flex justify-center">
           {mode === 'reset' ? (
@@ -304,7 +304,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-2.5">
+            <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : ''}`}>
               {/* Register: Username & Display Name */}
               {mode === 'register' && (
                 <>
