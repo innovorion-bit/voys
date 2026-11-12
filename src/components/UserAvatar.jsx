@@ -47,7 +47,7 @@ export const UserAvatar = ({
         .map((p) => p[0])
         .slice(0, 2)
         .join('')
-        .toUpperCase()
+        .toLocaleUpperCase('tr-TR')
     : 'U';
 
   const rawAvatar = typeof user === 'string'

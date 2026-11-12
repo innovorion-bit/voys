@@ -552,7 +552,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                                 <img src={u.avatar_url} alt={u.username} className="w-7 h-7 rounded-full object-cover border border-white/10" />
                               ) : (
                                 <div className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[11px]">
-                                  {(u.display_name || u.username || '?')[0].toUpperCase()}
+                                  {(u.display_name || u.username || '?')[0].toLocaleUpperCase('tr-TR')}
                                 </div>
                               )}
                               <div className="min-w-0">
@@ -818,7 +818,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                   />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                    {(deleteConfirmUser.display_name || deleteConfirmUser.username || '?')[0].toUpperCase()}
+                    {(deleteConfirmUser.display_name || deleteConfirmUser.username || '?')[0].toLocaleUpperCase('tr-TR')}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
