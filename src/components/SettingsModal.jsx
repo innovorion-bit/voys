@@ -730,7 +730,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
       </div>
 
       {/* Right Scrollable Tab Panel */}
-      <div className="flex-1 h-full overflow-y-auto bg-[#08080a] relative">
+      <div className="flex-1 h-full overflow-y-auto bg-[#08080a] voys-glass-settings-content relative">
         <div className={`${activeTab === 'system_monitor' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-6 md:px-10 py-8 space-y-6`}>
           {/* TAB 1: HESAP */}
           {activeTab === 'account' && (

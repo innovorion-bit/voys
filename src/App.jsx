@@ -54,6 +54,7 @@ function StanduppApp() {
     selectedAudioOutput,
     outputVolume,
     openSettings,
+    isSettingsOpen,
     inputMode,
     pttKey,
     isPttActive,
@@ -1601,6 +1602,9 @@ function StanduppApp() {
 
   // Current page title shown at the center of top WindowHeader
   const currentPageTitle = useMemo(() => {
+    if (isSettingsOpen) {
+      return 'Ayarlar';
+    }
     if (isDm) {
       return 'Mesajlar';
     }
@@ -1614,7 +1618,7 @@ function StanduppApp() {
       return pathParts[2].replace(/^text-/, '');
     }
     return 'Ana Sayfa';
-  }, [isDm, pathParts, matchedChannel]);
+  }, [isSettingsOpen, isDm, pathParts, matchedChannel]);
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#101214] voys-glass-app rounded-2xl border border-white/10 overflow-hidden select-none">
@@ -1647,7 +1651,7 @@ function StanduppApp() {
       )}
 
       {/* Main App Workspace: Sidebar + Voice Stage/Chat */}
-      <div className="flex flex-1 min-h-0 relative bg-transparent overflow-hidden">
+      <div className={`flex flex-1 min-h-0 relative bg-transparent overflow-hidden ${isSettingsOpen ? 'hidden' : ''}`}>
         {/* Left Sidebar: Unified Direct Messages & Channels */}
         <Sidebar
           textChannels={textChannels}
