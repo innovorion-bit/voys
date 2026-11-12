@@ -225,23 +225,23 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       {/* Header Banner */}
       <div
         data-tauri-drag-region
-        className="pt-6 pb-1 text-center relative cursor-default flex-shrink-0"
+        className="pt-8 pb-1.5 text-center relative cursor-default flex-shrink-0"
       >
         <div className="flex justify-center">
           {mode === 'reset' ? (
-            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <KeyRound size={18} className="text-indigo-400" />
+            <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <KeyRound size={20} className="text-indigo-400" />
             </div>
           ) : mode === 'forgot' ? (
-            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Mail size={18} className="text-indigo-400" />
+            <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <Mail size={20} className="text-indigo-400" />
             </div>
           ) : (
             <img
               src="/voys_logo.png"
               alt="Voys"
               draggable={false}
-              className="w-8 h-8 object-contain select-none pointer-events-none"
+              className="w-11 h-11 object-contain select-none pointer-events-none drop-shadow-md"
             />
           )}
         </div>
@@ -260,7 +260,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       </div>
 
       {/* Form Content */}
-      <div className="flex-1 p-3.5 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+      <div className="flex-1 px-4 py-3 flex flex-col justify-between overflow-y-auto custom-scrollbar">
         {/* Error Message Alert */}
         {errorMsg && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2 animate-in fade-in">
@@ -309,7 +309,16 @@ export const AuthPage = ({ initialMode = 'login' }) => {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : mode === 'register' ? 'pt-3.5' : ''}`}>
+          <form
+            onSubmit={handleSubmit}
+            className={`${
+              mode === 'login'
+                ? 'pt-8 space-y-3'
+                : mode === 'register'
+                  ? 'pt-7 space-y-2.5'
+                  : 'pt-4 space-y-2.5'
+            }`}
+          >
             {/* Register: Adınız & Kullanıcı adınız */}
             {mode === 'register' && (
               <>
@@ -324,7 +333,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
                       required
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                     />
                   </div>
                 </div>
@@ -340,7 +349,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                     />
                   </div>
                 </div>
@@ -360,7 +369,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                   />
                 </div>
               </div>
@@ -396,7 +405,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    className="w-full pl-10 pr-10 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                   />
                   <button
                     type="button"
@@ -423,7 +432,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                   />
                 </div>
               </div>
@@ -449,7 +458,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-1.5 py-2 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/25 transition duration-150 active:scale-95 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
+              className="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/25 transition duration-150 active:scale-95 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <span className="inline-flex items-center space-x-2">
