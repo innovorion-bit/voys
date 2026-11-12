@@ -749,7 +749,6 @@ export const ChatArea = ({
   const isDmVoiceActive = Boolean(
     isDmMode && (isCallActive || isInCall || showVoiceSection || (callMembers && callMembers.length > 0))
   );
-  const shouldShowRightPanel = Boolean(hasActiveChat && (!isDmMode || isDmVoiceActive));
 
   // Right sidebar inline add-member state
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -1147,6 +1146,8 @@ export const ChatArea = ({
     (isDmMode && (activeDmFriend || (activeChannel && activeChannel.startsWith('dm-')))) ||
     (!isDmMode && channelExists && channelData && activeChannel && activeChannel !== 'home')
   );
+
+  const shouldShowRightPanel = Boolean(hasActiveChat && (!isDmMode || isDmVoiceActive));
 
   if (!hasActiveChat) {
     return (
