@@ -1146,13 +1146,8 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           <Moon size={16} />
                         </div>
                         <div>
-                          <div className={`text-xs font-bold flex items-center space-x-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                            <span>Koyu Tema</span>
-                            {(chatSettings?.theme || 'dark') === 'dark' && (
-                              <span className="text-[10px] text-indigo-400 bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.2 rounded font-medium">
-                                Aktif
-                              </span>
-                            )}
+                          <div className={`text-xs font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                            Koyu Tema
                           </div>
                           <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>Klasik koyu gece modu</div>
                         </div>
@@ -1239,13 +1234,8 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           <Sun size={16} />
                         </div>
                         <div>
-                          <div className={`text-xs font-bold flex items-center space-x-2 ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                            <span>Açık Tema</span>
-                            {chatSettings?.theme === 'light' && (
-                              <span className="text-[10px] text-indigo-400 bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.2 rounded font-medium">
-                                Aktif
-                              </span>
-                            )}
+                          <div className={`text-xs font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                            Açık Tema
                           </div>
                           <div className={`text-[10px] mt-0.5 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>Aydınlık ve ferah standart mod</div>
                         </div>
