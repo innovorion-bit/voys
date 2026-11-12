@@ -1561,13 +1561,12 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
                     }`}
                   >
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        inputMode === 'open' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-gray-400'
+                    <Radio
+                      size={20}
+                      className={`flex-shrink-0 mt-0.5 transition-colors ${
+                        inputMode === 'open' ? 'text-[#8B51FF]' : 'text-gray-400'
                       }`}
-                    >
-                      <Radio size={18} />
-                    </div>
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-white">Ses Aktivitesi</span>
@@ -1591,13 +1590,12 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
                     }`}
                   >
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        inputMode === 'ptt' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-gray-400'
+                    <Keyboard
+                      size={20}
+                      className={`flex-shrink-0 mt-0.5 transition-colors ${
+                        inputMode === 'ptt' ? 'text-[#8B51FF]' : 'text-gray-400'
                       }`}
-                    >
-                      <Keyboard size={18} />
-                    </div>
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-white">Bas-Konuş</span>
@@ -1729,15 +1727,11 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   {/* Master Toggle Row */}
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center space-x-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                          soundEffectsEnabled
-                            ? 'bg-[#8B51FF]/15 text-[#bb94ff] border border-[#8B51FF]/30'
-                            : 'bg-white/5 text-gray-500 border border-white/5'
-                        }`}
-                      >
-                        {soundEffectsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                      </div>
+                      {soundEffectsEnabled ? (
+                        <Volume2 size={18} className="text-[#8B51FF] flex-shrink-0" />
+                      ) : (
+                        <VolumeX size={18} className="text-gray-500 flex-shrink-0" />
+                      )}
                       <div className="min-w-0">
                         <span className="text-xs font-semibold text-white block">
                           Tüm Uygulama Ses Efektleri
