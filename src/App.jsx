@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
 import { WindowHeader } from './components/WindowHeader';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
@@ -1817,13 +1817,6 @@ function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <Toaster
-          theme="dark"
-          richColors
-          position="bottom-right"
-          closeButton
-          toastOptions={{ style: { zIndex: 9999 } }}
-        />
         <Routes>
           {/* Public Auth Routes (Guest Only) */}
           <Route
