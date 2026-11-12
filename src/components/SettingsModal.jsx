@@ -1255,36 +1255,19 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   </p>
                 </div>
 
-                {/* Aç/Kapat Kartı (%85 otomatik) */}
+                {/* Aç/Kapat Kartı */}
                 <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
                   isLight ? 'bg-[#f8f9fa] border-black/10' : 'bg-[#111214] border-white/10'
                 }`}>
                   <div className="flex items-center space-x-3 min-w-0">
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                        (chatSettings?.windowOpacity ?? 100) < 100
-                          ? 'bg-[#8B51FF]/15 text-[#bb94ff] border border-[#8B51FF]/30'
-                          : isLight
-                            ? 'bg-black/5 text-gray-500 border border-black/5'
-                            : 'bg-white/5 text-gray-500 border border-white/5'
-                      }`}
-                    >
-                      <Layers size={16} />
-                    </div>
+                    <Layers size={18} className="text-gray-400 flex-shrink-0" />
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                          Pencere Şeffaflığı
-                        </span>
-                        {(chatSettings?.windowOpacity ?? 100) < 100 && (
-                          <span className="text-[10px] font-mono text-[#bb94ff] bg-[#8B51FF]/15 border border-[#8B51FF]/30 px-1.5 py-0.5 rounded font-medium">
-                            %85
-                          </span>
-                        )}
-                      </div>
+                      <span className={`text-xs font-semibold block ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                        Pencere Şeffaflığı
+                      </span>
                       <p className="text-[11px] text-gray-400 truncate mt-0.5">
                         {(chatSettings?.windowOpacity ?? 100) < 100
-                          ? 'Saydam arka plan ve cam efekti aktif (%85)'
+                          ? 'Saydam arka plan ve cam efekti aktif'
                           : 'Pencere tam opak (şeffaflık kapalı)'}
                       </p>
                     </div>
