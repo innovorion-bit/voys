@@ -744,20 +744,10 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
 
               {/* Bölüm 1: Profil Fotoğrafı */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div>
                   <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
                     PROFİL FOTOĞRAFI
                   </label>
-                  {avatarInput && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveAvatar}
-                      className="text-[11px] text-red-400 hover:text-red-300 flex items-center space-x-1 transition font-medium cursor-pointer"
-                    >
-                      <Trash2 size={12} />
-                      <span>Fotoğrafı Kaldır</span>
-                    </button>
-                  )}
                 </div>
 
                 <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-col sm:flex-row items-center gap-5">
@@ -769,23 +759,41 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     className="hidden"
                   />
                   <div 
-                    onClick={() => avatarFileInputRef.current?.click()}
-                    className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
-                    title="Fotoğraf değiştirmek için tıklayın"
+                    onClick={() => {
+                      if (avatarInput) {
+                        handleRemoveAvatar();
+                      } else {
+                        avatarFileInputRef.current?.click();
+                      }
+                    }}
+                    className={`relative group w-20 h-20 rounded-full overflow-hidden border-2 bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 ${
+                      avatarInput
+                        ? 'border-white/10 hover:border-rose-500'
+                        : 'border-white/10 hover:border-[#8B51FF]'
+                    }`}
+                    title={avatarInput ? 'Profil fotoğrafını sil' : 'Fotoğraf yüklemek için tıklayın'}
                   >
                     {avatarInput ? (
-                      <img 
-                        src={avatarInput} 
-                        alt="Avatar Önizleme" 
-                        className="w-full h-full object-cover group-hover:opacity-40 transition" 
-                      />
+                      <>
+                        <img 
+                          src={avatarInput} 
+                          alt="Avatar Önizleme" 
+                          className="w-full h-full object-cover group-hover:opacity-30 transition" 
+                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-rose-950/80 backdrop-blur-[2px] transition text-rose-300 text-[10px] font-semibold">
+                          <Trash2 size={16} className="text-rose-400 mb-0.5 group-hover:scale-110 transition" />
+                          <span>Sil</span>
+                        </div>
+                      </>
                     ) : (
-                      <User size={30} className="text-gray-400 group-hover:scale-110 transition" />
+                      <>
+                        <User size={30} className="text-gray-400 group-hover:scale-110 transition" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
+                          <Camera size={16} className="mb-0.5" />
+                          <span>Yükle</span>
+                        </div>
+                      </>
                     )}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
-                      <Camera size={16} className="mb-0.5" />
-                      <span>Değiştir</span>
-                    </div>
                   </div>
 
                   <div className="flex-1 space-y-1.5 text-center sm:text-left">

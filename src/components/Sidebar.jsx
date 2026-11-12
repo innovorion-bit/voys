@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { 
+import {
   Search,
   X,
   Settings2,
@@ -219,7 +219,7 @@ function buildInitialLastMessagesMap(effectiveUserId, friends, textChannels) {
         initialMap[chan.id] = msgs[msgs.length - 1];
       }
     });
-  } catch {}
+  } catch { }
   return initialMap;
 }
 
@@ -233,7 +233,7 @@ function readHiddenChats(userId) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) return new Set(arr);
     }
-  } catch {}
+  } catch { }
   return new Set();
 }
 
@@ -241,10 +241,10 @@ function saveHiddenChats(userId, hiddenSet) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(getHiddenChatsStorageKey(userId), JSON.stringify([...hiddenSet]));
-  } catch {}
+  } catch { }
 }
 
-export const Sidebar = ({ 
+export const Sidebar = ({
   textChannels = [],
   channelCalls = {}, // { [channelId]: { active: boolean, count: number } }
   friends = [],
@@ -405,7 +405,7 @@ export const Sidebar = ({
             return next;
           });
         }
-      } catch {}
+      } catch { }
     };
 
     loadLatestMessagesBatch();
@@ -481,7 +481,7 @@ export const Sidebar = ({
 
   // Search query state
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Persistent Read Receipts state: { [roomId]: timestamp }
   const [readReceipts, setReadReceipts] = useState(() => {
     try {
@@ -497,7 +497,7 @@ export const Sidebar = ({
       const key = `voys_read_receipts_${currentUserProfile?.id || 'default'}`;
       const stored = JSON.parse(localStorage.getItem(key) || '{}');
       setReadReceipts(stored);
-    } catch {}
+    } catch { }
   }, [currentUserProfile?.id]);
 
   useEffect(() => {
@@ -512,7 +512,7 @@ export const Sidebar = ({
         try {
           const key = `voys_read_receipts_${currentUserProfile?.id || 'default'}`;
           localStorage.setItem(key, JSON.stringify(updated));
-        } catch {}
+        } catch { }
         return updated;
       });
     };
@@ -522,7 +522,7 @@ export const Sidebar = ({
       chatService.off('message_read', handleReadReceipt);
     };
   }, [currentUserProfile?.id]);
-  
+
   // Filter pills state: 'all' | 'dms' | 'channels' | 'unread'
   const [filterTab, setFilterTab] = useState('all');
 
@@ -1002,22 +1002,20 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={() => setAddFriendTab('search')}
-              className={`flex-1 py-1.5 rounded-lg text-center font-medium transition ${
-                addFriendTab === 'search'
-                  ? 'bg-[#18181f] text-white font-semibold border border-white/10 shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-center font-medium transition ${addFriendTab === 'search'
+                ? 'bg-[#18181f] text-white font-semibold border border-white/10 shadow-sm'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
             >
               Kullanıcı Ara
             </button>
             <button
               type="button"
               onClick={() => setAddFriendTab('incoming')}
-              className={`flex-1 py-1.5 rounded-lg text-center font-medium transition relative ${
-                addFriendTab === 'incoming'
-                  ? 'bg-[#18181f] text-white font-semibold border border-white/10 shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-center font-medium transition relative ${addFriendTab === 'incoming'
+                ? 'bg-[#18181f] text-white font-semibold border border-white/10 shadow-sm'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
             >
               <span>İstekler</span>
               {incomingRequests.length > 0 && (
@@ -1029,11 +1027,10 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={() => setAddFriendTab('outgoing')}
-              className={`flex-1 py-1.5 rounded-lg text-center font-medium transition ${
-                addFriendTab === 'outgoing'
-                  ? 'bg-[#18181f] text-white font-semibold border border-white/10 shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-center font-medium transition ${addFriendTab === 'outgoing'
+                ? 'bg-[#18181f] text-white font-semibold border border-white/10 shadow-sm'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
             >
               Gönderilen
               {outgoingRequests.length > 0 && (
@@ -1047,13 +1044,12 @@ export const Sidebar = ({
             {friendFeedback && (
               <div
                 role="alert"
-                className={`p-2.5 rounded-xl border text-[11px] flex items-start space-x-2 ${
-                  friendFeedback.type === 'success'
-                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
-                    : friendFeedback.type === 'info'
-                      ? 'bg-indigo-500/10 border-indigo-500/25 text-indigo-300'
-                      : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
-                }`}
+                className={`p-2.5 rounded-xl border text-[11px] flex items-start space-x-2 ${friendFeedback.type === 'success'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                  : friendFeedback.type === 'info'
+                    ? 'bg-indigo-500/10 border-indigo-500/25 text-indigo-300'
+                    : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+                  }`}
               >
                 <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
                 <span className="leading-snug flex-1">{friendFeedback.message}</span>
@@ -1419,11 +1415,10 @@ export const Sidebar = ({
                         <div
                           key={friend.id}
                           onClick={() => toggleSelectGroupFriend(friend.id)}
-                          className={`p-2 rounded-xl flex items-center justify-between transition cursor-pointer border ${
-                            isSelected
-                              ? 'bg-indigo-600/15 border-indigo-500/30 text-white'
-                              : 'bg-[#141418] hover:bg-white/[0.05] border-white/[0.06] text-gray-300'
-                          }`}
+                          className={`p-2 rounded-xl flex items-center justify-between transition cursor-pointer border ${isSelected
+                            ? 'bg-indigo-600/15 border-indigo-500/30 text-white'
+                            : 'bg-[#141418] hover:bg-white/[0.05] border-white/[0.06] text-gray-300'
+                            }`}
                         >
                           <div className="flex items-center space-x-2.5 min-w-0">
                             <UserAvatar user={friend} size="sm" showStatus={false} />
@@ -1436,11 +1431,10 @@ export const Sidebar = ({
                           </div>
 
                           <div
-                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${
-                              isSelected
-                                ? 'bg-indigo-600 border-indigo-600 text-white'
-                                : 'border-white/20 bg-transparent'
-                            }`}
+                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${isSelected
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'border-white/20 bg-transparent'
+                              }`}
                           >
                             {isSelected && <Check size={11} strokeWidth={3} />}
                           </div>
@@ -1485,379 +1479,372 @@ export const Sidebar = ({
         <>
           {/* 1. SEARCH BAR & ADD FRIEND BUTTON */}
           <div className="px-3 pt-3 pb-2 bg-[#0c0c0e] sidebar-transparent-on-glass">
-        <div className="flex items-center space-x-2">
-          <div className="flex-1 h-9 px-3 bg-[#141418] sidebar-search-box rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#8B51FF]/60 focus-within:ring-1 focus-within:ring-[#8B51FF]/40 transition">
-            <Search size={15} className="text-gray-400 flex-shrink-0 mr-2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ara veya sohbet başlat..."
-              className="w-full bg-transparent border-none outline-none text-xs text-gray-200 placeholder-gray-500"
-            />
-            {searchQuery && (
+            <div className="flex items-center space-x-2">
+              <div className="flex-1 h-9 px-3 bg-[#141418] sidebar-search-box rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#8B51FF]/60 focus-within:ring-1 focus-within:ring-[#8B51FF]/40 transition">
+                <Search size={15} className="text-gray-400 flex-shrink-0 mr-2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Sohbet arayın..."
+                  className="w-full bg-transparent border-none outline-none text-xs text-gray-200 placeholder-gray-500"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Tüm Ekli Arkadaşlar Butonu (Artı ikonunun hemen solunda) */}
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Tüm Ekli Arkadaşlar Butonu (Artı ikonunun hemen solunda) */}
-          <button
-            type="button"
-            onClick={() => setSidebarView((prev) => (prev === 'friends' ? 'chats' : 'friends'))}
-            className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${
-              sidebarView === 'friends'
-                ? 'bg-[#8B51FF] text-white border-[#8B51FF]'
-                : 'bg-[#141418] hover:bg-[#8B51FF] hover:text-white text-gray-300 border-white/[0.08]'
-            }`}
-            title={`Tüm Arkadaşlar (${friends?.length || 0})`}
-          >
-            <Users size={17} className={`${sidebarView === 'friends' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
-          </button>
-
-          {/* Add / Plus Button (+) with Dropdown Menu */}
-          <div className="relative" ref={plusMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsPlusMenuOpen((prev) => !prev)}
-              className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${
-                isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup'
+                onClick={() => setSidebarView((prev) => (prev === 'friends' ? 'chats' : 'friends'))}
+                className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${sidebarView === 'friends'
                   ? 'bg-[#8B51FF] text-white border-[#8B51FF]'
                   : 'bg-[#141418] hover:bg-[#8B51FF] hover:text-white text-gray-300 border-white/[0.08]'
-              }`}
-              title={`Ekle ${incomingRequestsCount > 0 ? `(${incomingRequestsCount} İstek)` : ''}`}
-            >
-              <Plus size={18} className={`${isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
-              {incomingRequestsCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#141418]" />
-              )}
-            </button>
+                  }`}
+                title={`Tüm Arkadaşlar (${friends?.length || 0})`}
+              >
+                <Users size={17} className={`${sidebarView === 'friends' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
+              </button>
 
-            {/* Açılır Menü (Popup) */}
-            {isPlusMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#141418] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+              {/* Add / Plus Button (+) with Dropdown Menu */}
+              <div className="relative" ref={plusMenuRef}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsPlusMenuOpen(false);
-                    openAddFriendView();
-                  }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
+                  onClick={() => setIsPlusMenuOpen((prev) => !prev)}
+                  className={`h-9 w-9 rounded-lg flex items-center justify-center transition flex-shrink-0 relative group shadow-sm border cursor-pointer ${isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup'
+                    ? 'bg-[#8B51FF] text-white border-[#8B51FF]'
+                    : 'bg-[#141418] hover:bg-[#8B51FF] hover:text-white text-gray-300 border-white/[0.08]'
+                    }`}
+                  title={`Ekle ${incomingRequestsCount > 0 ? `(${incomingRequestsCount} İstek)` : ''}`}
                 >
-                  <UserPlus size={15} className="text-emerald-400 flex-shrink-0" />
-                  <span className="flex-1">Arkadaş Ekle</span>
+                  <Plus size={18} className={`${isPlusMenuOpen || sidebarView === 'addFriend' || sidebarView === 'createGroup' ? 'text-white' : 'text-gray-300 group-hover:text-white'} transition`} />
                   {incomingRequestsCount > 0 && (
-                    <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                      {incomingRequestsCount}
-                    </span>
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#141418]" />
                   )}
                 </button>
 
+                {/* Açılır Menü (Popup) */}
+                {isPlusMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#141418] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPlusMenuOpen(false);
+                        openAddFriendView();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
+                    >
+                      <UserPlus size={15} className="text-emerald-400 flex-shrink-0" />
+                      <span className="flex-1">Arkadaş Ekle</span>
+                      {incomingRequestsCount > 0 && (
+                        <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                          {incomingRequestsCount}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPlusMenuOpen(false);
+                        setSidebarView('createGroup');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
+                    >
+                      <Users size={15} className="text-indigo-400 flex-shrink-0" />
+                      <span>Grup Oluştur</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. FILTER PILLS (WhatsApp Web Chips) */}
+            <div className="flex items-center space-x-1.5 mt-2.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setFilterTab('all')}
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${filterTab === 'all'
+                  ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
+                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+                  }`}
+              >
+                Tümü
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterTab('dms')}
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${filterTab === 'dms'
+                  ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
+                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+                  }`}
+              >
+                Kişiler
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterTab('channels')}
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${filterTab === 'channels'
+                  ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
+                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+                  }`}
+              >
+                Gruplar
+              </button>
+            </div>
+          </div>
+
+          {/* 4. CHAT LIST (WhatsApp Web style rows) */}
+          <div className="flex-1 overflow-y-auto">
+            {totalResultsCount === 0 ? (
+              <div className="p-8 text-center text-xs text-gray-400 flex flex-col items-center justify-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-[#141418] flex items-center justify-center text-gray-500">
+                  <Search size={22} />
+                </div>
+                <p className="text-gray-300 font-medium">{filterTab === 'channels' ? 'Grup sohbeti bulunamadı' : 'Sohbet bulunamadı'}</p>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsPlusMenuOpen(false);
-                    setSidebarView('createGroup');
-                  }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
+                  onClick={filterTab === 'channels' ? () => setSidebarView('createGroup') : openAddFriendView}
+                  className="px-3.5 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-bold rounded-lg text-xs transition shadow-md"
                 >
-                  <Users size={15} className="text-indigo-400 flex-shrink-0" />
-                  <span>Grup Oluştur</span>
+                  {filterTab === 'channels' ? '+ Yeni Grup Başlat' : '+ Yeni Sohbet Başlat'}
                 </button>
               </div>
-            )}
-          </div>
-        </div>
+            ) : (
+              <>
+                {/* Friends / Direct Messages Section */}
+                {filteredFriends.map((friend) => {
+                  const isSelected = activeDmUserId === friend.id;
+                  const isPlayingGame = !!friend.game;
+                  const dmRoomId = currentUserProfile?.id && friend?.id ? getDmRoomId(currentUserProfile.id, friend.id) : null;
+                  const dmCallInfo = dmRoomId ? channelCalls[dmRoomId] : null;
+                  const isDmCallActive = dmCallInfo?.active;
 
-        {/* 3. FILTER PILLS (WhatsApp Web Chips) */}
-        <div className="flex items-center space-x-1.5 mt-2.5 overflow-x-auto pb-0.5 scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setFilterTab('all')}
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
-              filterTab === 'all'
-                ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
-                : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
-            }`}
-          >
-            Tümü
-          </button>
+                  const rawLastMsg = (
+                    activeChannel === dmRoomId &&
+                    activeLastMessage &&
+                    isDirectMessageForPair(activeLastMessage, currentUserProfile?.id, friend.id)
+                  )
+                    ? activeLastMessage
+                    : (dmRoomId ? lastMessagesMap[dmRoomId] : null);
+                  const lastMsg = (
+                    rawLastMsg &&
+                    isDirectMessageForPair(rawLastMsg, currentUserProfile?.id, friend.id)
+                  )
+                    ? rawLastMsg
+                    : null;
+                  const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
+                  const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
+                  const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';
+                  const lastMessageText = formatMessagePreview(lastMsg);
+                  const isSentByMe = Boolean(
+                    lastMsg && (
+                      (currentUserProfile?.id && (lastMsg.userId === currentUserProfile.id || lastMsg.sender_id === currentUserProfile.id)) ||
+                      (currentUserProfile?.name && lastMsg.user === currentUserProfile.name) ||
+                      lastMsg.isMe
+                    )
+                  );
+                  const msgTimeNumber = Number(lastMsg?.sentAt || lastMsg?.sent_at) || (lastMsg?.created_at ? new Date(lastMsg.created_at).getTime() : 0);
+                  const isMessageRead = Boolean(
+                    lastMsg && (
+                      lastMsg.read === true ||
+                      lastMsg.is_read === true ||
+                      Boolean(lastMsg.read_at) ||
+                      (dmRoomId && readReceipts[dmRoomId] && (!msgTimeNumber || Number(readReceipts[dmRoomId]) >= msgTimeNumber))
+                    )
+                  );
 
-          <button
-            type="button"
-            onClick={() => setFilterTab('dms')}
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
-              filterTab === 'dms'
-                ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
-                : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
-            }`}
-          >
-            Kişiler
-          </button>
+                  return (
+                    <div
+                      key={`dm-${friend.id}`}
+                      onClick={() => {
+                        unhideChat(friend.id);
+                        onSelectDm?.(friend.id);
+                      }}
+                      onContextMenu={(e) => handleChatContextMenu(e, {
+                        type: 'dm',
+                        id: friend.id,
+                        name: friend.name,
+                      })}
+                      className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${isSelected
+                        ? 'bg-[#18181f]'
+                        : 'hover:bg-[#121215]'
+                        }`}
+                    >
+                      {/* Avatar */}
+                      <div className="flex-shrink-0">
+                        <UserAvatar
+                          user={friend}
+                          size="md"
+                          showStatus={true}
+                          status={friend.status}
+                        />
+                      </div>
 
-          <button
-            type="button"
-            onClick={() => setFilterTab('channels')}
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
-              filterTab === 'channels'
-                ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
-                : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
-            }`}
-          >
-            Gruplar
-          </button>
-        </div>
-      </div>
-
-      {/* 4. CHAT LIST (WhatsApp Web style rows) */}
-      <div className="flex-1 overflow-y-auto">
-        {totalResultsCount === 0 ? (
-          <div className="p-8 text-center text-xs text-gray-400 flex flex-col items-center justify-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#141418] flex items-center justify-center text-gray-500">
-              <Search size={22} />
-            </div>
-            <p className="text-gray-300 font-medium">{filterTab === 'channels' ? 'Grup sohbeti bulunamadı' : 'Sohbet bulunamadı'}</p>
-            <button
-              type="button"
-              onClick={filterTab === 'channels' ? () => setSidebarView('createGroup') : openAddFriendView}
-              className="px-3.5 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-bold rounded-lg text-xs transition shadow-md"
-            >
-              {filterTab === 'channels' ? '+ Yeni Grup Başlat' : '+ Yeni Sohbet Başlat'}
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Friends / Direct Messages Section */}
-            {filteredFriends.map((friend) => {
-              const isSelected = activeDmUserId === friend.id;
-              const isPlayingGame = !!friend.game;
-              const dmRoomId = currentUserProfile?.id && friend?.id ? getDmRoomId(currentUserProfile.id, friend.id) : null;
-              const dmCallInfo = dmRoomId ? channelCalls[dmRoomId] : null;
-              const isDmCallActive = dmCallInfo?.active;
-
-              const rawLastMsg = (
-                activeChannel === dmRoomId &&
-                activeLastMessage &&
-                isDirectMessageForPair(activeLastMessage, currentUserProfile?.id, friend.id)
-              )
-                ? activeLastMessage
-                : (dmRoomId ? lastMessagesMap[dmRoomId] : null);
-              const lastMsg = (
-                rawLastMsg &&
-                isDirectMessageForPair(rawLastMsg, currentUserProfile?.id, friend.id)
-              )
-                ? rawLastMsg
-                : null;
-              const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
-              const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
-              const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';
-              const lastMessageText = formatMessagePreview(lastMsg);
-              const isSentByMe = Boolean(
-                lastMsg && (
-                  (currentUserProfile?.id && (lastMsg.userId === currentUserProfile.id || lastMsg.sender_id === currentUserProfile.id)) ||
-                  (currentUserProfile?.name && lastMsg.user === currentUserProfile.name) ||
-                  lastMsg.isMe
-                )
-              );
-              const msgTimeNumber = Number(lastMsg?.sentAt || lastMsg?.sent_at) || (lastMsg?.created_at ? new Date(lastMsg.created_at).getTime() : 0);
-              const isMessageRead = Boolean(
-                lastMsg && (
-                  lastMsg.read === true ||
-                  lastMsg.is_read === true ||
-                  Boolean(lastMsg.read_at) ||
-                  (dmRoomId && readReceipts[dmRoomId] && (!msgTimeNumber || Number(readReceipts[dmRoomId]) >= msgTimeNumber))
-                )
-              );
-
-              return (
-                <div
-                  key={`dm-${friend.id}`}
-                  onClick={() => {
-                    unhideChat(friend.id);
-                    onSelectDm?.(friend.id);
-                  }}
-                  onContextMenu={(e) => handleChatContextMenu(e, {
-                    type: 'dm',
-                    id: friend.id,
-                    name: friend.name,
-                  })}
-                  className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
-                    isSelected
-                      ? 'bg-[#18181f]'
-                      : 'hover:bg-[#121215]'
-                  }`}
-                >
-                  {/* Avatar */}
-                  <div className="flex-shrink-0">
-                    <UserAvatar
-                      user={friend}
-                      size="md"
-                      showStatus={true}
-                      status={friend.status}
-                    />
-                  </div>
-
-                  {/* Middle Column (Name & Status / Preview) */}
-                  <div className="flex-1 min-w-0 pr-1">
-                    <div className="flex items-center justify-between">
-                      <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                        {friend.name}
-                      </p>
-                      {/* Timestamp / Son Mesaj Saati (HH:mm) */}
-                      <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${lastMessageTime ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {lastMessageTime}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-0.5">
-                      {isDmCallActive ? (
-                        <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-semibold">
-                          <Phone size={11} className="flex-shrink-0" />
-                          <span className="truncate">
-                            {dmCallInfo.stage === 'ringing' ? 'Arama çalıyor...' : 'Sesli görüşme aktif'}
+                      {/* Middle Column (Name & Status / Preview) */}
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center justify-between">
+                          <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
+                            {friend.name}
+                          </p>
+                          {/* Timestamp / Son Mesaj Saati (HH:mm) */}
+                          <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${lastMessageTime ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {lastMessageTime}
                           </span>
                         </div>
-                      ) : isPlayingGame ? (
-                        <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-medium">
-                          <Gamepad2 size={12} className="flex-shrink-0" />
-                          <span className="truncate">{friend.game}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-1 text-[11px] text-gray-400 truncate">
-                          {isSentByMe && (
-                            isMessageRead ? (
-                              <CheckCheck 
-                                size={13} 
-                                className="flex-shrink-0 text-[#53bdeb]" 
-                                title="Okundu"
-                              />
-                            ) : friend.isOnline ? (
-                              <CheckCheck 
-                                size={13} 
-                                className="flex-shrink-0 text-gray-500" 
-                                title="İletildi"
-                              />
-                            ) : (
-                              <Check 
-                                size={13} 
-                                className="flex-shrink-0 text-gray-500" 
-                                title="Gönderildi"
-                              />
-                            )
+
+                        <div className="flex items-center justify-between mt-0.5">
+                          {isDmCallActive ? (
+                            <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-semibold">
+                              <Phone size={11} className="flex-shrink-0" />
+                              <span className="truncate">
+                                {dmCallInfo.stage === 'ringing' ? 'Arama çalıyor...' : 'Sesli görüşme aktif'}
+                              </span>
+                            </div>
+                          ) : isPlayingGame ? (
+                            <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-medium">
+                              <Gamepad2 size={12} className="flex-shrink-0" />
+                              <span className="truncate">{friend.game}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-1 text-[11px] text-gray-400 truncate">
+                              {isSentByMe && (
+                                isMessageRead ? (
+                                  <CheckCheck
+                                    size={13}
+                                    className="flex-shrink-0 text-[#53bdeb]"
+                                    title="Okundu"
+                                  />
+                                ) : friend.isOnline ? (
+                                  <CheckCheck
+                                    size={13}
+                                    className="flex-shrink-0 text-gray-500"
+                                    title="İletildi"
+                                  />
+                                ) : (
+                                  <Check
+                                    size={13}
+                                    className="flex-shrink-0 text-gray-500"
+                                    title="Gönderildi"
+                                  />
+                                )
+                              )}
+                              <span className={`truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
+                                {lastMessageText || (friend.isOnline ? 'Müsait' : 'Çevrimdışı')}
+                              </span>
+                            </div>
                           )}
-                          <span className={`truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                            {lastMessageText || (friend.isOnline ? 'Müsait' : 'Çevrimdışı')}
-                          </span>
+
+                          {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
+                          <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
+                            {isDmCallActive && (
+                              <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30 flex-shrink-0">
+                                {dmCallInfo.stage === 'ringing' ? 'Çalıyor' : 'Canlı'}
+                              </span>
+                            )}
+                            {lastMessageDate && (
+                              <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
+                                {lastMessageDate}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Channels Section */}
+                {filteredChannels.map((chan) => {
+                  const callInfo = channelCalls[chan.id];
+                  const isCallActive = callInfo?.active;
+                  const isSelected = !activeDmUserId && Boolean(
+                    activeChannel === chan.id ||
+                    chan.id === `text-${activeChannel}` ||
+                    chan.id?.replace(/^text-/, '') === activeChannel?.replace(/^text-/, '') ||
+                    chan.name?.toLowerCase() === activeChannel?.toLowerCase()
+                  );
+
+                  const lastMsg = (activeChannel === chan.id && activeLastMessage)
+                    ? activeLastMessage
+                    : lastMessagesMap[chan.id];
+                  const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
+                  const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
+                  const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';
+                  const lastMessageText = formatMessagePreview(lastMsg);
+
+                  return (
+                    <div
+                      key={`chan-${chan.id}`}
+                      onClick={() => {
+                        unhideChat(chan.id);
+                        onSelectChannel?.(chan.id);
+                      }}
+                      onContextMenu={(e) => handleChatContextMenu(e, {
+                        type: 'channel',
+                        id: chan.id,
+                        name: chan.name,
+                      })}
+                      className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${isSelected
+                        ? 'bg-[#18181f]'
+                        : 'hover:bg-[#121215]'
+                        }`}
+                    >
+                      {/* Channel Group Avatar */}
+                      {chan.avatar_url || chan.avatar ? (
+                        <img
+                          src={chan.avatar_url || chan.avatar}
+                          alt={chan.name}
+                          className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 flex-shrink-0">
+                          <Users size={18} />
                         </div>
                       )}
 
-                      {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
-                      <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                        {isDmCallActive && (
-                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30 flex-shrink-0">
-                            {dmCallInfo.stage === 'ringing' ? 'Çalıyor' : 'Canlı'}
+                      {/* Middle Column */}
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center justify-between">
+                          <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
+                            {chan.name}
+                          </p>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1 font-normal">
+                            {lastMessageTime || 'Kanal'}
                           </span>
-                        )}
-                        {lastMessageDate && (
-                          <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
-                            {lastMessageDate}
-                          </span>
-                        )}
+                        </div>
+
+                        <div className="flex items-center justify-between mt-0.5">
+                          <p className={`text-[11px] truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
+                            {lastMessageText || 'Grup sohbeti'}
+                          </p>
+
+                          {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
+                          <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
+                            {lastMessageDate && (
+                              <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
+                                {lastMessageDate}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Channels Section */}
-            {filteredChannels.map((chan) => {
-              const callInfo = channelCalls[chan.id];
-              const isCallActive = callInfo?.active;
-              const isSelected = !activeDmUserId && Boolean(
-                activeChannel === chan.id ||
-                chan.id === `text-${activeChannel}` ||
-                chan.id?.replace(/^text-/, '') === activeChannel?.replace(/^text-/, '') ||
-                chan.name?.toLowerCase() === activeChannel?.toLowerCase()
-              );
-
-              const lastMsg = (activeChannel === chan.id && activeLastMessage)
-                ? activeLastMessage
-                : lastMessagesMap[chan.id];
-              const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
-              const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
-              const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';
-              const lastMessageText = formatMessagePreview(lastMsg);
-
-              return (
-                <div
-                  key={`chan-${chan.id}`}
-                  onClick={() => {
-                    unhideChat(chan.id);
-                    onSelectChannel?.(chan.id);
-                  }}
-                  onContextMenu={(e) => handleChatContextMenu(e, {
-                    type: 'channel',
-                    id: chan.id,
-                    name: chan.name,
-                  })}
-                  className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
-                    isSelected
-                      ? 'bg-[#18181f]'
-                      : 'hover:bg-[#121215]'
-                  }`}
-                >
-                  {/* Channel Group Avatar */}
-                  {chan.avatar_url || chan.avatar ? (
-                    <img
-                      src={chan.avatar_url || chan.avatar}
-                      alt={chan.name}
-                      className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 flex-shrink-0">
-                      <Users size={18} />
-                    </div>
-                  )}
-
-                  {/* Middle Column */}
-                  <div className="flex-1 min-w-0 pr-1">
-                    <div className="flex items-center justify-between">
-                      <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                        {chan.name}
-                      </p>
-                      <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1 font-normal">
-                        {lastMessageTime || 'Kanal'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-0.5">
-                      <p className={`text-[11px] truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                        {lastMessageText || 'Grup sohbeti'}
-                      </p>
-
-                      {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
-                      <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                        {lastMessageDate && (
-                          <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
-                            {lastMessageDate}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </>
-        )}
-      </div>
-      </>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* 4. BOTTOM PROFILE & ACTIONS BAR */}
@@ -1878,11 +1865,10 @@ export const Sidebar = ({
                         onUpdateStatus?.(opt.id);
                         setIsStatusPickerOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-left flex items-center justify-between transition ${
-                        isCurrent 
-                          ? 'bg-[#1c1c24] text-white border border-white/10 shadow-sm' 
-                          : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
-                      }`}
+                      className={`w-full px-2 py-1.5 rounded-lg text-left flex items-center justify-between transition ${isCurrent
+                        ? 'bg-[#1c1c24] text-white border border-white/10 shadow-sm'
+                        : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.color}`} />
@@ -1917,7 +1903,7 @@ export const Sidebar = ({
           </button>
 
           {/* User Name & Details -> Clicking opens Settings */}
-          <div 
+          <div
             onClick={() => onOpenSettings?.('account')}
             className="min-w-0 cursor-pointer p-1 rounded-xl hover:bg-white/5 transition group flex-1"
             title="Profil ve Ayarları Aç"
