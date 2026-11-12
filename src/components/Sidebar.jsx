@@ -174,6 +174,8 @@ const STATUS_OPTIONS = [
     label: 'Çevrimiçi',
     description: 'Aktif ve bildirimler açık',
     color: 'bg-emerald-500',
+    hoverTextClass: 'group-hover:text-emerald-400',
+    textColor: 'text-emerald-400',
     ring: 'ring-emerald-500/20',
   },
   {
@@ -181,6 +183,8 @@ const STATUS_OPTIONS = [
     label: 'Boşta',
     description: 'Geçici olarak uzakta (AFK)',
     color: 'bg-amber-400',
+    hoverTextClass: 'group-hover:text-amber-400',
+    textColor: 'text-amber-400',
     ring: 'ring-amber-400/20',
   },
   {
@@ -188,6 +192,8 @@ const STATUS_OPTIONS = [
     label: 'Rahatsız Etmeyin',
     description: 'Bildirim seslerini kapat',
     color: 'bg-rose-500',
+    hoverTextClass: 'group-hover:text-rose-400',
+    textColor: 'text-rose-400',
     ring: 'ring-rose-500/20',
   },
   {
@@ -195,6 +201,8 @@ const STATUS_OPTIONS = [
     label: 'Görünmez',
     description: 'Çevrimdışı görünürsün',
     color: 'bg-gray-400',
+    hoverTextClass: 'group-hover:text-zinc-400',
+    textColor: 'text-zinc-400',
     ring: 'ring-gray-400/20',
   },
 ];
@@ -1850,6 +1858,12 @@ export const Sidebar = ({
       )}
 
       {/* 4. BOTTOM PROFILE & ACTIONS BAR */}
+      {(() => {
+        const currentStatusKey = currentUserProfile?.status || 'online';
+        const activeStatusOption =
+          STATUS_OPTIONS.find((opt) => opt.id === (currentStatusKey === 'offline' ? 'invisible' : currentStatusKey)) ||
+          STATUS_OPTIONS[0];
+        return (
       <div className="h-[68px] px-3.5 bg-[#0a0a0c] sidebar-bottom-bar border-t border-white/[0.06] flex items-center justify-between flex-shrink-0 relative">
         {/* Left: User Avatar (Click to change status) & Profile (Click to open settings) */}
         <div className="flex items-center gap-2.5 min-w-0 relative" ref={statusPickerRef}>
@@ -1858,7 +1872,7 @@ export const Sidebar = ({
             <div className="absolute left-0 bottom-[68px] w-44 bg-[#121216] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
               <div className="space-y-0.5">
                 {STATUS_OPTIONS.map((opt) => {
-                  const isCurrent = (currentUserProfile?.status || 'online') === opt.id;
+                  const isCurrent = (currentStatusKey === 'offline' ? 'invisible' : currentStatusKey) === opt.id;
                   return (
                     <button
                       key={opt.id}
@@ -1877,7 +1891,7 @@ export const Sidebar = ({
                         <span className="text-xs font-medium leading-none">{opt.label}</span>
                       </div>
                       {isCurrent && (
-                        <Check size={13} className="text-emerald-400 flex-shrink-0 ml-1.5" />
+                        <Check size={13} className={`${opt.textColor} flex-shrink-0 ml-1.5`} />
                       )}
                     </button>
                   );
@@ -1900,7 +1914,7 @@ export const Sidebar = ({
               user={currentUserProfile}
               size="md"
               showStatus={true}
-              status={currentUserProfile?.status || 'online'}
+              status={currentStatusKey}
             />
           </button>
 
@@ -1911,7 +1925,7 @@ export const Sidebar = ({
             title="Profil ve Ayarları Aç"
           >
             <div className="flex items-center gap-1">
-              <span className="text-xs font-bold text-white truncate group-hover:text-emerald-400 transition">
+              <span className={`text-xs font-bold text-white truncate transition ${activeStatusOption.hoverTextClass}`}>
                 {currentUserProfile?.name || 'Sen'}
               </span>
             </div>
@@ -1940,6 +1954,8 @@ export const Sidebar = ({
           </button>
         </div>
       </div>
+        );
+      })()}
 
       {/* Chat Right-Click Context Menu */}
       {chatContextMenu && createPortal(
