@@ -304,7 +304,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : ''}`}>
+            <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : mode === 'register' ? 'pt-3.5' : ''}`}>
               {/* Register: Username & Display Name */}
               {mode === 'register' && (
                 <>
