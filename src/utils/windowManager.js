@@ -15,6 +15,8 @@ export async function resizeToMainWindow() {
   if (!isTauriEnvironment()) return;
   try {
     const appWindow = getCurrentWindow();
+    // Re-enable resizing on the main app window
+    await appWindow.setResizable(true);
     // First update min size constraints for the full chat interface
     await appWindow.setMinSize(new LogicalSize(MAIN_SIZE.minWidth, MAIN_SIZE.minHeight));
     // Resize to main interface resolution
@@ -36,6 +38,8 @@ export async function resizeToAuthWindow(mode = 'login') {
     const appWindow = getCurrentWindow();
     const height = mode === 'register' ? 580 : (mode === 'forgot' || mode === 'reset') ? 440 : 400;
     const width = 380;
+    // Disable resizing on login & register windows
+    await appWindow.setResizable(false);
     // Lower min size first so setSize can shrink the window without constraint errors
     await appWindow.setMinSize(new LogicalSize(360, 380));
     // Resize to compact auth form resolution
