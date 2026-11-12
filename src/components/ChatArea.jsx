@@ -1537,24 +1537,6 @@ export const ChatArea = ({
                     )}
                   </button>
 
-                  {!isDmMode && activeChannel !== 'home' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOptionsMenuOpen(false);
-                        if (onOpenGroupAddMember) {
-                          onOpenGroupAddMember();
-                        } else {
-                          setIsAddingMember(true);
-                        }
-                      }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-500/15 rounded-xl transition text-left cursor-pointer"
-                    >
-                      <UserPlus size={15} className="text-indigo-400 flex-shrink-0" />
-                      <span>Üye ekle</span>
-                    </button>
-                  )}
-
                   <div className="my-1 border-t border-white/5" />
 
                   <button
@@ -1568,20 +1550,6 @@ export const ChatArea = ({
                     <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
                     <span>Sohbeti temizle</span>
                   </button>
-
-                  {!isDmMode && activeChannel !== 'home' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsOptionsMenuOpen(false);
-                        setIsConfirmDeleteGroupOpen(true);
-                      }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/15 rounded-xl transition text-left cursor-pointer"
-                    >
-                      <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
-                      <span>Grubu sil</span>
-                    </button>
-                  )}
                 </div>
               </>
             )}
