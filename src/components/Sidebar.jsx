@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search,
   X,
@@ -15,7 +16,8 @@ import {
   Copy,
   Plus,
   Users,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
@@ -221,6 +223,27 @@ function buildInitialLastMessagesMap(effectiveUserId, friends, textChannels) {
   return initialMap;
 }
 
+const getHiddenChatsStorageKey = (userId) => `voys_hidden_chats_${userId || 'guest'}`;
+
+function readHiddenChats(userId) {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(getHiddenChatsStorageKey(userId));
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+function saveHiddenChats(userId, hiddenSet) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(getHiddenChatsStorageKey(userId), JSON.stringify([...hiddenSet]));
+  } catch {}
+}
+
 export const Sidebar = ({ 
   textChannels = [],
   channelCalls = {}, // { [channelId]: { active: boolean, count: number } }
@@ -242,6 +265,87 @@ export const Sidebar = ({
   activeMessages = [],
 }) => {
   const effectiveUserId = currentUserProfile?.id || currentUserId || null;
+
+  // Hidden/closed chats in sidebar list (stored per user in localStorage)
+  const [hiddenChatIds, setHiddenChatIds] = useState(() => readHiddenChats(effectiveUserId));
+  const [chatContextMenu, setChatContextMenu] = useState(null); // { x, y, chat: { type: 'dm'|'channel', id, name } }
+  const chatContextMenuRef = useRef(null);
+
+  useEffect(() => {
+    setHiddenChatIds(readHiddenChats(effectiveUserId));
+  }, [effectiveUserId]);
+
+  const unhideChat = useCallback((chatId) => {
+    if (!chatId) return;
+    setHiddenChatIds((prev) => {
+      if (!prev.has(chatId)) return prev;
+      const next = new Set(prev);
+      next.delete(chatId);
+      saveHiddenChats(effectiveUserId, next);
+      return next;
+    });
+  }, [effectiveUserId]);
+
+  const handleHideChat = useCallback((chatItem) => {
+    if (!chatItem?.id) return;
+    setHiddenChatIds((prev) => {
+      const next = new Set(prev);
+      next.add(chatItem.id);
+      saveHiddenChats(effectiveUserId, next);
+      return next;
+    });
+
+    if (chatItem.type === 'dm') {
+      if (activeDmUserId === chatItem.id) {
+        onSelectDm?.(null);
+      }
+    } else if (chatItem.type === 'channel') {
+      if (activeChannel === chatItem.id || activeChannel === `text-${chatItem.id}`) {
+        onSelectChannel?.(null);
+      }
+    }
+    setChatContextMenu(null);
+    toast.success('Sohbet kaldırıldı', {
+      description: 'Mesajlar silinmedi. Kişiye yeni mesaj geldiğinde veya arandığında sohbet tekrar listelenir.',
+    });
+  }, [activeDmUserId, activeChannel, effectiveUserId, onSelectDm, onSelectChannel]);
+
+  const handleChatContextMenu = useCallback((e, chatItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menuWidth = 192;
+    const menuHeight = 90;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8);
+    setChatContextMenu({
+      x: Math.max(8, x),
+      y: Math.max(8, y),
+      chat: chatItem,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!chatContextMenu) return undefined;
+    const handlePointerDown = (e) => {
+      if (chatContextMenuRef.current && chatContextMenuRef.current.contains(e.target)) return;
+      setChatContextMenu(null);
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setChatContextMenu(null);
+    };
+    const closeMenu = () => setChatContextMenu(null);
+
+    window.addEventListener('mousedown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', closeMenu);
+    window.addEventListener('scroll', closeMenu, true);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', closeMenu);
+      window.removeEventListener('scroll', closeMenu, true);
+    };
+  }, [chatContextMenu]);
 
   // Map of last messages for each channel/DM room: { [roomId]: messageObj }
   const [lastMessagesMap, setLastMessagesMap] = useState(() =>
@@ -349,6 +453,7 @@ export const Sidebar = ({
           ? (pair[0] === String(activeUid) ? pair[1] : pair[0])
           : null);
         if (!targetPartner) return;
+        unhideChat(targetPartner);
         const canonical = getDmRoomId(activeUid, targetPartner);
         setLastMessagesMap((prev) => ({
           ...prev,
@@ -357,6 +462,7 @@ export const Sidebar = ({
         return;
       }
 
+      unhideChat(rawRoomId);
       setLastMessagesMap((prev) => ({
         ...prev,
         [rawRoomId]: msg,
@@ -680,6 +786,7 @@ export const Sidebar = ({
   const filteredFriends = useMemo(() => {
     if (filterTab === 'channels') return [];
     return friends.filter((friend) => {
+      if (hiddenChatIds.has(friend.id) && !searchQuery.trim()) return false;
       if (filterTab === 'unread') {
         // In unread tab, show friends with active activity (online/game)
         if (!friend.isOnline && !friend.game) return false;
@@ -693,13 +800,14 @@ export const Sidebar = ({
         friend.substatus?.toLowerCase().includes(q)
       );
     });
-  }, [friends, searchQuery, filterTab]);
+  }, [friends, searchQuery, filterTab, hiddenChatIds]);
 
   // Filtered Channels (only user-created channels, never default/pre-made 'home')
   const filteredChannels = useMemo(() => {
     if (filterTab === 'dms') return [];
     return textChannels.filter((chan) => {
       if (!chan || chan.id === 'home' || chan.is_home || chan.id === 'voice-sesli-sohbet') return false;
+      if (hiddenChatIds.has(chan.id) && !searchQuery.trim()) return false;
       if (filterTab === 'unread') {
         // Show channels with active call
         return Boolean(channelCalls[chan.id]?.active);
@@ -708,7 +816,7 @@ export const Sidebar = ({
       const q = searchQuery.toLowerCase();
       return chan.name?.toLowerCase().includes(q);
     });
-  }, [textChannels, searchQuery, filterTab, channelCalls]);
+  }, [textChannels, searchQuery, filterTab, channelCalls, hiddenChatIds]);
 
   // All Friends List (Filtered & Sorted: Game / Online first, then Alphabetical)
   const filteredAllFriends = useMemo(() => {
@@ -808,6 +916,7 @@ export const Sidebar = ({
                 <div
                   key={`all-friends-${friend.id}`}
                   onClick={() => {
+                    unhideChat(friend.id);
                     onSelectDm?.(friend.id);
                     setSidebarView('chats');
                   }}
@@ -853,6 +962,7 @@ export const Sidebar = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        unhideChat(friend.id);
                         onSelectDm?.(friend.id);
                         setSidebarView('chats');
                       }}
@@ -1063,6 +1173,7 @@ export const Sidebar = ({
                             <button
                               type="button"
                               onClick={() => {
+                                unhideChat(user.id);
                                 onSelectDm?.(user.id);
                                 setSidebarView('chats');
                               }}
@@ -1554,7 +1665,15 @@ export const Sidebar = ({
               return (
                 <div
                   key={`dm-${friend.id}`}
-                  onClick={() => onSelectDm?.(friend.id)}
+                  onClick={() => {
+                    unhideChat(friend.id);
+                    onSelectDm?.(friend.id);
+                  }}
+                  onContextMenu={(e) => handleChatContextMenu(e, {
+                    type: 'dm',
+                    id: friend.id,
+                    name: friend.name,
+                  })}
                   className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
                     isSelected
                       ? 'bg-[#18181f]'
@@ -1666,7 +1785,15 @@ export const Sidebar = ({
               return (
                 <div
                   key={`chan-${chan.id}`}
-                  onClick={() => onSelectChannel?.(chan.id)}
+                  onClick={() => {
+                    unhideChat(chan.id);
+                    onSelectChannel?.(chan.id);
+                  }}
+                  onContextMenu={(e) => handleChatContextMenu(e, {
+                    type: 'channel',
+                    id: chan.id,
+                    name: chan.name,
+                  })}
                   className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${
                     isSelected
                       ? 'bg-[#18181f]'
@@ -1806,6 +1933,34 @@ export const Sidebar = ({
           </button>
         </div>
       </div>
+
+      {/* Chat Right-Click Context Menu */}
+      {chatContextMenu && createPortal(
+        <div
+          ref={chatContextMenuRef}
+          style={{ top: `${chatContextMenu.y}px`, left: `${chatContextMenu.x}px` }}
+          className="fixed z-[9999] w-48 rounded-xl bg-[#121216]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/80 p-1.5 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
+        >
+          <div className="px-2.5 py-1.5 border-b border-white/10 mb-1">
+            <p className="font-semibold text-white truncate text-xs">
+              {chatContextMenu.chat.name}
+            </p>
+            <p className="text-[10px] text-gray-400">
+              {chatContextMenu.chat.type === 'dm' ? 'Direkt Mesaj' : 'Kanal'}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleHideChat(chatContextMenu.chat)}
+            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-rose-400 hover:bg-rose-500/15 hover:text-rose-300 transition-colors text-left font-medium cursor-pointer"
+          >
+            <Trash2 size={13} className="flex-shrink-0" />
+            <span>Sohbeti Sil</span>
+          </button>
+        </div>,
+        document.body
+      )}
     </aside>
   );
 };

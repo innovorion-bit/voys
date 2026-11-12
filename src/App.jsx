@@ -1544,10 +1544,18 @@ function StanduppApp() {
   }, [activeCallChannelId, currentUserId, disconnectVoice, navigate]);
 
   const handleSelectChannel = (channelId) => {
+    if (!channelId) {
+      navigate('/');
+      return;
+    }
     navigate(`/channel/${channelId}`);
   };
 
   const handleSelectDm = (friendId) => {
+    if (!friendId) {
+      navigate('/');
+      return;
+    }
     navigate(`/dm/${friendId}`);
   };
 
