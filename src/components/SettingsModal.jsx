@@ -635,7 +635,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   return (
     <div className="fixed inset-x-0 bottom-0 top-8 z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none animate-in fade-in duration-150">
       {/* Left Category Sidebar */}
-      <div className="w-60 md:w-64 border-r border-white/5 bg-[#0c0c0e] voys-glass-settings-sidebar p-3.5 flex flex-col justify-between flex-shrink-0">
+      <div className="w-[275px] border-r border-white/[0.06] bg-[#0c0c0e] voys-glass-settings-sidebar p-3.5 flex flex-col justify-between flex-shrink-0">
         <div className="flex flex-col space-y-1">
           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-1.5 mb-1">
             Kullanıcı Ayarları
