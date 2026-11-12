@@ -220,29 +220,38 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       {/* Header Banner */}
       <div
         data-tauri-drag-region
-        className="bg-gradient-to-br from-indigo-950/40 via-[#0c0c0e] to-purple-950/30 p-3 pt-3.5 border-b border-white/10 text-center relative cursor-default flex-shrink-0"
+        className="pt-6 pb-2 text-center relative cursor-default flex-shrink-0"
       >
-        <div className="w-9 h-9 mx-auto rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-inner mb-1.5 overflow-hidden">
+        <div className="flex justify-center">
           {mode === 'reset' ? (
-            <KeyRound size={18} className="text-indigo-400" />
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <KeyRound size={18} className="text-indigo-400" />
+            </div>
           ) : mode === 'forgot' ? (
-            <Mail size={18} className="text-indigo-400" />
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <Mail size={18} className="text-indigo-400" />
+            </div>
           ) : (
-            <img src="/voys_logo.png" alt="Voys" className="w-7 h-7 object-contain" />
+            <img
+              src="/voys_logo.png"
+              alt="Voys"
+              draggable={false}
+              className="w-8 h-8 object-contain select-none pointer-events-none"
+            />
           )}
         </div>
-        <h1 className="text-xs font-bold text-white tracking-wider uppercase">
-          {mode === 'login' && 'Voys Giriş'}
-          {mode === 'register' && 'Yeni Hesap Oluştur'}
-          {mode === 'forgot' && 'Şifremi Sıfırla'}
-          {mode === 'reset' && 'Yeni Şifre Belirle'}
-        </h1>
-        <p className="text-[10.5px] text-gray-400 mt-0.5">
-          {mode === 'login' && 'Kesintisiz sesli ve yazılı iletişim'}
-          {mode === 'register' && 'Hemen arkadaşlarınla konuşmaya başla'}
-          {mode === 'forgot' && 'E-posta adresinize sıfırlama linki göndereceğiz'}
-          {mode === 'reset' && 'Hesabınız için güçlü bir şifre belirleyin'}
-        </p>
+        {(mode === 'forgot' || mode === 'reset') && (
+          <div className="mt-2 px-4">
+            <h1 className="text-xs font-bold text-white tracking-wider uppercase">
+              {mode === 'forgot' && 'Şifremi Sıfırla'}
+              {mode === 'reset' && 'Yeni Şifre Belirle'}
+            </h1>
+            <p className="text-[10.5px] text-gray-400 mt-0.5">
+              {mode === 'forgot' && 'E-posta adresinize sıfırlama linki göndereceğiz'}
+              {mode === 'reset' && 'Hesabınız için güçlü bir şifre belirleyin'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Form Content */}
