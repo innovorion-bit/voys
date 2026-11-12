@@ -63,6 +63,27 @@ pub fn detect_running_game() -> Option<String> {
                 if title.contains("elden ring") {
                     return Some("ELDEN RING".to_string());
                 }
+                if title.contains("roblox") {
+                    return Some("Roblox".to_string());
+                }
+                if title.contains("dota 2") {
+                    return Some("Dota 2".to_string());
+                }
+                if title.contains("fortnite") {
+                    return Some("Fortnite".to_string());
+                }
+                if title.contains("pubg") {
+                    return Some("PUBG: BATTLEGROUNDS".to_string());
+                }
+                if title.contains("rocket league") {
+                    return Some("Rocket League".to_string());
+                }
+                if title.contains("rainbow six") {
+                    return Some("Rainbow Six Siege".to_string());
+                }
+                if title.contains("red dead redemption") {
+                    return Some("Red Dead Redemption 2".to_string());
+                }
             }
         }
     }
@@ -109,11 +130,13 @@ pub fn detect_running_game() -> Option<String> {
         ("valorant-win64-shipping.exe", "VALORANT"),
         ("valorant.exe", "VALORANT"),
         ("leagueclientux.exe", "League of Legends"),
+        ("leagueclient.exe", "League of Legends"),
         ("league of legends.exe", "League of Legends"),
         ("dota2.exe", "Dota 2"),
         ("gta5.exe", "Grand Theft Auto V"),
         ("playgtav.exe", "Grand Theft Auto V"),
         ("r5apex.exe", "Apex Legends"),
+        ("apex.exe", "Apex Legends"),
         ("fortniteclient-win64-shipping.exe", "Fortnite"),
         ("fortnite.exe", "Fortnite"),
         ("overwatch.exe", "Overwatch 2"),
@@ -121,6 +144,9 @@ pub fn detect_running_game() -> Option<String> {
         ("rainbowsix_vulkan.exe", "Rainbow Six Siege"),
         ("tslgame.exe", "PUBG: BATTLEGROUNDS"),
         ("robloxplayerbeta.exe", "Roblox"),
+        ("robloxplayer.exe", "Roblox"),
+        ("javaw.exe", "Minecraft"),
+        ("minecraft.exe", "Minecraft"),
         ("deadbydaylight-win64-shipping.exe", "Dead by Daylight"),
         ("helldivers2.exe", "HELLDIVERS™ 2"),
         ("marvelrivals.exe", "Marvel Rivals"),
@@ -135,7 +161,9 @@ pub fn detect_running_game() -> Option<String> {
         ("tarkov.exe", "Escape from Tarkov"),
         ("escapefromtarkov.exe", "Escape from Tarkov"),
         ("rustclient.exe", "Rust"),
+        ("rust.exe", "Rust"),
         ("palworld-win64-shipping.exe", "Palworld"),
+        ("palworld.exe", "Palworld"),
         ("rocketleague.exe", "Rocket League"),
         ("brawlhalla.exe", "Brawlhalla"),
         ("fallguys_client.exe", "Fall Guys"),
@@ -153,21 +181,36 @@ pub fn detect_running_game() -> Option<String> {
         ("fc25.exe", "EA SPORTS FC 25"),
         ("fc24.exe", "EA SPORTS FC 24"),
         ("fifa23.exe", "EA SPORTS FIFA"),
+        ("fifa22.exe", "EA SPORTS FIFA"),
         ("footballmanager.exe", "Football Manager"),
         ("subnautica.exe", "Subnautica"),
-        // Productivity / Development Tools
-        ("code.exe", "Visual Studio Code"),
-        ("spotify.exe", "Spotify"),
-        ("devenv.exe", "Visual Studio"),
-        ("blender.exe", "Blender"),
-        ("photoshop.exe", "Adobe Photoshop"),
-        ("premiere.exe", "Adobe Premiere Pro"),
-        ("afterfx.exe", "Adobe After Effects"),
-        ("fl64.exe", "FL Studio"),
-        ("ableton live 11 suite.exe", "Ableton Live"),
-        ("ableton live 12 suite.exe", "Ableton Live"),
-        ("unrealeditor.exe", "Unreal Engine"),
-        ("unity.exe", "Unity Editor"),
+        ("rdr2.exe", "Red Dead Redemption 2"),
+        ("playrdr2.exe", "Red Dead Redemption 2"),
+        ("sekiro.exe", "Sekiro: Shadows Die Twice"),
+        ("darksoulsiii.exe", "Dark Souls III"),
+        ("forzahorizon5.exe", "Forza Horizon 5"),
+        ("forzahorizon4.exe", "Forza Horizon 4"),
+        ("beamng.drive.x64.exe", "BeamNG.drive"),
+        ("payday3.exe", "PAYDAY 3"),
+        ("payday2_win32_release.exe", "PAYDAY 2"),
+        ("shootergame.exe", "ARK: Survival Evolved"),
+        ("sonsoftheforest.exe", "Sons of the Forest"),
+        ("theforest.exe", "The Forest"),
+        ("hollow_knight.exe", "Hollow Knight"),
+        ("hades.exe", "Hades"),
+        ("hades2.exe", "Hades II"),
+        ("bannerlord.exe", "Mount & Blade II: Bannerlord"),
+        ("metin2client.exe", "Metin2"),
+        ("knightonline.exe", "Knight Online"),
+        ("zula.exe", "Zula"),
+        ("wolftü.exe", "Wolfteam"),
+        ("pointblank.exe", "Point Blank"),
+        ("cod.exe", "Call of Duty"),
+        ("callofduty.exe", "Call of Duty"),
+        ("warthunder.exe", "War Thunder"),
+        ("pathofexile.exe", "Path of Exile"),
+        ("pathofexile_x64.exe", "Path of Exile"),
+        ("diablo iv.exe", "Diablo IV"),
     ];
 
     for &(exe, name) in &games {

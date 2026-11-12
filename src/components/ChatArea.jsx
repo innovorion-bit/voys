@@ -2756,9 +2756,16 @@ export const ChatArea = ({
                               <span className="text-[10px] text-gray-400 font-semibold">(Sen)</span>
                             )}
                           </div>
-                          <span className={`text-[10px] font-medium block truncate ${voiceStatusColorClass}`}>
-                            {voiceStatusLabel}
-                          </span>
+                          {m.game ? (
+                            <div className="flex items-center space-x-1 text-[10px] text-emerald-400 font-semibold truncate mt-0.5">
+                              <Gamepad2 size={10} className="flex-shrink-0 text-emerald-400" />
+                              <span className="truncate">{m.game} • {voiceStatusLabel}</span>
+                            </div>
+                          ) : (
+                            <span className={`text-[10px] font-medium block truncate ${voiceStatusColorClass}`}>
+                              {voiceStatusLabel}
+                            </span>
+                          )}
                         </div>
 
                         {voiceBadgeIcon && (
@@ -3082,12 +3089,15 @@ export const ChatArea = ({
                               {member.role === 'admin' && (
                                 <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
                               )}
+                              {member.id === currentUser?.id && (
+                                <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">Sen</span>
+                              )}
                             </div>
 
                             {member.isOnline && member.game ? (
-                              <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-medium">
-                                <Gamepad2 size={11} className="flex-shrink-0" />
-                                <span className="truncate">{memberStatusLabel}</span>
+                              <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-semibold">
+                                <Gamepad2 size={11} className="flex-shrink-0 text-emerald-400" />
+                                <span className="truncate">{member.game} Oynuyor</span>
                               </div>
                             ) : (
                               <p className={`text-[10px] truncate mt-0.5 ${
@@ -3317,17 +3327,24 @@ export const ChatArea = ({
                   <p className="text-[10px] text-gray-400 truncate">
                     {liveTarget.username ? `@${liveTarget.username}` : ''}
                   </p>
-                  <span className={`text-[10px] flex-shrink-0 ml-auto ${
-                    isTargetInVoice
-                      ? 'text-emerald-400/90'
-                      : liveTarget.isOnline
-                        ? 'text-gray-400'
-                        : 'text-gray-500'
-                  }`}>
-                    {isTargetInVoice
-                      ? 'Sesli Sohbette'
-                      : getMemberStatusDisplay(liveTarget)}
-                  </span>
+                  {liveTarget.isOnline && liveTarget.game ? (
+                    <span className="text-[10px] flex-shrink-0 ml-auto text-emerald-400 font-medium flex items-center space-x-1">
+                      <Gamepad2 size={11} className="flex-shrink-0 text-emerald-400" />
+                      <span className="truncate">{liveTarget.game}</span>
+                    </span>
+                  ) : (
+                    <span className={`text-[10px] flex-shrink-0 ml-auto ${
+                      isTargetInVoice
+                        ? 'text-emerald-400/90'
+                        : liveTarget.isOnline
+                          ? 'text-gray-400'
+                          : 'text-gray-500'
+                    }`}>
+                      {isTargetInVoice
+                        ? 'Sesli Sohbette'
+                        : getMemberStatusDisplay(liveTarget)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

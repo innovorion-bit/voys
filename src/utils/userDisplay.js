@@ -256,6 +256,7 @@ export const partitionSidebarGroupMembers = ({
             role: cm.role || matchedMember.role,
             username: cm.username || matchedMember.username || '',
             avatar: cm.avatar || matchedMember.avatar || '',
+            game: matchedMember.game || cm.game || '',
           }
         : cm
     );

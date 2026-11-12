@@ -28,7 +28,7 @@ export const UserAvatar = ({
       case 'dnd':
         return 'bg-rose-500'; // Red for Do Not Disturb
       case 'online':
-        return isPlayingGame ? 'bg-emerald-400' : 'bg-emerald-500';
+        return isPlayingGame ? 'bg-emerald-400 ring-2 ring-emerald-400/40' : 'bg-emerald-500';
       case 'offline':
       case 'invisible':
       default:

@@ -35,7 +35,8 @@ import {
   Radio,
   RotateCcw,
   VolumeX,
-  Layers
+  Layers,
+  Gamepad2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
@@ -149,6 +150,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   const [displayNameInput, setDisplayNameInput] = useState(profile?.name || authUser?.display_name || '');
   const [usernameInput, setUsernameInput] = useState(profile?.username || authUser?.username || '');
   const [emailInput, setEmailInput] = useState(authUser?.email || profile?.email || '');
+  const [gameInput, setGameInput] = useState(profile?.game || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [prevIsOpen, setPrevIsOpen] = useState(isSettingsOpen);
   const [prevAuthUserAvatar, setPrevAuthUserAvatar] = useState(authUserAvatar);
@@ -236,6 +238,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
       setDisplayNameInput(profile?.name || authUser?.display_name || '');
       setUsernameInput(profile?.username || authUser?.username || '');
       setEmailInput(authUser?.email || profile?.email || '');
+      setGameInput(profile?.game || '');
       setNewPassword('');
       setConfirmPassword('');
       setIsEditingUsername(false);
@@ -556,6 +559,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
         username: cleanUsername,
         avatar: effectiveAvatar,
         avatar_url: effectiveAvatar,
+        game: (gameInput || '').trim(),
       }, targetUserId);
 
       if (toastId) toast.dismiss(toastId);
@@ -927,6 +931,26 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                         >
                           <Pencil size={13} className={isEditingDisplayName ? 'text-indigo-400' : 'text-gray-400'} />
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Oyun / Etkinlik Durumu */}
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-gray-200 block">
+                          Oyun / Etkinlik Durumu
+                        </label>
+                        <span className="text-[10px] text-gray-500">Masaüstünde otomatik algılanır</span>
+                      </div>
+                      <div className="relative flex items-center">
+                        <Gamepad2 size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={gameInput}
+                          onChange={(e) => setGameInput(e.target.value)}
+                          placeholder="Örn: Counter-Strike 2, VALORANT veya boş bırakın"
+                          className="w-full rounded-lg pl-9 pr-3.5 py-2.5 text-xs bg-[#161719]/80 text-white border border-white/10 focus:border-[#8B51FF] focus:outline-none transition placeholder:text-gray-600"
+                        />
                       </div>
                     </div>
                   </div>

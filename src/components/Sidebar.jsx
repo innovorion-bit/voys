@@ -1915,9 +1915,16 @@ export const Sidebar = ({
                 {currentUserProfile?.name || 'Sen'}
               </span>
             </div>
-            <p className="text-[10px] text-gray-400 truncate">
-              {currentUserProfile?.game ? `🎮 ${currentUserProfile.game}` : `@${currentUserProfile?.username || 'user'}`}
-            </p>
+            {currentUserProfile?.game ? (
+              <div className="flex items-center space-x-1 text-[11px] text-emerald-400 font-semibold truncate mt-0.5">
+                <Gamepad2 size={12} className="flex-shrink-0 text-emerald-400" />
+                <span className="truncate">{currentUserProfile.game} Oynuyor</span>
+              </div>
+            ) : (
+              <p className="text-[10px] text-gray-400 truncate">
+                @{currentUserProfile?.username || 'user'}
+              </p>
+            )}
           </div>
         </div>
 
