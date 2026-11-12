@@ -1471,43 +1471,26 @@ export const ChatArea = ({
         {/* Right side of Top Bar: Universal Call Button + Search Filter */}
         {hasActiveChat && (
         <div className="flex items-center space-x-2 flex-shrink-0">
-          {/* Voice Controls:
-              - DM Modunda: Tam ses kontrolleri (arama başlat/kapat, mikrofon vb.)
-              - Grup Sohbetinde: Sesli sohbet başlatmak / katılmak için telefon butonu görünür; sesli sohbet sırasında üst bardaki bu buton kaybolur (kontroller sağ paneldeki yeşil alanın altındadır)
+          {/* Universal Call Button:
+              - Sesli sohbet yokken başlatmak/katılmak için telefon butonu görünür (Grup & DM).
+              - Sesli sohbete girildiğinde üst bardaki bu buton kaybolur (kontroller sağ paneldeki sesli menüdedir).
           */}
-          {isDmMode ? (
-            <VoiceControls
-              isConnected={Boolean(isInCall || isConnected)}
-              isInCall={isInCall}
-              isCallActive={isCallActive}
-              callMembersCount={callMembers?.length || 0}
-              isMuted={isMuted}
-              isDeafened={isDeafened}
-              isScreenSharing={isScreenSharing}
-              onToggleMute={onToggleMute}
-              onToggleDeafen={onToggleDeafen}
-              onToggleScreenShare={onToggleScreenShare}
-              onDisconnect={isInCall ? (onLeaveCall || onToggleDmCall) : (onDisconnect || onLeaveCall)}
-              onConnect={isInCall ? (onLeaveCall || onToggleDmCall) : (onStartCall || onToggleDmCall || onConnect)}
-            />
-          ) : (
-            !isInCall && !isConnected && (
-              <button
-                type="button"
-                onClick={onStartCall || onConnect}
-                title={isCallActive ? `Sesli Sohbete Katıl ${callMembers?.length ? `(${callMembers.length} kişi seste)` : ''}` : "Sesli Sohbet Başlat"}
-                className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
-                  isCallActive
-                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40'
-                    : 'text-gray-300 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <Phone size={17} />
-                {isCallActive && (
-                  <span className="absolute -top-0.5 -right-0.5 inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]" />
-                )}
-              </button>
-            )
+          {!isInCall && !isConnected && (
+            <button
+              type="button"
+              onClick={onStartCall || onToggleDmCall || onConnect}
+              title={isCallActive ? `Sesli Sohbete Katıl ${callMembers?.length ? `(${callMembers.length} kişi seste)` : ''}` : "Sesli Sohbet Başlat"}
+              className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
+                isCallActive
+                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Phone size={17} />
+              {isCallActive && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]" />
+              )}
+            </button>
           )}
 
           {/* Chat Options Button (3 Nokta) */}
