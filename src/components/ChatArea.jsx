@@ -533,122 +533,6 @@ export const ChatArea = ({
     }
   };
 
-  // Compute live channel members merged with real-time presences
-  const liveMembers = (channelMembers || []).map((m) => {
-    const memberId = m.user_id || m.id;
-    const isSelf = memberId === currentUser?.id;
-    const p = presences?.[memberId];
-    const profile = m.profile || m.profiles || {};
-    const status = isSelf
-      ? (currentUser?.status || 'online')
-      : (p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false ? (p?.status || 'online') : 'offline');
-    const isOnline = isSelf
-      ? (status !== 'offline' && status !== 'invisible')
-      : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
-
-    return {
-      id: memberId,
-      name: isSelf
-        ? pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)')
-        : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Üye'),
-      username: isSelf
-        ? (currentUser?.username || '')
-        : ([p?.username, profile.username, m.username].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u)) || ''),
-      avatar: isSelf ? (currentUser?.avatar || currentUser?.avatar_url) : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
-      game: isOnline ? (isSelf ? currentUser?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
-      substatus: isOnline ? (isSelf ? currentUser?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
-      status,
-      isOnline,
-      role: m.role || 'member',
-    };
-  });
-
-  const effectiveMembers = liveMembers.length > 0
-    ? liveMembers
-    : currentUser
-      ? (() => {
-        const selfStatus = currentUser.status || 'online';
-        const selfOnline = selfStatus !== 'offline' && selfStatus !== 'invisible';
-        return [{
-          id: currentUser.id,
-          name: pickDisplayName([currentUser.name, currentUser.display_name, currentUser.username], 'Sen (You)'),
-          avatar: currentUser.avatar || currentUser.avatar_url,
-          game: selfOnline ? currentUser.game : null,
-          substatus: selfOnline ? currentUser.substatus : '',
-          status: selfStatus,
-          isOnline: selfOnline,
-          role: 'admin',
-        }];
-      })()
-      : [];
-
-  const onlineMembers = effectiveMembers.filter((m) => m.isOnline);
-  const offlineMembers = effectiveMembers.filter((m) => !m.isOnline);
-
-  // Split sidebar display so voice-chat participants appear only under SESLİ SOHBET
-  // and remaining members appear under GRUP ÜYELERİ.
-  const {
-    showVoiceSection,
-    voiceMembers: sidebarVoiceMembers,
-    groupMembers: sidebarGroupMembers,
-  } = partitionSidebarGroupMembers({
-    effectiveMembers,
-    callMembers,
-    isCallActive,
-    isInCall,
-    currentUser,
-    callInitiator,
-  });
-  const sidebarOnlineMembers = sidebarGroupMembers.filter((m) => m.isOnline);
-  const sidebarOfflineMembers = sidebarGroupMembers.filter((m) => !m.isOnline);
-
-  // Right sidebar inline add-member state
-  const [isAddingMember, setIsAddingMember] = useState(false);
-  const [addMemberSearch, setAddMemberSearch] = useState('');
-  const [addingMemberId, setAddingMemberId] = useState(null);
-
-  // Reset add member panel state when active channel changes
-  useEffect(() => {
-    setIsAddingMember(false);
-    setAddMemberSearch('');
-    setAddingMemberId(null);
-  }, [activeChannel]);
-
-  const memberIdSet = useMemo(() => {
-    return new Set(
-      (effectiveMembers || []).map((m) => String(m.user_id || m.id))
-    );
-  }, [effectiveMembers]);
-
-  const filteredAddFriends = useMemo(() => {
-    if (!Array.isArray(friends)) return [];
-    if (!addMemberSearch.trim()) return friends;
-    const q = addMemberSearch.trim().toLowerCase();
-    return friends.filter((f) => {
-      const name = (f.name || '').toLowerCase();
-      const uname = (f.username || '').toLowerCase();
-      return name.includes(q) || uname.includes(q);
-    });
-  }, [friends, addMemberSearch]);
-
-  const handleAddMemberFromSidebar = async (friend) => {
-    if (!friend?.id || !activeChannel || addingMemberId === friend.id) return;
-    try {
-      setAddingMemberId(friend.id);
-      const addedRow = await dbService.addChannelMember(activeChannel, friend.id, 'member');
-      toast.success('Üye Gruba Eklendi', {
-        description: `${friend.name || friend.username || 'Arkadaşınız'} bu gruba eklendi.`,
-      });
-      onMemberAdded?.(friend, addedRow);
-    } catch (err) {
-      toast.error('Üye Eklenemedi', {
-        description: err.message || 'Bir problem oluştu.',
-      });
-    } finally {
-      setAddingMemberId(null);
-    }
-  };
-
   // Dynamic profile lookup map for automatically resolving current user avatars and safe names across chat
   const userProfileMap = useMemo(() => {
     const map = new Map();
@@ -753,6 +637,166 @@ export const ChatArea = ({
       avatar_url: resolvedAvatar,
     };
   }, [rawActiveDmFriend, userProfileMap]);
+
+  // Compute live channel members merged with real-time presences
+  const liveMembers = (channelMembers || []).map((m) => {
+    const memberId = m.user_id || m.id;
+    const isSelf = memberId === currentUser?.id;
+    const p = presences?.[memberId];
+    const profile = m.profile || m.profiles || {};
+    const status = isSelf
+      ? (currentUser?.status || 'online')
+      : (p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false ? (p?.status || 'online') : 'offline');
+    const isOnline = isSelf
+      ? (status !== 'offline' && status !== 'invisible')
+      : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
+
+    return {
+      id: memberId,
+      name: isSelf
+        ? pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)')
+        : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Üye'),
+      username: isSelf
+        ? (currentUser?.username || '')
+        : ([p?.username, profile.username, m.username].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u)) || ''),
+      avatar: isSelf ? (currentUser?.avatar || currentUser?.avatar_url) : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
+      game: isOnline ? (isSelf ? currentUser?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
+      substatus: isOnline ? (isSelf ? currentUser?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
+      status,
+      isOnline,
+      role: m.role || 'member',
+    };
+  });
+
+  const effectiveMembers = useMemo(() => {
+    if (isDmMode && activeDmFriend) {
+      const selfStatus = currentUser?.status || 'online';
+      const selfOnline = selfStatus !== 'offline' && selfStatus !== 'invisible';
+      const selfMember = {
+        id: currentUser?.id || 'you',
+        user_id: currentUser?.id || 'you',
+        name: pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)'),
+        username: currentUser?.username || '',
+        avatar: currentUser?.avatar || currentUser?.avatar_url || '',
+        game: selfOnline ? currentUser?.game : null,
+        substatus: selfOnline ? currentUser?.substatus : '',
+        status: selfStatus,
+        isOnline: selfOnline,
+        role: 'member',
+      };
+
+      const friendStatus = activeDmFriend.status || 'offline';
+      const friendOnline = Boolean(activeDmFriend.isOnline);
+      const friendMember = {
+        id: activeDmFriend.id,
+        user_id: activeDmFriend.id,
+        name: pickDisplayName([activeDmFriend.name, activeDmFriend.display_name, activeDmFriend.username], 'Arkadaş'),
+        username: activeDmFriend.username || '',
+        avatar: activeDmFriend.avatar || activeDmFriend.avatar_url || '',
+        game: friendOnline ? activeDmFriend.game : null,
+        substatus: friendOnline ? activeDmFriend.substatus : '',
+        status: friendStatus,
+        isOnline: friendOnline,
+        role: 'member',
+      };
+
+      return [selfMember, friendMember];
+    }
+
+    if (liveMembers.length > 0) return liveMembers;
+
+    if (currentUser) {
+      const selfStatus = currentUser.status || 'online';
+      const selfOnline = selfStatus !== 'offline' && selfStatus !== 'invisible';
+      return [{
+        id: currentUser.id,
+        user_id: currentUser.id,
+        name: pickDisplayName([currentUser.name, currentUser.display_name, currentUser.username], 'Sen (You)'),
+        username: currentUser.username || '',
+        avatar: currentUser.avatar || currentUser.avatar_url,
+        game: selfOnline ? currentUser.game : null,
+        substatus: selfOnline ? currentUser.substatus : '',
+        status: selfStatus,
+        isOnline: selfOnline,
+        role: 'admin',
+      }];
+    }
+
+    return [];
+  }, [isDmMode, activeDmFriend, currentUser, liveMembers]);
+
+  const onlineMembers = effectiveMembers.filter((m) => m.isOnline);
+  const offlineMembers = effectiveMembers.filter((m) => !m.isOnline);
+
+  // Split sidebar display so voice-chat participants appear only under SESLİ SOHBET
+  // and remaining members appear under GRUP ÜYELERİ.
+  const {
+    showVoiceSection,
+    voiceMembers: sidebarVoiceMembers,
+    groupMembers: sidebarGroupMembers,
+  } = partitionSidebarGroupMembers({
+    effectiveMembers,
+    callMembers,
+    isCallActive,
+    isInCall,
+    currentUser,
+    callInitiator,
+  });
+  const sidebarOnlineMembers = sidebarGroupMembers.filter((m) => m.isOnline);
+  const sidebarOfflineMembers = sidebarGroupMembers.filter((m) => !m.isOnline);
+
+  // Determine whether right panel should be displayed (always in group chat; in DM only during voice call)
+  const isDmVoiceActive = Boolean(
+    isDmMode && (isCallActive || isInCall || showVoiceSection || (callMembers && callMembers.length > 0))
+  );
+  const shouldShowRightPanel = Boolean(hasActiveChat && (!isDmMode || isDmVoiceActive));
+
+  // Right sidebar inline add-member state
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState('');
+  const [addingMemberId, setAddingMemberId] = useState(null);
+
+  // Reset add member panel state when active channel changes
+  useEffect(() => {
+    setIsAddingMember(false);
+    setAddMemberSearch('');
+    setAddingMemberId(null);
+  }, [activeChannel]);
+
+  const memberIdSet = useMemo(() => {
+    return new Set(
+      (effectiveMembers || []).map((m) => String(m.user_id || m.id))
+    );
+  }, [effectiveMembers]);
+
+  const filteredAddFriends = useMemo(() => {
+    if (!Array.isArray(friends)) return [];
+    if (!addMemberSearch.trim()) return friends;
+    const q = addMemberSearch.trim().toLowerCase();
+    return friends.filter((f) => {
+      const name = (f.name || '').toLowerCase();
+      const uname = (f.username || '').toLowerCase();
+      return name.includes(q) || uname.includes(q);
+    });
+  }, [friends, addMemberSearch]);
+
+  const handleAddMemberFromSidebar = async (friend) => {
+    if (!friend?.id || !activeChannel || addingMemberId === friend.id) return;
+    try {
+      setAddingMemberId(friend.id);
+      const addedRow = await dbService.addChannelMember(activeChannel, friend.id, 'member');
+      toast.success('Üye Gruba Eklendi', {
+        description: `${friend.name || friend.username || 'Arkadaşınız'} bu gruba eklendi.`,
+      });
+      onMemberAdded?.(friend, addedRow);
+    } catch (err) {
+      toast.error('Üye Eklenemedi', {
+        description: err.message || 'Bir problem oluştu.',
+      });
+    } finally {
+      setAddingMemberId(null);
+    }
+  };
 
   // Reply and Reaction state
   const [replyingTo, setReplyingTo] = useState(null); // { id, user, color, text }
@@ -2636,8 +2680,8 @@ export const ChatArea = ({
           )}
         </div>
 
-        {/* Right Side: Channel Members Panel (Sabit panel) */}
-        {!isDmMode && hasActiveChat && (
+        {/* Right Side: Channel / Call Members Panel (Grup sohbetinde sürekli açık, kişisel DM'de yalnızca sesli sohbet varken açık) */}
+        {shouldShowRightPanel && (
           <aside
             className={`flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e]/95 voys-glass-right-panel backdrop-blur-md flex flex-col select-none overflow-y-auto z-10 animate-in slide-in-from-right duration-150 custom-scrollbar transition-[width,padding] ease-out ${
               isRightPanelCompact
@@ -2833,7 +2877,7 @@ export const ChatArea = ({
                     {/* Ayrıl Butonu */}
                     <button
                       type="button"
-                      onClick={onLeaveCall || onDisconnect}
+                      onClick={onLeaveCall || onToggleDmCall || onDisconnect}
                       className={`${
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
@@ -2848,7 +2892,7 @@ export const ChatArea = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={onStartCall || onConnect}
+                    onClick={onStartCall || onToggleDmCall || onConnect}
                     className={`${
                       isRightPanelCompact
                         ? 'w-9 h-8 mt-1 flex items-center justify-center'
@@ -2993,52 +3037,56 @@ export const ChatArea = ({
               </div>
             ) : (
               <>
-                {/* Header: GRUP ÜYELERİ */}
+                {/* Header: GRUP ÜYELERİ / SOHBET KATILIMCILARI */}
                 {isRightPanelCompact ? (
-                  <div className="flex flex-col items-center w-full">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateRightPanelCompact(false);
-                        setIsAddingMember(true);
-                      }}
-                      className="w-9 h-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 flex items-center justify-center transition cursor-pointer"
-                      title="Yeni Üye Ekle"
-                      aria-label="Yeni Üye Ekle"
-                    >
-                      <UserPlus size={14} />
-                    </button>
-                  </div>
+                  !isDmMode && (
+                    <div className="flex flex-col items-center w-full">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateRightPanelCompact(false);
+                          setIsAddingMember(true);
+                        }}
+                        className="w-9 h-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 flex items-center justify-center transition cursor-pointer"
+                        title="Yeni Üye Ekle"
+                        aria-label="Yeni Üye Ekle"
+                      >
+                        <UserPlus size={14} />
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      Grup Üyeleri
+                      {isDmMode ? 'SOHBET KATILIMCILARI' : 'Grup Üyeleri'}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingMember(true)}
-                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 cursor-pointer transition"
-                      title="Yeni Üye Ekle"
-                    >
-                      <UserPlus size={12} />
-                      <span>Ekle</span>
-                    </button>
+                    {!isDmMode && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingMember(true)}
+                        className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 cursor-pointer transition"
+                        title="Yeni Üye Ekle"
+                      >
+                        <UserPlus size={12} />
+                        <span>Ekle</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
-                {/* Sesli Sohbette Olmayan Grup Üyeleri */}
+                {/* Sesli Sohbette Olmayan Grup / Sohbet Üyeleri */}
                 <div className={isRightPanelCompact ? 'space-y-1.5 flex flex-col items-center w-full' : 'space-y-1'}>
                   {sidebarGroupMembers.length === 0 ? (
                     isRightPanelCompact ? (
                       <div
                         className="py-2 flex items-center justify-center text-gray-600"
-                        title="Tüm grup üyeleri sesli sohbette."
+                        title={isDmMode ? "Tüm katılımcılar sesli sohbette." : "Tüm grup üyeleri sesli sohbette."}
                       >
                         <Users size={14} />
                       </div>
                     ) : (
                       <div className="py-3 px-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-500 text-center">
-                        Tüm grup üyeleri sesli sohbette.
+                        {isDmMode ? "Tüm katılımcılar sesli sohbette." : "Tüm grup üyeleri sesli sohbette."}
                       </div>
                     )
                   ) : (
