@@ -1736,89 +1736,86 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
               </div>
 
               {/* Ses Efektleri & Bildirim Sesleri */}
-              <div className="pt-6 border-t border-white/[0.08] space-y-4">
+              <div className="pt-6 border-t border-white/[0.08] space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
+                  <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
                     SES EFEKTLERİ VE BİLDİRİM SESLERİ
                   </label>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Bas-Konuş, sesli sohbete katılım, mikrofon butonları, mesaj ve arama seslerini tek tıkla kapatın veya seviyesini ayarlayın.
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Bas-Konuş, arama, mesaj ve bildirim seslerini tek panelden yönetin.
                   </p>
                 </div>
 
-                {/* Master Toggle Card: Tüm Uygulama Ses Efektleri */}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={soundEffectsEnabled}
-                  onClick={() => {
-                    const next = !soundEffectsEnabled;
-                    changeSoundEffectsEnabled(next);
-                    if (next) {
-                      toast.success('Uygulama ses efektleri açıldı');
-                    } else {
-                      toast.info('Tüm uygulama ses efektleri kapatıldı');
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border text-left transition cursor-pointer ${
-                    !soundEffectsEnabled
-                      ? 'bg-rose-500/10 border-rose-500/35 hover:border-rose-500/50'
-                      : 'bg-[#121216] border-white/[0.08] hover:border-white/20 hover:bg-[#16161c]'
-                  }`}
-                >
-                  <div className="flex items-start space-x-3 min-w-0">
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        !soundEffectsEnabled
-                          ? 'bg-rose-500/20 text-rose-400'
-                          : 'bg-indigo-500/20 text-indigo-400'
+                {/* Unified Clean Card */}
+                <div className="p-4 rounded-xl bg-[#111214] border border-white/10 space-y-3.5">
+                  {/* Master Toggle Row */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                          soundEffectsEnabled
+                            ? 'bg-[#8B51FF]/15 text-[#bb94ff] border border-[#8B51FF]/30'
+                            : 'bg-white/5 text-gray-500 border border-white/5'
+                        }`}
+                      >
+                        {soundEffectsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-semibold text-white block">
+                          Tüm Uygulama Ses Efektleri
+                        </span>
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                          {soundEffectsEnabled
+                            ? 'Bas-Konuş, katılım, mikrofon ve mesaj sesleri aktif'
+                            : 'Uygulamadaki tüm ses efektleri kapalı'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={soundEffectsEnabled}
+                      onClick={() => changeSoundEffectsEnabled(!soundEffectsEnabled)}
+                      className={`w-11 h-6 rounded-full transition-colors p-0.5 flex items-center cursor-pointer flex-shrink-0 ${
+                        soundEffectsEnabled ? 'bg-[#8B51FF]' : 'bg-white/15'
                       }`}
                     >
-                      {soundEffectsEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-sm font-semibold text-white block">
-                        Tüm Uygulama Ses Efektleri
-                      </span>
-                      <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                        {soundEffectsEnabled
-                          ? 'Kapatıldığında Bas-Konuş, sesli sohbete katılma/ayrılma, mikrofon susturma, mesaj ve zil dahil tüm uygulama sesleri susar.'
-                          : 'Şu anda uygulamadaki tüm ses efektleri tamamen kapalı (hoparlör donanım testi bundan etkilenmez).'}
-                      </p>
-                    </div>
+                      <div
+                        className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          soundEffectsEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
                   </div>
+
+                  {/* Volume Slider Row */}
                   <div
-                    className={`w-11 h-6 rounded-full transition-colors p-0.5 flex items-center flex-shrink-0 ${
-                      soundEffectsEnabled ? 'bg-indigo-500' : 'bg-white/15'
+                    className={`pt-3 border-t border-white/[0.06] space-y-2 transition-opacity duration-200 ${
+                      !soundEffectsEnabled ? 'opacity-35 pointer-events-none' : ''
                     }`}
                   >
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                        soundEffectsEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-gray-200">Ses Efekti Seviyesi</span>
+                      <span className="font-mono text-gray-300 font-semibold">{soundEffectsVolume}%</span>
+                    </div>
+                    <div className="relative flex items-center py-1">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        disabled={!soundEffectsEnabled}
+                        value={soundEffectsVolume}
+                        onChange={(e) => changeSoundEffectsVolume(Number(e.target.value))}
+                        className="w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider accent-[#8B51FF]"
+                        style={{
+                          background: soundEffectsEnabled
+                            ? `linear-gradient(to right, #8B51FF ${soundEffectsVolume}%, #232428 ${soundEffectsVolume}%)`
+                            : '#232428',
+                        }}
+                      />
+                    </div>
                   </div>
-                </button>
-
-                {/* Ses Efekti Seviyesi */}
-                <div
-                  className={`p-4 rounded-xl bg-[#101015] border border-white/[0.08] space-y-2 transition-opacity ${
-                    !soundEffectsEnabled ? 'opacity-45 pointer-events-none' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span className="font-semibold text-gray-300">Ses Efekti Seviyesi</span>
-                    <span className="font-mono text-gray-200">{soundEffectsVolume}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    disabled={!soundEffectsEnabled}
-                    value={soundEffectsVolume}
-                    onChange={(e) => changeSoundEffectsVolume(Number(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
                 </div>
               </div>
             </div>
