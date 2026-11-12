@@ -409,6 +409,11 @@ export const mergeChannelCallsWithPresences = ({
   if (activeCallChannelId && isConnected) {
     const chanKey = String(activeCallChannelId);
     const chanMap = ensureChanMap(chanKey);
+    if (currentUser?.id) {
+      const selfKey = String(currentUser.id);
+      const existing = chanMap.get(selfKey) || {};
+      chanMap.set(selfKey, normalizeVoiceMember({ ...existing, ...currentUser }, selfKey));
+    }
     (voiceMembers || []).forEach((vm) => {
       if (!vm) return;
       const vmKey = String(vm.id || vm.userId || vm.peerId || '');
@@ -423,6 +428,11 @@ export const mergeChannelCallsWithPresences = ({
     const members = Array.from(memberMap.values());
     if (members.length === 0) return;
     const prevCall = channelCalls?.[chanId] || {};
+    const initiatorStillPresent = prevCall.initiator && members.some(
+      (m) => String(m.id || m.user_id || m.userId) === String(prevCall.initiator.id || prevCall.initiator.user_id || prevCall.initiator.userId)
+    );
+    const initiator = initiatorStillPresent ? prevCall.initiator : (members[0] || null);
+
     merged[chanId] = {
       ...prevCall,
       channelId: chanId,
@@ -430,7 +440,7 @@ export const mergeChannelCallsWithPresences = ({
       stage: 'active',
       count: members.length,
       members,
-      initiator: prevCall.initiator || members[0] || null,
+      initiator,
     };
   });
 

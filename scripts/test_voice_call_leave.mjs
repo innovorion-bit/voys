@@ -217,6 +217,104 @@ test('applyIncomingCallStatus removes only leftUserId when self remains connecte
   );
 });
 
+test('applyIncomingCallStatus protects connected self even if prevChannelCalls only knew leaving user', () => {
+  // Scenario: Admin (userA) was the only member in prevChannelCalls, userB joined, admin leaves sending ended
+  const next = applyIncomingCallStatus(
+    {
+      [channelId]: {
+        channelId,
+        active: true,
+        initiator: userA,
+        members: [userA], // userB had not been synced into prevChannelCalls yet
+        count: 1,
+      },
+    },
+    {
+      channelId,
+      active: false,
+      stage: 'ended',
+      count: 0,
+      members: [],
+      leftUserId: userA.id,
+    },
+    {
+      currentUserId: userB.id,
+      activeCallChannelId: channelId,
+      isConnected: true,
+      now: 9500,
+    }
+  );
+
+  assert.equal(next[channelId]?.active, true);
+  assert.equal(next[channelId]?.stage, 'active');
+  assert.equal(next[channelId]?.count, 1);
+  assert.equal(next[channelId]?.initiator?.id, userB.id);
+  assert.deepEqual(
+    next[channelId]?.members.map((m) => m.id),
+    [userB.id]
+  );
+});
+
+test('buildLeaveCallTransition automatically transfers initiator when group admin leaves', () => {
+  const result = buildLeaveCallTransition({
+    channelCalls: {
+      [channelId]: {
+        channelId,
+        active: true,
+        initiator: userA,
+        members: [userA, userB, userC],
+        receivedAt: 1000,
+      },
+    },
+    channelId,
+    leavingUserId: userA.id,
+    presences: {
+      [userB.id]: { userId: userB.id, name: userB.name, status: 'online', isOnline: true, voiceChannelId: channelId },
+      [userC.id]: { userId: userC.id, name: userC.name, status: 'online', isOnline: true, voiceChannelId: channelId },
+    },
+    voiceMembers: [
+      { id: userA.id, name: userA.name, peerId: 'peer-a' },
+      { id: userB.id, name: userB.name, peerId: 'peer-b' },
+      { id: userC.id, name: userC.name, peerId: 'peer-c' },
+    ],
+    remotePeers: [{ peerId: 'peer-b' }, { peerId: 'peer-c' }],
+    peerMetadata: {
+      'peer-b': { userId: userB.id },
+      'peer-c': { userId: userC.id },
+    },
+    myPeerId: 'peer-a',
+    activeCallChannelId: channelId,
+    knownProfiles: [userA, userB, userC],
+    now: 8000,
+  });
+
+  assert.equal(result.remainingMembers.length, 2);
+  assert.equal(result.callUpdatePayload.active, true);
+  assert.equal(result.callUpdatePayload.stage, 'active');
+  assert.equal(result.callUpdatePayload.count, 2);
+  assert.equal(result.callUpdatePayload.leftUserId, userA.id);
+  // Initiator must be transferred to the next active member (userB) instead of leaving userA
+  assert.notEqual(result.callUpdatePayload.initiator.id, userA.id);
+  assert.equal(result.callUpdatePayload.initiator.id, userB.id);
+});
+
+test('mergeChannelCallsWithPresences always includes connected user in activeCallChannelId', () => {
+  const merged = mergeChannelCallsWithPresences({
+    channelCalls: {},
+    presences: {},
+    knownProfiles: [userA, userB],
+    activeCallChannelId: channelId,
+    isConnected: true,
+    voiceMembers: [], // Local peer is alone in the room
+    currentUser: userB,
+  });
+
+  assert.equal(merged[channelId]?.active, true);
+  assert.equal(merged[channelId]?.count, 1);
+  assert.equal(merged[channelId]?.members[0].id, userB.id);
+  assert.equal(merged[channelId]?.initiator.id, userB.id);
+});
+
 test('Legacy client heartbeat without voiceChannelId property does not get pruned after 1500ms', () => {
   const merged = mergeChannelCallsWithPresences({
     channelCalls: {

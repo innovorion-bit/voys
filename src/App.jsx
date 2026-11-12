@@ -682,6 +682,11 @@ function StanduppApp() {
     const handleCallStatus = (data) => {
       if (!data?.channelId) return;
       const snap = voiceCallSnapshotRef.current;
+      const chanId = String(data.channelId);
+      const isSelfConnectedInChannel = Boolean(
+        snap.isConnected && snap.activeCallChannelId && String(snap.activeCallChannelId) === chanId
+      );
+
       setChannelCalls((prev) =>
         applyIncomingCallStatus(prev, data, {
           currentUserId: snap.currentUserId,
@@ -689,6 +694,26 @@ function StanduppApp() {
           isConnected: snap.isConnected,
         })
       );
+
+      // Self-healing: if an incoming broadcast claims the call has ended or left member was initiator,
+      // but self is still actively connected in this room, re-broadcast active status so other peers
+      // never lose the session or get kicked out.
+      if (isSelfConnectedInChannel && (!data.active || data.stage === 'ended' || data.count === 0)) {
+        setTimeout(() => {
+          const latestSnap = voiceCallSnapshotRef.current;
+          if (latestSnap.isConnected && String(latestSnap.activeCallChannelId) === chanId) {
+            const selfCall = latestSnap.channelCalls?.[chanId] || latestSnap.effectiveChannelCalls?.[chanId];
+            if (selfCall && selfCall.active) {
+              chatService.sendCallUpdate({
+                ...selfCall,
+                channelId: chanId,
+                active: true,
+                stage: 'active',
+              });
+            }
+          }
+        }, 120);
+      }
     };
 
     chatService.on('call_status', handleCallStatus);

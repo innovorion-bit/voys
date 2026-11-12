@@ -900,6 +900,12 @@ export class MeshVoiceService {
                   // Deterministic caller priority: higher peerId initiates the call
                   if (this.myPeerId > remotePeerId) {
                     this.callPeer(remotePeerId);
+                  } else {
+                    setTimeout(() => {
+                      if (this.peer && !this.peer.destroyed && !this.activeCalls.has(remotePeerId)) {
+                        this.callPeer(remotePeerId);
+                      }
+                    }, 1200);
                   }
                 }
               }
@@ -1395,6 +1401,39 @@ export class MeshVoiceService {
       peerLatencies: Object.fromEntries(this.peerLatencies),
       myPing: this.myPing,
     });
+
+    // Mesh self-healing: when any peer (such as the call initiator / group admin) departs,
+    // immediately check remaining presence peers in Supabase to bridge any missing connections
+    this.healMeshConnections();
+  }
+
+  // Cross-mesh self-healing to bridge remaining peers after a peer leaves
+  healMeshConnections() {
+    if (!this.peer || this.peer.destroyed || !this.supabaseVoiceChannel) return;
+    try {
+      const state = this.supabaseVoiceChannel.presenceState?.() || {};
+      Object.keys(state).forEach((peerKey) => {
+        if (peerKey === this.myPeerId) return;
+        const remoteInfo = state[peerKey]?.[0];
+        const remotePeerId = remoteInfo?.peerId || peerKey;
+        if (remotePeerId && remotePeerId !== this.myPeerId && !this.activeCalls.has(remotePeerId)) {
+          if (remoteInfo) {
+            this.setPeerMetadata(remotePeerId, remoteInfo);
+          }
+          if (this.myPeerId > remotePeerId) {
+            this.callPeer(remotePeerId);
+          } else {
+            setTimeout(() => {
+              if (this.peer && !this.peer.destroyed && !this.activeCalls.has(remotePeerId)) {
+                this.callPeer(remotePeerId);
+              }
+            }, 600);
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('Mesh heal error:', err);
+    }
   }
 
   // Set active voice room for room isolation

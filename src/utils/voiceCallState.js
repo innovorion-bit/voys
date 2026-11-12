@@ -17,7 +17,9 @@ const isPresenceOffline = (entry) => {
 const hasPresenceExplicitlyLeftChannel = (entry, channelId, callReceivedAt = 0) => {
   if (!entry || entry.voiceChannelId === undefined) return false;
   const presenceChan = entry.voiceChannelId ? String(entry.voiceChannelId) : null;
-  if (presenceChan === String(channelId)) return false;
+  // If voiceChannelId is null or not set, presence might simply lag or be a status heartbeat;
+  // user has explicitly left ONLY if presenceChan is set to a different voice channel.
+  if (!presenceChan || presenceChan === String(channelId)) return false;
   return (entry.receivedAt || 0) >= (callReceivedAt || 0) + PRESENCE_DEPARTURE_GRACE_MS;
 };
 
@@ -270,11 +272,18 @@ export function buildLeaveCallTransition({
     };
   }
 
+  const leavingIdStr = leavingUserId ? String(leavingUserId) : '';
+  let nextInitiator = currentCall?.initiator || null;
+  if (!nextInitiator || (leavingIdStr && resolveEntityId(nextInitiator) === leavingIdStr)) {
+    nextInitiator = remainingMembers.find((m) => resolveEntityId(m) !== leavingIdStr) || remainingMembers[0] || null;
+  }
+
   const updatedCall = {
     ...currentCall,
     channelId: targetChan,
     active: true,
     stage: 'active',
+    initiator: nextInitiator,
     count: remainingMembers.length,
     members: remainingMembers,
     receivedAt: now,
@@ -344,21 +353,65 @@ export function applyIncomingCallStatus(
 ) {
   if (!data?.channelId) return prevChannelCalls;
   const chanId = String(data.channelId);
+  const leftId = data.leftUserId ? String(data.leftUserId) : '';
+  const selfIdStr = currentUserId ? String(currentUserId) : '';
+  const isSelfStillConnectedInChannel = Boolean(
+    isConnected &&
+      activeCallChannelId &&
+      String(activeCallChannelId) === chanId &&
+      selfIdStr &&
+      selfIdStr !== leftId
+  );
 
+  // 1. If self is actively connected to this channel, NEVER destroy or end the session,
+  // even if the remote signal claims 'ended' or count 0. Prune only the leaving user.
+  if (isSelfStillConnectedInChannel) {
+    const existing = prevChannelCalls?.[chanId] || {};
+    const existingMembers = Array.isArray(existing.members) && existing.members.length > 0
+      ? existing.members
+      : (data?.members && data.members.length > 0 ? data.members : []);
+
+    const remaining = leftId
+      ? existingMembers.filter((m) => resolveEntityId(m) !== leftId)
+      : existingMembers;
+
+    const hasSelf = remaining.some((m) => resolveEntityId(m) === selfIdStr);
+    const finalMembers = hasSelf
+      ? remaining
+      : [...remaining, { id: selfIdStr, user_id: selfIdStr }];
+
+    let initiator = data?.initiator || existing?.initiator;
+    if (!initiator || (leftId && resolveEntityId(initiator) === leftId)) {
+      initiator = finalMembers.find((m) => resolveEntityId(m) !== leftId) || finalMembers[0] || null;
+    }
+
+    return {
+      ...prevChannelCalls,
+      [chanId]: {
+        ...existing,
+        channelId: chanId,
+        active: true,
+        stage: 'active',
+        initiator,
+        targetUserId: data?.targetUserId ?? existing?.targetUserId ?? null,
+        targetUser: data?.targetUser ?? existing?.targetUser ?? null,
+        count: finalMembers.length,
+        members: finalMembers,
+        receivedAt: now,
+      },
+    };
+  }
+
+  // 2. Incoming signal is an explicit end or empty count
   if (!data.active || (data.count === 0 && (!data.members || data.members.length === 0))) {
     const existing = prevChannelCalls?.[chanId];
-    const leftId = data.leftUserId ? String(data.leftUserId) : '';
-    const isSelfStillConnectedInChannel = Boolean(
-      isConnected &&
-        activeCallChannelId &&
-        String(activeCallChannelId) === chanId &&
-        currentUserId &&
-        String(currentUserId) !== leftId
-    );
-
     if (leftId && existing?.members?.length) {
       const remaining = existing.members.filter((m) => resolveEntityId(m) !== leftId);
-      if (remaining.length > 0 && isSelfStillConnectedInChannel) {
+      if (remaining.length > 0) {
+        let initiator = existing.initiator;
+        if (!initiator || resolveEntityId(initiator) === leftId) {
+          initiator = remaining[0] || null;
+        }
         return {
           ...prevChannelCalls,
           [chanId]: {
@@ -366,6 +419,7 @@ export function applyIncomingCallStatus(
             channelId: chanId,
             active: true,
             stage: 'active',
+            initiator,
             count: remaining.length,
             members: remaining,
             receivedAt: now,
@@ -379,17 +433,28 @@ export function applyIncomingCallStatus(
     return next;
   }
 
+  // 3. Normal active call update
+  const incomingMembers = Array.isArray(data.members) ? data.members : (data.initiator ? [data.initiator] : []);
+  const filteredIncoming = leftId
+    ? incomingMembers.filter((m) => resolveEntityId(m) !== leftId)
+    : incomingMembers;
+
+  let finalInitiator = data.initiator;
+  if (leftId && finalInitiator && resolveEntityId(finalInitiator) === leftId) {
+    finalInitiator = filteredIncoming[0] || null;
+  }
+
   return {
     ...(prevChannelCalls || {}),
     [chanId]: {
       active: true,
       stage: 'active',
       channelId: chanId,
-      initiator: data.initiator,
+      initiator: finalInitiator,
       targetUserId: data.targetUserId,
       targetUser: data.targetUser,
-      count: data.count || data.members?.length || 1,
-      members: data.members || (data.initiator ? [data.initiator] : []),
+      count: filteredIncoming.length || data.count || 1,
+      members: filteredIncoming,
       receivedAt: now,
     },
   };
