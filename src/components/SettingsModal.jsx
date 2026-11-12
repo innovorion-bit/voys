@@ -34,7 +34,8 @@ import {
   Keyboard,
   Radio,
   RotateCcw,
-  VolumeX
+  VolumeX,
+  Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
@@ -1244,46 +1245,69 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
               </div>
 
               {/* Section: PENCERE ŞEFFAFLIĞI */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
+              <div className="space-y-3 pt-4 border-t border-white/10">
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider block opacity-90">
                     PENCERE ŞEFFAFLIĞI
                   </label>
                   <p className="text-xs opacity-60 mt-0.5">
-                    Masaüstü penceresinin arka plan saydamlığını ve cam bulanıklık (blur) yoğunluğunu ayarlayın.
+                    Masaüstü penceresinin arka plan saydamlığını ve cam bulanıklık (blur) efektini açın veya kapatın.
                   </p>
                 </div>
 
-                {/* İnce Ayar Kaydırıcısı (Slider) */}
-                <div className={`p-4 rounded-xl space-y-3 border ${
+                {/* Aç/Kapat Kartı (%85 otomatik) */}
+                <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
                   isLight ? 'bg-[#f8f9fa] border-black/10' : 'bg-[#111214] border-white/10'
                 }`}>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold flex items-center gap-2 opacity-80">
-                      <Sliders size={14} className="text-indigo-500" />
-                      Hassas Opaklık Kaydırıcısı
-                    </span>
-                    <span className="font-mono text-indigo-500 font-bold">
-                      %{chatSettings?.windowOpacity ?? 100}
-                    </span>
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                        (chatSettings?.windowOpacity ?? 100) < 100
+                          ? 'bg-[#8B51FF]/15 text-[#bb94ff] border border-[#8B51FF]/30'
+                          : isLight
+                            ? 'bg-black/5 text-gray-500 border border-black/5'
+                            : 'bg-white/5 text-gray-500 border border-white/5'
+                      }`}
+                    >
+                      <Layers size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                          Pencere Şeffaflığı
+                        </span>
+                        {(chatSettings?.windowOpacity ?? 100) < 100 && (
+                          <span className="text-[10px] font-mono text-[#bb94ff] bg-[#8B51FF]/15 border border-[#8B51FF]/30 px-1.5 py-0.5 rounded font-medium">
+                            %85
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                        {(chatSettings?.windowOpacity ?? 100) < 100
+                          ? 'Saydam arka plan ve cam efekti aktif (%85)'
+                          : 'Pencere tam opak (şeffaflık kapalı)'}
+                      </p>
+                    </div>
                   </div>
 
-                  <input
-                    type="range"
-                    min="25"
-                    max="100"
-                    step="5"
-                    value={chatSettings?.windowOpacity ?? 100}
-                    onChange={(e) => updateChatSetting('windowOpacity', Number(e.target.value))}
-                    className="w-full accent-indigo-500 h-1.5 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer"
-                  />
-
-                  <div className="flex justify-between text-[10px] opacity-50 font-mono">
-                    <span>%25 (Ultra Cam)</span>
-                    <span>%50 (Dengeli)</span>
-                    <span>%75 (Hafif)</span>
-                    <span>%100 (Katı Opak)</span>
-                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={(chatSettings?.windowOpacity ?? 100) < 100}
+                    onClick={() => {
+                      const isCurrentlyTransparent = (chatSettings?.windowOpacity ?? 100) < 100;
+                      updateChatSetting('windowOpacity', isCurrentlyTransparent ? 100 : 85);
+                    }}
+                    className={`w-11 h-6 rounded-full transition-colors p-0.5 flex items-center cursor-pointer flex-shrink-0 ${
+                      (chatSettings?.windowOpacity ?? 100) < 100 ? 'bg-[#8B51FF]' : isLight ? 'bg-black/20' : 'bg-white/15'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                        (chatSettings?.windowOpacity ?? 100) < 100 ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
