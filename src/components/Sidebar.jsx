@@ -1599,6 +1599,18 @@ export const Sidebar = ({
           >
             Kişiler
           </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterTab('channels')}
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
+              filterTab === 'channels'
+                ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
+                : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+            }`}
+          >
+            Gruplar
+          </button>
         </div>
       </div>
 
@@ -1609,13 +1621,13 @@ export const Sidebar = ({
             <div className="w-12 h-12 rounded-full bg-[#141418] flex items-center justify-center text-gray-500">
               <Search size={22} />
             </div>
-            <p className="text-gray-300 font-medium">Sohbet bulunamadı</p>
+            <p className="text-gray-300 font-medium">{filterTab === 'channels' ? 'Grup sohbeti bulunamadı' : 'Sohbet bulunamadı'}</p>
             <button
               type="button"
-              onClick={openAddFriendView}
+              onClick={filterTab === 'channels' ? () => setSidebarView('createGroup') : openAddFriendView}
               className="px-3.5 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-bold rounded-lg text-xs transition shadow-md"
             >
-              + Yeni Sohbet Başlat
+              {filterTab === 'channels' ? '+ Yeni Grup Başlat' : '+ Yeni Sohbet Başlat'}
             </button>
           </div>
         ) : (
