@@ -1612,10 +1612,7 @@ function StanduppApp() {
       if (!pathParts[2] || pathParts[2] === 'home') {
         return 'Ana Sayfa';
       }
-      if (matchedChannel?.name) {
-        return matchedChannel.name;
-      }
-      return pathParts[2].replace(/^text-/, '');
+      return 'Grup Sohbeti';
     }
     return 'Ana Sayfa';
   }, [isSettingsOpen, isDm, pathParts, matchedChannel]);
