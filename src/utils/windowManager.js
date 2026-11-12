@@ -2,14 +2,14 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 
 export const LOGIN_SIZE = { width: 380, height: 420, minWidth: 360, minHeight: 400 };
 export const REGISTER_SIZE = { width: 380, height: 600, minWidth: 360, minHeight: 500 };
-export const MAIN_SIZE = { width: 1100, height: 650, minWidth: 720, minHeight: 500 };
+export const MAIN_SIZE = { width: 950, height: 580, minWidth: 720, minHeight: 500 };
 
 export function isTauriEnvironment() {
   return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__);
 }
 
 /**
- * Resizes the Tauri window to the main chat interface dimensions (1280x720) and centers it.
+ * Resizes the Tauri window to the main chat interface dimensions (950x580) and centers it.
  */
 export async function resizeToMainWindow() {
   if (!isTauriEnvironment()) return;
