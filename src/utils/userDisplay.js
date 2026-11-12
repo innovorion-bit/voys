@@ -151,6 +151,135 @@ export const cacheUserProfiles = (profiles = []) => {
 };
 
 /**
+ * Resiliently resolves a user's presence from the presences map.
+ * Checks candidate IDs (user_id, id, userId, profile.id) both exact and case-insensitively,
+ * and falls back to matching by username if necessary.
+ */
+export const resolveMemberPresence = (presences = {}, member = {}) => {
+  if (!presences || typeof presences !== 'object' || !member) return null;
+
+  const candidateIds = [
+    member.user_id,
+    member.id,
+    member.userId,
+    member.profile?.id,
+    member.profiles?.id,
+    member.profile?.user_id,
+    member.profiles?.user_id,
+  ]
+    .filter(Boolean)
+    .map(String);
+
+  // 1. Direct key match
+  for (const cid of candidateIds) {
+    if (presences[cid]) return presences[cid];
+    const lower = cid.toLowerCase();
+    if (presences[lower]) return presences[lower];
+  }
+
+  // 2. Scan presence values for matching ID (case-insensitive)
+  const lowerCandidates = new Set(candidateIds.map((c) => c.toLowerCase()));
+  const presenceValues = Object.values(presences);
+  for (const p of presenceValues) {
+    if (!p) continue;
+    const pId = p.userId || p.id;
+    if (pId && lowerCandidates.has(String(pId).toLowerCase())) {
+      return p;
+    }
+  }
+
+  // 3. Fallback match by username
+  const rawUsername = [
+    member.username,
+    member.profile?.username,
+    member.profiles?.username,
+  ].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u));
+
+  if (rawUsername) {
+    const cleanUser = rawUsername.trim().toLowerCase();
+    for (const p of presenceValues) {
+      if (!p) continue;
+      const pUser = p.username || p.name;
+      if (typeof pUser === 'string' && pUser.trim().toLowerCase() === cleanUser) {
+        return p;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Computes whether a member is online and resolves their status, game, and substatus.
+ * Combines authoritative real-time presence with active voice session presence and database profile fallback.
+ */
+export const computeMemberOnlineStatus = ({
+  member,
+  presences = {},
+  isSelf = false,
+  currentUser = null,
+  activeVoiceMembers = [],
+}) => {
+  if (isSelf) {
+    const status = currentUser?.status || 'online';
+    const isOnline = status !== 'offline' && status !== 'invisible';
+    return {
+      status,
+      isOnline,
+      game: isOnline ? (currentUser?.game || null) : null,
+      substatus: isOnline ? (currentUser?.substatus || 'Çevrimiçi') : '',
+    };
+  }
+
+  const p = resolveMemberPresence(presences, member);
+  const profile = member.profile || member.profiles || {};
+  const memberId = String(member.user_id || member.id || member.userId || '');
+
+  // 1. Check if member is actively connected in WebRTC voice session
+  const isInVoice = Array.isArray(activeVoiceMembers) && activeVoiceMembers.some((vm) => {
+    if (!vm) return false;
+    const vmId = String(vm.id || vm.user_id || vm.userId || '');
+    return Boolean(vmId && memberId && vmId.toLowerCase() === memberId.toLowerCase());
+  });
+
+  if (isInVoice) {
+    return {
+      status: p?.status && p.status !== 'offline' && p.status !== 'invisible' ? p.status : 'online',
+      isOnline: true,
+      game: p?.game !== undefined ? p.game : (profile.game || member.game || null),
+      substatus: p?.substatus || profile.substatus || member.substatus || 'Seste',
+    };
+  }
+
+  // 2. Real-time presence truth
+  if (p) {
+    const isOnline = p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false;
+    return {
+      status: isOnline ? (p.status || 'online') : 'offline',
+      isOnline,
+      game: isOnline ? (p.game !== undefined ? p.game : (profile.game || member.game || null)) : null,
+      substatus: isOnline ? (p.substatus !== undefined ? p.substatus : (profile.substatus || member.substatus || '')) : '',
+    };
+  }
+
+  // 3. Fallback to database profile status if presence has not yet arrived
+  const fallbackStatus = profile.status || member.status;
+  const isFallbackOnline = Boolean(
+    fallbackStatus &&
+    fallbackStatus !== 'offline' &&
+    fallbackStatus !== 'invisible' &&
+    member.isOnline !== false
+  );
+
+  return {
+    status: isFallbackOnline ? (fallbackStatus || 'online') : 'offline',
+    isOnline: isFallbackOnline,
+    game: isFallbackOnline ? (profile.game || member.game || null) : null,
+    substatus: isFallbackOnline ? (profile.substatus || member.substatus || '') : '',
+  };
+};
+
+/**
  * Splits a group channel's members between active voice-chat participants and
  * remaining group members so the same user is not shown in both sidebar sections.
  */

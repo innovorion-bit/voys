@@ -199,32 +199,39 @@ class RealtimeChatService {
               }
             }
             if (Array.isArray(leftPresences)) {
-              const state = this.supabasePresenceChannel?.presenceState?.() || {};
-              const activeUserIds = new Set();
-              Object.values(state).forEach((items) => {
-                if (Array.isArray(items)) {
-                  items.forEach((item) => {
-                    const id = item?.userId || item?.id;
-                    if (id) activeUserIds.add(String(id));
-                  });
-                }
-              });
-
-              leftPresences.forEach((p) => {
-                const uid = p?.userId || p?.id;
-                if (uid && activeUserIds.has(String(uid))) return;
-                this.emitLocal('presence', {
-                  ...p,
-                  status: 'offline',
-                  isOnline: false,
-                  voiceChannelId: null,
+              // Debounce departure check so temporary reconnects or re-tracks don't falsely flip members offline
+              setTimeout(() => {
+                const state = this.supabasePresenceChannel?.presenceState?.() || {};
+                const activeUserIds = new Set();
+                Object.values(state).forEach((items) => {
+                  if (Array.isArray(items)) {
+                    items.forEach((item) => {
+                      const id = item?.userId || item?.id;
+                      if (id) activeUserIds.add(String(id).toLowerCase());
+                    });
+                  }
                 });
-              });
+
+                leftPresences.forEach((p) => {
+                  const uid = p?.userId || p?.id;
+                  if (!uid) return;
+                  if (activeUserIds.has(String(uid).toLowerCase())) return;
+                  this.emitLocal('presence', {
+                    ...p,
+                    status: 'offline',
+                    isOnline: false,
+                    voiceChannelId: null,
+                  });
+                });
+              }, 1800);
             }
           })
           .subscribe(async (status) => {
-            if (status === 'SUBSCRIBED' && this.currentPresencePayload && this.currentPresencePayload.isOnline) {
-              await this.supabasePresenceChannel.track(this.currentPresencePayload).catch(() => {});
+            if (status === 'SUBSCRIBED') {
+              if (this.currentPresencePayload && this.currentPresencePayload.isOnline) {
+                await this.supabasePresenceChannel.track(this.currentPresencePayload).catch(() => {});
+              }
+              this.requestPresences();
             }
           });
       } catch (err) {

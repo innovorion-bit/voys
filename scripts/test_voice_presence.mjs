@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {
   mergeChannelCallsWithPresences,
   partitionSidebarGroupMembers,
+  computeMemberOnlineStatus,
+  resolveMemberPresence,
 } from '../src/utils/userDisplay.js';
 
 const test = (name, fn) => {
@@ -187,6 +189,68 @@ test('Connected WebRTC voiceMembers merge preserves speaking state alongside pre
   const byId = Object.fromEntries(effectiveCalls[channelId].members.map((m) => [m.id, m]));
   assert.equal(byId['u-berat'].isSpeaking, true);
   assert.equal(byId['u-lyring'].peerId, 'peer-lyring');
+});
+
+test('Group with 5 members accurately reflects 3 online even with case mismatch, voice call, or profile fallback', () => {
+  const members = [
+    { id: 'cm-1', user_id: 'USER-1-SELF', role: 'admin' },
+    { id: 'cm-2', user_id: 'user-2-uuid', name: 'Berat', role: 'member' },
+    { id: 'cm-3', user_id: 'user-3-uuid', name: 'Halil', role: 'member', status: 'online' },
+    { id: 'cm-4', user_id: 'user-4-offline', name: 'Hüseyin', role: 'member', status: 'offline' },
+    { id: 'cm-5', user_id: 'user-5-offline', name: 'Mert', role: 'member', status: 'offline' },
+  ];
+
+  const selfUser = { id: 'user-1-self', status: 'online', name: 'Lyring' };
+
+  // presences only has user 2 (with uppercase key in presences!)
+  const presences = {
+    'USER-2-UUID': { userId: 'user-2-uuid', name: 'Berat', status: 'online', isOnline: true },
+  };
+
+  // user 3 is in active voice members
+  const activeVoiceMembers = [{ id: 'user-3-uuid', name: 'Halil', isSpeaking: false }];
+
+  const computed = members.map((m) => {
+    const isSelf = String(m.user_id).toLowerCase() === String(selfUser.id).toLowerCase();
+    const onlineInfo = computeMemberOnlineStatus({
+      member: m,
+      presences,
+      isSelf,
+      currentUser: selfUser,
+      activeVoiceMembers,
+    });
+    return { ...m, ...onlineInfo };
+  });
+
+  const onlineList = computed.filter((m) => m.isOnline);
+  assert.equal(computed.length, 5);
+  // Must be 3 online (Self, Berat via uppercase presence match, Halil via active voice)
+  assert.equal(onlineList.length, 3);
+  assert.deepEqual(
+    onlineList.map((m) => m.name || m.user_id).sort(),
+    ['Berat', 'Halil', 'USER-1-SELF']
+  );
+});
+
+test('resolveMemberPresence matches case-insensitively and through candidate IDs', () => {
+  const presences = {
+    '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d': {
+      userId: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      name: 'RAİN',
+      status: 'online',
+    },
+  };
+
+  const foundUpper = resolveMemberPresence(presences, {
+    user_id: '9B1DEB4D-3B7D-4BAD-9BDD-2B0D7B3DCB6D',
+  });
+  assert.equal(foundUpper?.name, 'RAİN');
+
+  const foundProfile = resolveMemberPresence(presences, {
+    id: 'cm-12345',
+    profile: { id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d' },
+  });
+  assert.equal(foundProfile?.name, 'RAİN');
 });
 
 console.log('All voice presence tests passed!');

@@ -41,6 +41,8 @@ import {
   getCachedUserProfile,
   isUuidLike,
   mergeChannelCallsWithPresences,
+  computeMemberOnlineStatus,
+  resolveMemberPresence,
 } from './utils/userDisplay';
 import { MAX_VOLUME_PERCENT, clampVolumePercent } from './utils/remoteAudioGain';
 import {
@@ -212,15 +214,22 @@ function StanduppApp() {
       const key = data.userId || data.id;
       if (!key) return;
       const now = Date.now();
-      setPresences((prev) => ({
-        ...prev,
-        [key]: {
-          ...prev[key],
+      const keyStr = String(key);
+      const keyLower = keyStr.toLowerCase();
+      setPresences((prev) => {
+        const entry = {
+          ...prev[keyStr],
+          ...prev[keyLower],
           ...data,
           timestamp: data.timestamp || now,
           receivedAt: now,
-        },
-      }));
+        };
+        const next = { ...prev, [keyStr]: entry };
+        if (keyLower !== keyStr) {
+          next[keyLower] = entry;
+        }
+        return next;
+      });
     };
 
     const handleAllPresences = (list) => {
@@ -231,12 +240,19 @@ function StanduppApp() {
         list.forEach((item) => {
           const key = item.userId || item.id;
           if (key) {
-            next[key] = {
-              ...next[key],
+            const keyStr = String(key);
+            const keyLower = keyStr.toLowerCase();
+            const entry = {
+              ...next[keyStr],
+              ...next[keyLower],
               ...item,
               timestamp: item.timestamp || now,
               receivedAt: now,
             };
+            next[keyStr] = entry;
+            if (keyLower !== keyStr) {
+              next[keyLower] = entry;
+            }
           }
         });
         return next;
@@ -260,8 +276,20 @@ function StanduppApp() {
     chatService.updatePresence(activeUserProfile);
     const interval = setInterval(() => {
       chatService.updatePresence(activeUserProfile);
-    }, 25000);
-    return () => clearInterval(interval);
+    }, 15000);
+
+    const handleFocus = () => {
+      chatService.updatePresence(activeUserProfile);
+      chatService.requestPresences?.();
+    };
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleFocus);
+    };
   }, [activeUserProfile]);
 
   // Friendships state: accepted friends, incoming requests, outgoing requests
@@ -455,17 +483,22 @@ function StanduppApp() {
   const liveChannelMembers = useMemo(() => {
     return (channelMembers || []).map((m) => {
       const memberId = m.user_id || m.id;
-      const isSelf = memberId === activeUserProfile?.id;
-      const p = presences[memberId];
-      const profile = m.profiles || {};
-      const status = isSelf
-        ? (activeUserProfile?.status || 'online')
-        : (p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false ? (p?.status || 'online') : 'offline');
-      const isOnline = isSelf
-        ? (status !== 'offline' && status !== 'invisible')
-        : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
+      const isSelf = Boolean(
+        activeUserProfile?.id &&
+        (String(memberId) === String(activeUserProfile.id) || (m.user_id && String(m.user_id) === String(activeUserProfile.id)))
+      );
+      const { status, isOnline, game, substatus } = computeMemberOnlineStatus({
+        member: m,
+        presences,
+        isSelf,
+        currentUser: activeUserProfile,
+        activeVoiceMembers: voiceMembers,
+      });
+      const p = resolveMemberPresence(presences, m);
+      const profile = m.profiles || m.profile || {};
 
       return {
+        ...m,
         id: memberId,
         user_id: memberId,
         name: isSelf
@@ -477,14 +510,16 @@ function StanduppApp() {
         avatar: isSelf
           ? (activeUserProfile?.avatar || activeUserProfile?.avatar_url)
           : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
-        game: isOnline ? (isSelf ? activeUserProfile?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
-        substatus: isOnline ? (isSelf ? activeUserProfile?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
+        game,
+        substatus,
         status,
         isOnline,
         role: m.role || 'member',
+        profile,
+        profiles: profile,
       };
     });
-  }, [channelMembers, presences, activeUserProfile]);
+  }, [channelMembers, presences, activeUserProfile, voiceMembers]);
 
   // Fetch recipient profile for DM if not in friends list yet
   const [dmUserProfile, setDmUserProfile] = useState(null);

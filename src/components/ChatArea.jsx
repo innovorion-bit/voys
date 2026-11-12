@@ -117,7 +117,15 @@ import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
 import { ScreenShareStage } from './ScreenShareStage';
 import { dbService, getDmRoomId } from '../lib/supabase';
-import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike, partitionSidebarGroupMembers } from '../utils/userDisplay';
+import {
+  pickDisplayName,
+  isRealDisplayName,
+  getCachedUserProfile,
+  isUuidLike,
+  partitionSidebarGroupMembers,
+  computeMemberOnlineStatus,
+  resolveMemberPresence,
+} from '../utils/userDisplay';
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 
 // Helper to format file sizes nicely
@@ -638,18 +646,24 @@ export const ChatArea = ({
   // Compute live channel members merged with real-time presences
   const liveMembers = (channelMembers || []).map((m) => {
     const memberId = m.user_id || m.id;
-    const isSelf = memberId === currentUser?.id;
-    const p = presences?.[memberId];
+    const isSelf = Boolean(
+      currentUser?.id &&
+      (String(memberId) === String(currentUser.id) || (m.user_id && String(m.user_id) === String(currentUser.id)))
+    );
+    const { status, isOnline, game, substatus } = computeMemberOnlineStatus({
+      member: m,
+      presences,
+      isSelf,
+      currentUser,
+      activeVoiceMembers: callMembers,
+    });
+    const p = resolveMemberPresence(presences, m);
     const profile = m.profile || m.profiles || {};
-    const status = isSelf
-      ? (currentUser?.status || 'online')
-      : (p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false ? (p?.status || 'online') : 'offline');
-    const isOnline = isSelf
-      ? (status !== 'offline' && status !== 'invisible')
-      : Boolean(p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false);
 
     return {
+      ...m,
       id: memberId,
+      user_id: m.user_id || memberId,
       name: isSelf
         ? pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)')
         : pickDisplayName([p?.name, p?.display_name, p?.username, profile.display_name, profile.username, m.name], 'Üye'),
@@ -657,8 +671,8 @@ export const ChatArea = ({
         ? (currentUser?.username || '')
         : ([p?.username, profile.username, m.username].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u)) || ''),
       avatar: isSelf ? (currentUser?.avatar || currentUser?.avatar_url) : (p?.avatar || profile.avatar_url || profile.avatar || m.avatar || ''),
-      game: isOnline ? (isSelf ? currentUser?.game : (p?.game !== undefined ? p.game : (profile.game || m.game))) : null,
-      substatus: isOnline ? (isSelf ? currentUser?.substatus : (p?.substatus !== undefined ? p.substatus : (profile.substatus || m.substatus))) : '',
+      game,
+      substatus,
       status,
       isOnline,
       role: m.role || 'member',
