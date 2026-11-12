@@ -14,7 +14,7 @@ export const WindowHeader = ({
   const currentTitle = pageTitle || groupName || 'Voys';
 
   const handleOpenHelp = () => {
-    window.open('https://google.com', '_blank', 'noopener,noreferrer');
+    window.open('https://www.youtube.com/watch?v=ANnoNIMPWnQ', '_blank', 'noopener,noreferrer');
   };
 
   return (
