@@ -817,7 +817,9 @@ export const ChatArea = ({
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest('.emoji-picker-container')) {
-        setActiveReactionPickerMsgId(null);
+        if (!e.target.closest('.emoji-picker-trigger')) {
+          setActiveReactionPickerMsgId(null);
+        }
         if (!e.target.closest('.emoji-button-trigger')) {
           setShowEmojiPicker(false);
         }
@@ -1097,6 +1099,9 @@ export const ChatArea = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    } else if (e.key === 'Escape' && replyingTo) {
+      e.preventDefault();
+      setReplyingTo(null);
     }
   };
 
@@ -1106,14 +1111,14 @@ export const ChatArea = ({
   };
 
   // Handle start replying to a message
-  const handleStartReply = (msg, resolvedAuthorName) => {
+  const handleStartReply = (msg, resolvedAuthorName, isMe = false) => {
     const previewText = msg.lines?.[0] ||
       (msg.attachments?.length > 0 ? `📎 ${msg.attachments[0].name}` : '') ||
       'Mesaj';
     setReplyingTo({
       id: msg.id,
       user: pickDisplayName([resolvedAuthorName, msg.user], 'Kullanıcı'),
-      color: msg.color || '#90ba3c',
+      color: isMe ? '#a36eff' : (msg.color || '#a36eff'),
       text: previewText,
     });
     textInputRef.current?.focus();
@@ -1125,9 +1130,9 @@ export const ChatArea = ({
     const elem = document.getElementById(`msg-${targetId}`);
     if (elem) {
       elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      elem.classList.add('bg-[#181822]', 'ring-1', 'ring-[#8B51FF]');
+      elem.classList.add('bg-[#8B51FF]/15', 'ring-1', 'ring-[#8B51FF]/60');
       setTimeout(() => {
-        elem.classList.remove('bg-[#181822]', 'ring-1', 'ring-[#8B51FF]');
+        elem.classList.remove('bg-[#8B51FF]/15', 'ring-1', 'ring-[#8B51FF]/60');
       }, 1800);
     }
   };
@@ -2075,17 +2080,28 @@ export const ChatArea = ({
                         className="relative group/msg flex flex-col w-full py-1.5 px-2 sm:px-3 hover:bg-white/[0.025] transition-colors rounded-xl"
                       >
                       {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + Reply */}
-                      <div className={`absolute right-2 sm:right-4 -top-3 opacity-0 ${isOptionsMenuOpen ? 'pointer-events-none' : 'group-hover/msg:opacity-100'} transition-all duration-150 z-20 flex items-center bg-[#121216]/95 border border-white/10 rounded-xl shadow-2xl p-1 space-x-1 select-none`}>
+                      <div
+                        className={`voys-msg-action-bar absolute right-2 sm:right-3 ${
+                          isFirstMsg && !showDateDivider ? 'top-0.5' : '-top-3'
+                        } transition-all duration-150 z-20 flex items-center bg-[#141418]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl px-1 py-0.5 gap-0.5 select-none ${
+                          activeReactionPickerMsgId === msg.id
+                            ? 'opacity-100 pointer-events-auto'
+                            : isOptionsMenuOpen
+                              ? 'opacity-0 pointer-events-none'
+                              : 'opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto'
+                        }`}
+                      >
                         {/* Quick Reactions */}
-                        {['👍', '❤️', '🔥', '😂', '🎉'].map((emoji) => {
+                        {['👍', '❤️', '😂'].map((emoji) => {
                           const hasReacted = msg.reactions?.some(r => r.emoji === emoji && r.users?.includes(currentUserId));
                           return (
                             <button
                               key={emoji}
                               type="button"
                               onClick={() => onToggleReaction?.(msg.id, emoji)}
-                              className={`p-1 hover:bg-white/10 rounded-lg text-xs transition active:scale-90 ${hasReacted ? 'bg-indigo-600/30 ring-1 ring-indigo-500/50' : ''
-                                }`}
+                              className={`w-6 h-6 flex items-center justify-center rounded-md text-[13px] leading-none transition duration-100 hover:bg-white/10 hover:scale-110 active:scale-90 cursor-pointer ${
+                                hasReacted ? 'bg-[#8B51FF]/25 ring-1 ring-[#8B51FF]/60' : ''
+                              }`}
                               title={`Tepki: ${emoji}`}
                             >
                               {emoji}
@@ -2097,36 +2113,45 @@ export const ChatArea = ({
                         <button
                           type="button"
                           onClick={() => setActiveReactionPickerMsgId(activeReactionPickerMsgId === msg.id ? null : msg.id)}
-                          className={`p-1 hover:bg-white/10 text-gray-400 hover:text-amber-400 rounded-lg transition flex items-center space-x-1 text-xs ${activeReactionPickerMsgId === msg.id ? 'text-amber-400 bg-white/10' : ''
-                            }`}
+                          className={`emoji-picker-trigger w-6 h-6 flex items-center justify-center rounded-md transition cursor-pointer ${
+                            activeReactionPickerMsgId === msg.id
+                              ? 'text-[#a36eff] bg-[#8B51FF]/20'
+                              : 'text-gray-400 hover:text-white hover:bg-white/10'
+                          }`}
                           title="Tüm Emojilerle Tepki Ekle"
                         >
                           <SmilePlus size={13} />
                         </button>
 
-                        <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
+                        <div className="w-px h-3.5 bg-white/10 mx-0.5" />
 
                         {/* "Yanıtla" Button */}
                         <button
                           type="button"
-                          onClick={() => handleStartReply(msg, messageUser)}
-                          className="px-2 py-1 hover:bg-white/10 text-gray-300 hover:text-indigo-400 rounded-lg transition flex items-center space-x-1 text-xs font-medium"
+                          onClick={() => handleStartReply(msg, messageUser, isMe)}
+                          className="h-6 px-2 hover:bg-[#8B51FF]/20 text-gray-300 hover:text-white rounded-md transition flex items-center gap-1 text-xs font-medium cursor-pointer group/replybtn"
                           title="Mesajı Yanıtla"
                         >
-                          <Reply size={13} className="text-indigo-400" />
+                          <Reply size={13} className="text-[#a36eff] group-hover/replybtn:text-white transition-colors" />
                           <span className="hidden sm:inline text-[11px]">Yanıtla</span>
                         </button>
                       </div>
 
                       {/* Floating Emoji Picker Popover anchored to this message */}
                       {activeReactionPickerMsgId === msg.id && (
-                        <div className="emoji-picker-container absolute z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] animate-in fade-in zoom-in-95 top-7 right-2 sm:right-4">
+                        <div
+                          className={`emoji-picker-container absolute z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#141418] animate-in fade-in zoom-in-95 right-2 sm:right-3 ${
+                            filteredMessages.length > 3 && index >= filteredMessages.length - 3
+                              ? 'bottom-8'
+                              : 'top-7'
+                          }`}
+                        >
                           <div className="bg-white/[0.02] p-2 px-3 border-b border-white/10 flex items-center justify-between text-xs text-gray-300">
                             <span className="font-semibold text-[11px] text-gray-200">Tepki Ekle</span>
                             <button
                               type="button"
                               onClick={() => setActiveReactionPickerMsgId(null)}
-                              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
+                              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition cursor-pointer"
                             >
                               <X size={13} />
                             </button>
@@ -2151,19 +2176,20 @@ export const ChatArea = ({
                       <div className="w-full min-w-0 flex flex-col items-start">
                         {/* Quoted Message (Reply Preview) */}
                         {msg.reply_to && (
-                          <div
+                          <button
+                            type="button"
                             onClick={() => scrollToMessage(msg.reply_to.id)}
-                            className="mb-1 inline-flex items-center gap-2 text-[11px] cursor-pointer py-0.5 px-2 rounded-md border-l-2 border-indigo-500 max-w-full transition group/reply bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-gray-200"
+                            className="voys-reply-quote mb-1.5 inline-flex items-center gap-1.5 text-[11px] text-left cursor-pointer py-1 px-2.5 rounded-r-lg rounded-l-sm border-l-2 border-[#8B51FF] max-w-full transition group/reply bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-gray-200"
                             title="Orijinal mesaja git"
                           >
-                            <CornerDownRight size={11} className="text-indigo-400 flex-shrink-0" />
-                            <span className="font-semibold truncate max-w-[120px]" style={{ color: msg.reply_to.color || '#a36eff' }}>
+                            <CornerDownRight size={11} className="text-[#a36eff] flex-shrink-0" />
+                            <span className="font-semibold truncate max-w-[130px]" style={{ color: msg.reply_to.color || '#a36eff' }}>
                               @{pickDisplayName([msg.reply_to.user], 'Kullanıcı')}
                             </span>
-                            <span className="truncate max-w-[200px] sm:max-w-md italic opacity-80">
+                            <span className="truncate max-w-[200px] sm:max-w-md opacity-85">
                               {msg.reply_to.text}
                             </span>
-                          </div>
+                          </button>
                         )}
 
                         {/* Header: Username + Crown + Timestamp (Saat) */}
@@ -2382,22 +2408,34 @@ export const ChatArea = ({
 
                         {/* Emoji Reactions Pill Badges */}
                         {msg.reactions && msg.reactions.length > 0 && (
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5 select-none justify-start">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 select-none justify-start">
                             {msg.reactions.map((r) => {
                               const hasReacted = r.users?.includes(currentUserId);
+                              const reactorNames = (r.users || [])
+                                .map((uid) => {
+                                  if (String(uid) === String(currentUserId)) return 'Sen';
+                                  const mapped = userProfileMap.get(uid) || userProfileMap.get(String(uid));
+                                  const cached = !mapped ? getCachedUserProfile(uid) : null;
+                                  return pickDisplayName(
+                                    [mapped?.name, cached?.display_name, cached?.name, cached?.username],
+                                    'Kullanıcı'
+                                  );
+                                })
+                                .filter(Boolean);
                               return (
                                 <button
                                   key={r.emoji}
                                   type="button"
                                   onClick={() => onToggleReaction?.(msg.id, r.emoji)}
-                                  className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border transition ${hasReacted
-                                    ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300 shadow-sm'
-                                    : 'bg-white/[0.04] border-white/10 hover:border-white/20 text-gray-300'
-                                    }`}
-                                  title={`${r.users?.join(', ') || 'Kullanıcılar'} (${r.count})`}
+                                  className={`voys-reaction-pill h-[26px] inline-flex items-center gap-1.5 px-2 rounded-lg text-xs font-medium border transition active:scale-95 cursor-pointer ${
+                                    hasReacted
+                                      ? 'voys-reaction-pill-active bg-[#8B51FF]/20 border-[#8B51FF]/50 text-[#d4bcff]'
+                                      : 'bg-white/[0.04] border-white/10 hover:border-white/20 hover:bg-white/[0.07] text-gray-300'
+                                  }`}
+                                  title={`${reactorNames.join(', ') || 'Kullanıcılar'} (${r.count})`}
                                 >
-                                  <span className="text-sm leading-none">{r.emoji}</span>
-                                  <span className="text-[11px] font-semibold">{r.count}</span>
+                                  <span className="text-[13px] leading-none">{r.emoji}</span>
+                                  <span className="text-[11px] font-semibold tabular-nums">{r.count}</span>
                                 </button>
                               );
                             })}
@@ -2406,10 +2444,10 @@ export const ChatArea = ({
                             <button
                               type="button"
                               onClick={() => setActiveReactionPickerMsgId(activeReactionPickerMsgId === msg.id ? null : msg.id)}
-                              className="h-6 w-6 rounded-xl bg-white/[0.04] border border-white/10 hover:border-white/20 text-gray-400 hover:text-white flex items-center justify-center transition"
+                              className="emoji-picker-trigger voys-reaction-pill h-[26px] w-[26px] rounded-lg bg-white/[0.04] border border-white/10 hover:border-white/20 hover:bg-white/[0.07] text-gray-400 hover:text-white flex items-center justify-center transition cursor-pointer"
                               title="Tepki Ekle"
                             >
-                              <Plus size={11} />
+                              <SmilePlus size={12} />
                             </button>
                           </div>
                         )}
@@ -2511,33 +2549,35 @@ export const ChatArea = ({
 
               {/* Replying Preview Banner */}
               {replyingTo && (
-                <div className="px-4 py-2 bg-indigo-950/40 border-t border-white/5 border-l-4 border-l-indigo-500 flex items-center justify-between z-10 flex-shrink-0 animate-in fade-in slide-in-from-bottom-1">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <Reply size={14} className="text-indigo-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-400">Yanıtlanıyor:</span>
-                    <span
-                      className="text-xs font-bold truncate"
-                      style={{ color: replyingTo.color || '#a36eff' }}
+                <div className="px-3 md:px-4 pt-2 bg-[#08080a] voys-chat-input-bar flex-shrink-0 animate-in fade-in slide-in-from-bottom-1">
+                  <div className="voys-reply-banner px-3.5 py-2 bg-[#141418] border border-white/10 border-l-2 border-l-[#8B51FF] rounded-xl flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Reply size={13} className="text-[#a36eff] flex-shrink-0" />
+                      <span className="text-[11px] text-gray-400 flex-shrink-0">Yanıtlanıyor:</span>
+                      <span
+                        className="text-xs font-semibold truncate flex-shrink-0 max-w-[140px]"
+                        style={{ color: replyingTo.color || '#a36eff' }}
+                      >
+                        @{replyingTo.user}
+                      </span>
+                      <span className="text-xs text-gray-400 truncate max-w-xs sm:max-w-md">
+                        {replyingTo.text}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition flex-shrink-0 cursor-pointer"
+                      title="Yanıtı İptal Et (ESC)"
                     >
-                      @{replyingTo.user}
-                    </span>
-                    <span className="text-xs text-gray-400 truncate max-w-xs sm:max-w-md italic">
-                      "{replyingTo.text}"
-                    </span>
+                      <X size={13} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setReplyingTo(null)}
-                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
-                    title="Yanıtı İptal Et"
-                  >
-                    <X size={14} />
-                  </button>
                 </div>
               )}
 
               {/* Bottom Message Input Bar */}
-              <div className="p-3 md:p-4 bg-[#08080a] voys-chat-input-bar flex items-center space-x-2 md:space-x-3 relative z-10 flex-shrink-0">
+              <div className={`${replyingTo ? 'pt-2 px-3 pb-3 md:px-4 md:pb-4' : 'p-3 md:p-4'} bg-[#08080a] voys-chat-input-bar flex items-center space-x-2 md:space-x-3 relative z-10 flex-shrink-0`}>
 
                 {/* File Attachment '+' Button placed directly to the left of the input box */}
                 <button

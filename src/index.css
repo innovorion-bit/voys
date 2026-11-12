@@ -295,19 +295,59 @@ html.theme-light .voys-glass-chat .bg-white\/5 {
 }
 
 /* Message Hover Actions Toolbar */
-html.theme-light .voys-glass-chat .bg-\[\#141418\] {
+html.theme-light .voys-glass-chat .bg-\[\#141418\],
+html.theme-light .voys-glass-chat .voys-msg-action-bar {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
 }
 
-html.theme-light .voys-glass-chat .bg-\[\#141418\] button {
+html.theme-light .voys-glass-chat .bg-\[\#141418\] button,
+html.theme-light .voys-glass-chat .voys-msg-action-bar button {
   color: #4f545c !important;
 }
 
-html.theme-light .voys-glass-chat .bg-\[\#141418\] button:hover {
-  background-color: rgba(0, 0, 0, 0.06) !important;
+html.theme-light .voys-glass-chat .bg-\[\#141418\] button:hover,
+html.theme-light .voys-glass-chat .voys-msg-action-bar button:hover {
+  background-color: rgba(139, 81, 255, 0.1) !important;
   color: #1e1f22 !important;
+}
+
+/* Reply Quote & Banner in Light Mode */
+html.theme-light .voys-glass-chat .voys-reply-quote {
+  background-color: #f3f4f6 !important;
+  border: none !important;
+  border-left: 2px solid #8B51FF !important;
+  color: #4f545c !important;
+}
+
+html.theme-light .voys-glass-chat .voys-reply-quote:hover {
+  background-color: #ebedef !important;
+  color: #1e1f22 !important;
+}
+
+html.theme-light .voys-glass-chat .voys-reply-banner {
+  background-color: #f2f3f5 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-left: 2px solid #8B51FF !important;
+  box-shadow: none !important;
+}
+
+/* Reaction Pills in Light Mode */
+html.theme-light .voys-glass-chat .voys-reaction-pill {
+  background-color: #f2f3f5 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #2e3338 !important;
+}
+
+html.theme-light .voys-glass-chat .voys-reaction-pill:hover {
+  background-color: #e5e7eb !important;
+}
+
+html.theme-light .voys-glass-chat .voys-reaction-pill-active {
+  background-color: rgba(139, 81, 255, 0.14) !important;
+  border-color: rgba(139, 81, 255, 0.45) !important;
+  color: #6d28d9 !important;
 }
 
 /* Chat Input Bar & Wrapper */
