@@ -3232,17 +3232,22 @@ export const ChatArea = ({
                     <Copy size={12} />
                   </button>
                 </div>
-                <p className={`text-[10px] truncate ${
-                  isTargetInVoice
-                    ? 'text-emerald-400/90'
-                    : liveTarget.isOnline
-                      ? 'text-gray-400'
-                      : 'text-gray-500'
-                }`}>
-                  {isTargetInVoice
-                    ? 'Sesli Sohbette'
-                    : (liveTarget.username ? `@${liveTarget.username} • ` : '') + getMemberStatusDisplay(liveTarget)}
-                </p>
+                <div className="flex items-center justify-between gap-1.5 mt-0.5">
+                  <p className="text-[10px] text-gray-400 truncate">
+                    {liveTarget.username ? `@${liveTarget.username}` : ''}
+                  </p>
+                  <span className={`text-[10px] flex-shrink-0 ml-auto ${
+                    isTargetInVoice
+                      ? 'text-emerald-400/90'
+                      : liveTarget.isOnline
+                        ? 'text-gray-400'
+                        : 'text-gray-500'
+                  }`}>
+                    {isTargetInVoice
+                      ? 'Sesli Sohbette'
+                      : getMemberStatusDisplay(liveTarget)}
+                  </span>
+                </div>
               </div>
             </div>
 
