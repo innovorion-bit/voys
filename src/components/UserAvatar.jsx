@@ -88,7 +88,7 @@ export const UserAvatar = ({
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="tracking-wide text-gray-300 drop-shadow-sm">{initials}</span>
+          <span className="tracking-wide text-gray-300">{initials}</span>
         )}
       </div>
     );

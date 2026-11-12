@@ -15,7 +15,7 @@ export const IncomingCallToast = ({
   const callerName = initiator.name || initiator.display_name || initiator.username || 'Kullanıcı';
 
   return (
-    <div className="fixed top-5 right-5 z-[999] max-w-sm w-full animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
+    <div className="fixed top-5 right-5 z-[999] max-w-sm w-full pointer-events-auto">
       <div className="p-4 rounded-3xl bg-[#0c0c10] border-2 border-emerald-500/40 shadow-2xl flex flex-col space-y-3.5">
         <div className="flex items-center space-x-3.5">
           {/* Avatar */}

@@ -802,21 +802,26 @@ html.glass-mode .voys-glass-settings-content {
   border-color: rgba(34, 197, 94, 0.85);
 }
 
-/* Glass panel background */
+/* Glass panel background (opaque surface without GPU backdrop blur) */
 .glass-panel {
-  background: rgba(16, 16, 20, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(16, 16, 20, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Floating Capsule Bar */
 .floating-capsule {
-  background: rgba(18, 18, 22, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(18, 18, 22, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* Disable decorative infinite/entrance animations globally to prevent micro-stutter */
+.animate-pulse,
+.animate-ping,
+.animate-bounce,
+.animate-in,
+.animate-fade-in {
+  animation: none !important;
 }
 
 /* Voice & Audio Slider in Settings */
@@ -861,21 +866,28 @@ input[type="range"].voice-slider::-moz-range-thumb:hover {
 }
 
 /* ============================================================
-   GAME PERFORMANCE MODE (CS2 / LOW GPU & COMPOSITOR OVERHEAD)
+   GAME PERFORMANCE MODE & BACKGROUND GPU THROTTLING
    ============================================================ */
 html.voys-performance-mode *,
 html.voys-performance-mode *::before,
-html.voys-performance-mode *::after {
+html.voys-performance-mode *::after,
+html.voys-window-inactive *,
+html.voys-window-inactive *::before,
+html.voys-window-inactive *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  animation: none !important;
+  transition-duration: 0ms !important;
 }
 
-html.voys-performance-mode .speaking-ring {
+html.voys-performance-mode .speaking-ring,
+html.voys-window-inactive .speaking-ring {
   animation: none !important;
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.85) !important;
 }
 
-html.voys-performance-mode .speaking-card-glow {
+html.voys-performance-mode .speaking-card-glow,
+html.voys-window-inactive .speaking-card-glow {
   animation: none !important;
   border-color: rgba(34, 197, 94, 0.85) !important;
   box-shadow: none !important;
@@ -883,7 +895,10 @@ html.voys-performance-mode .speaking-card-glow {
 
 html.voys-performance-mode .animate-pulse,
 html.voys-performance-mode .animate-ping,
-html.voys-performance-mode .animate-bounce {
+html.voys-performance-mode .animate-bounce,
+html.voys-window-inactive .animate-pulse,
+html.voys-window-inactive .animate-ping,
+html.voys-window-inactive .animate-bounce {
   animation: none !important;
 }
 

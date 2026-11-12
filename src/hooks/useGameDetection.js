@@ -43,8 +43,8 @@ export function useGameDetection({ currentGame, updateProfile, enabled = true })
     // Run first check after 1 second
     const initialTimer = setTimeout(checkGame, 1000);
 
-    // Poll every 4 seconds (fast & responsive)
-    const interval = setInterval(checkGame, 4000);
+    // Poll every 15 seconds to minimize Windows process-snapshot overhead during competitive games
+    const interval = setInterval(checkGame, 15000);
 
     // Also check immediately when window regains focus (e.g. user alt-tabs back from game)
     window.addEventListener('focus', checkGame);

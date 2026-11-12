@@ -62,11 +62,11 @@ export const AddMemberModal = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
       <div 
-        className="bg-[#0c0c0e]/95 backdrop-blur-2xl border border-white/10 w-full max-w-md rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-gray-200 select-none max-h-[85vh]"
+        className="bg-[#0c0c0e] border border-white/10 w-full max-w-md rounded-3xl shadow-xl flex flex-col overflow-hidden text-gray-200 select-none max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -163,7 +163,7 @@ export const AddMemberModal = ({
                       type="button"
                       disabled={isAdding}
                       onClick={() => handleAddMember(friend)}
-                      className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition disabled:opacity-50"
+                      className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition disabled:opacity-50"
                     >
                       {isAdding ? (
                         <Loader2 size={12} className="animate-spin" />

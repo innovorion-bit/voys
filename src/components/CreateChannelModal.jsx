@@ -16,11 +16,11 @@ export const CreateChannelModal = ({ isOpen, onClose, onCreateChannel }) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4 select-none animate-in fade-in duration-200"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 select-none"
       onClick={onClose}
     >
       <div 
-        className="bg-[#0c0c0e]/95 backdrop-blur-2xl border border-white/10 rounded-3xl w-full max-w-md shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col"
+        className="bg-[#0c0c0e] border border-white/10 rounded-3xl w-full max-w-md shadow-xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -73,7 +73,7 @@ export const CreateChannelModal = ({ isOpen, onClose, onCreateChannel }) => {
             <button
               type="submit"
               disabled={!channelName.trim()}
-              className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-indigo-600/25 transition active:scale-95"
+              className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition"
             >
               Grup Oluştur
             </button>

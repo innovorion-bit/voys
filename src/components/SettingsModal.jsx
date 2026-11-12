@@ -634,7 +634,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   if (!isSettingsOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-8 z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none animate-in fade-in duration-150">
+    <div className="fixed inset-x-0 bottom-0 top-8 z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none">
       {/* Left Category Sidebar */}
       <div className="w-[275px] border-r border-white/[0.06] bg-[#0c0c0e] voys-glass-settings-sidebar p-3.5 flex flex-col justify-between flex-shrink-0">
         <div className="flex flex-col space-y-1">
@@ -781,7 +781,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           alt="Avatar Önizleme" 
                           className="w-full h-full object-cover group-hover:opacity-30 transition" 
                         />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-rose-950/80 backdrop-blur-[2px] transition text-rose-300 text-[10px] font-semibold">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-rose-950/85 transition text-rose-300 text-[10px] font-semibold">
                           <Trash2 size={16} className="text-rose-400 mb-0.5 group-hover:scale-110 transition" />
                           <span>Sil</span>
                         </div>
@@ -1806,7 +1806,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
 
                   {/* Custom Language Options Dropdown */}
                   {isLangDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#111214] border border-white/10 rounded-lg shadow-2xl overflow-hidden z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#111214] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 p-1 space-y-0.5">
                       <button
                         type="button"
                         onClick={() => {

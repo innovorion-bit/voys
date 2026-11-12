@@ -717,7 +717,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           ref={contextMenuRef}
           onContextMenu={(e) => e.preventDefault()}
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-          className="fixed z-[210] w-56 rounded-2xl bg-[#131418]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/75 p-2 text-xs text-gray-200 select-none"
+          className="fixed z-[210] w-56 rounded-2xl bg-[#131418] border border-white/10 shadow-xl p-2 text-xs text-gray-200 select-none"
         >
           <div className="px-2.5 py-1.5 border-b border-white/10 mb-1">
             <div className="font-semibold text-white truncate">
@@ -782,7 +782,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           onClick={() => {
             if (!deletingUserId) setDeleteConfirmUser(null);
           }}
-          className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/80"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -859,9 +859,9 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                   type="button"
                   disabled={Boolean(deletingUserId)}
                   onClick={handleConfirmDeleteUser}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-lg shadow-rose-950/50 transition-colors disabled:opacity-60"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition-colors disabled:opacity-60"
                 >
-                  <Trash2 size={13} className={deletingUserId ? 'animate-pulse' : ''} />
+                  <Trash2 size={13} />
                   <span>{deletingUserId ? 'Siliniyor...' : 'Evet, Hesabı ve Verileri Sil'}</span>
                 </button>
               </div>

@@ -29,11 +29,7 @@ export const useVoiceWebRTC = () => {
   
   // Remote peer profile metadata: { [peerId]: { userId, name, userName, avatar } }
   const [peerMetadata, setPeerMetadata] = useState({});
-  
-  // Real-Time WebRTC Latencies (RTT in ms)
-  const [peerLatencies, setPeerLatencies] = useState({});
-  const [myPing, setMyPing] = useState(24);
-  
+
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioError, setAudioError] = useState(null);
   const [audioVolume, setAudioVolume] = useState(1);
@@ -56,7 +52,7 @@ export const useVoiceWebRTC = () => {
   // Clean up local VAD
   const cleanupLocalVAD = useCallback(() => {
     if (localVadIntervalRef.current) {
-      clearInterval(localVadIntervalRef.current);
+      localVadIntervalRef.current();
       localVadIntervalRef.current = null;
     }
     if (localAudioContextRef.current) {
@@ -82,7 +78,7 @@ export const useVoiceWebRTC = () => {
       }
 
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize = 128;
       analyser.smoothingTimeConstant = 0.45;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -93,10 +89,19 @@ export const useVoiceWebRTC = () => {
 
       const dataArray = new Uint8Array(analyser.fftSize);
 
+      let disposed = false;
+      let timerId = null;
+
+      const scheduleNext = () => {
+        if (disposed) return;
+        if (typeof document !== 'undefined' && document.hidden) return;
+        const delay = typeof document !== 'undefined' && !document.hasFocus() ? 320 : 140;
+        timerId = setTimeout(tick, delay);
+      };
+
       const checkVolume = () => {
         if (!localAnalyserRef.current) return;
 
-        // Pause local visual VAD analysis while window is hidden/minimized behind a game
         if (typeof document !== 'undefined' && document.hidden) {
           if (localSpeakingRef.current) {
             localSpeakingRef.current = false;
@@ -123,8 +128,39 @@ export const useVoiceWebRTC = () => {
         }
       };
 
-      checkVolume();
-      localVadIntervalRef.current = setInterval(checkVolume, 90);
+      const tick = () => {
+        checkVolume();
+        scheduleNext();
+      };
+
+      const handleVisibility = () => {
+        if (disposed) return;
+        if (timerId) {
+          clearTimeout(timerId);
+          timerId = null;
+        }
+        if (document.hidden) {
+          if (localSpeakingRef.current) {
+            localSpeakingRef.current = false;
+            setIsSpeaking(false);
+          }
+        } else {
+          tick();
+        }
+      };
+
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibility);
+      }
+
+      tick();
+      localVadIntervalRef.current = () => {
+        disposed = true;
+        if (timerId) clearTimeout(timerId);
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('visibilitychange', handleVisibility);
+        }
+      };
     } catch (err) {
       console.warn('Could not setup local audio activity detector:', err);
     }
@@ -211,7 +247,7 @@ export const useVoiceWebRTC = () => {
       }
 
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize = 128;
       analyser.smoothingTimeConstant = 0.45;
       const source = ctx.createMediaStreamSource(stream);
       source.connect(analyser);
@@ -370,64 +406,94 @@ export const useVoiceWebRTC = () => {
     peerService.on('peerMetadataUpdated', handlePeerMetadataUpdated);
     peerService.on('localStreamChanged', handleLocalStreamChanged);
 
-    // Poll remote peer audio analysers for real-time Voice Activity Detection (green speaking ring)
-    const remoteVadInterval = setInterval(() => {
-      if (remoteAnalysersRef.current.size === 0) return;
+    // Poll remote peer audio analysers with adaptive intervals:
+    // paused completely when document.hidden, 320ms when unfocused behind a game, 140ms when focused.
+    let remoteVadDisposed = false;
+    let remoteVadTimer = null;
 
-      // Pause remote visual VAD polling while window is minimized/hidden behind fullscreen games
-      if (typeof document !== 'undefined' && document.hidden) {
-        let resetAny = false;
-        const resetUpdates = {};
-        remoteAnalysersRef.current.forEach((entry, peerId) => {
-          if (entry?.isSpeaking) {
-            entry.isSpeaking = false;
-            resetUpdates[peerId] = false;
-            resetAny = true;
-          }
-        });
-        if (resetAny) {
-          setRemotePeers((prev) =>
-            prev.map((p) =>
-              resetUpdates[p.peerId] !== undefined && p.isSpeaking
-                ? { ...p, isSpeaking: false }
-                : p
-            )
-          );
-        }
-        return;
-      }
-
-      const now = Date.now();
-      let changed = false;
-      const speakingUpdates = {};
-
+    const resetRemoteSpeaking = () => {
+      let resetAny = false;
+      const resetUpdates = {};
       remoteAnalysersRef.current.forEach((entry, peerId) => {
-        if (!entry?.analyser || !entry.stream?.active) return;
-        const rms = measureSpeechLevel(entry.analyser, entry.dataArray);
-        let speakingNow = false;
-        if (rms > VAD_RMS_THRESHOLD) {
-          entry.lastSpokeAt = now;
-          speakingNow = true;
-        } else if (now - entry.lastSpokeAt < VAD_HANGOVER_MS) {
-          speakingNow = true;
+        if (entry?.isSpeaking) {
+          entry.isSpeaking = false;
+          resetUpdates[peerId] = false;
+          resetAny = true;
         }
-        if (entry.isSpeaking !== speakingNow) {
-          entry.isSpeaking = speakingNow;
-          changed = true;
-        }
-        speakingUpdates[peerId] = entry.isSpeaking;
       });
-
-      if (changed) {
+      if (resetAny) {
         setRemotePeers((prev) =>
           prev.map((p) =>
-            speakingUpdates[p.peerId] !== undefined && p.isSpeaking !== speakingUpdates[p.peerId]
-              ? { ...p, isSpeaking: speakingUpdates[p.peerId] }
+            resetUpdates[p.peerId] !== undefined && p.isSpeaking
+              ? { ...p, isSpeaking: false }
               : p
           )
         );
       }
-    }, 85);
+    };
+
+    const runRemoteVadTick = () => {
+      if (remoteVadDisposed) return;
+
+      if (typeof document !== 'undefined' && document.hidden) {
+        resetRemoteSpeaking();
+        return;
+      }
+
+      if (remoteAnalysersRef.current.size > 0) {
+        const now = Date.now();
+        let changed = false;
+        const speakingUpdates = {};
+
+        remoteAnalysersRef.current.forEach((entry, peerId) => {
+          if (!entry?.analyser || !entry.stream?.active) return;
+          const rms = measureSpeechLevel(entry.analyser, entry.dataArray);
+          let speakingNow = false;
+          if (rms > VAD_RMS_THRESHOLD) {
+            entry.lastSpokeAt = now;
+            speakingNow = true;
+          } else if (now - entry.lastSpokeAt < VAD_HANGOVER_MS) {
+            speakingNow = true;
+          }
+          if (entry.isSpeaking !== speakingNow) {
+            entry.isSpeaking = speakingNow;
+            changed = true;
+          }
+          speakingUpdates[peerId] = entry.isSpeaking;
+        });
+
+        if (changed) {
+          setRemotePeers((prev) =>
+            prev.map((p) =>
+              speakingUpdates[p.peerId] !== undefined && p.isSpeaking !== speakingUpdates[p.peerId]
+                ? { ...p, isSpeaking: speakingUpdates[p.peerId] }
+                : p
+            )
+          );
+        }
+      }
+
+      const delay = typeof document !== 'undefined' && !document.hasFocus() ? 320 : 140;
+      remoteVadTimer = setTimeout(runRemoteVadTick, delay);
+    };
+
+    const handleRemoteVadVisibility = () => {
+      if (remoteVadDisposed) return;
+      if (remoteVadTimer) {
+        clearTimeout(remoteVadTimer);
+        remoteVadTimer = null;
+      }
+      if (document.hidden) {
+        resetRemoteSpeaking();
+      } else {
+        runRemoteVadTick();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleRemoteVadVisibility);
+    }
+    remoteVadTimer = setTimeout(runRemoteVadTick, 140);
 
     const handleScreenShareStarted = (info) => {
       setActiveScreenShare(info);
@@ -453,28 +519,21 @@ export const useVoiceWebRTC = () => {
       }
     };
 
-    const handleLatencies = (data) => {
-      if (data?.peerLatencies) {
-        setPeerLatencies(data.peerLatencies);
-      }
-      if (typeof data?.myPing === 'number') {
-        setMyPing(data.myPing);
-      }
-    };
-
     peerService.on('screenShareStarted', handleScreenShareStarted);
     peerService.on('screenShareStopped', handleScreenShareStopped);
-    peerService.on('latenciesUpdated', handleLatencies);
 
     return () => {
-      clearInterval(remoteVadInterval);
+      remoteVadDisposed = true;
+      if (remoteVadTimer) clearTimeout(remoteVadTimer);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleRemoteVadVisibility);
+      }
       peerService.off('stream', handleStream);
       peerService.off('peerLeft', handlePeerLeft);
       peerService.off('peerMetadataUpdated', handlePeerMetadataUpdated);
       peerService.off('localStreamChanged', handleLocalStreamChanged);
       peerService.off('screenShareStarted', handleScreenShareStarted);
       peerService.off('screenShareStopped', handleScreenShareStopped);
-      peerService.off('latenciesUpdated', handleLatencies);
     };
   }, [attachRemoteAnalyser, setupLocalVAD]);
 
@@ -528,8 +587,6 @@ export const useVoiceWebRTC = () => {
     myPeerId,
     remotePeers, // Array of { peerId, stream, isSpeaking }
     peerMetadata,
-    peerLatencies,
-    myPing,
     audioError,
     audioVolume,
     setAudioVolume,

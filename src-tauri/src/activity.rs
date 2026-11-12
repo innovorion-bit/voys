@@ -1,6 +1,5 @@
 #[cfg(target_os = "windows")]
 pub fn detect_running_game() -> Option<String> {
-    use std::collections::HashSet;
 
     #[repr(C)]
     #[allow(non_snake_case)]
@@ -85,41 +84,6 @@ pub fn detect_running_game() -> Option<String> {
                     return Some("Red Dead Redemption 2".to_string());
                 }
             }
-        }
-    }
-
-    // 2. Fallback: Enumerate running processes only when foreground window title didn't match a game
-    let mut running_processes = HashSet::new();
-
-    unsafe {
-        let handle = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
-        if handle != -1 && handle != 0 {
-            let mut entry = PROCESSENTRY32W {
-                dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
-                cntUsage: 0,
-                th32ProcessID: 0,
-                th32DefaultHeapID: 0,
-                th32ModuleID: 0,
-                cntThreads: 0,
-                th32ParentProcessID: 0,
-                pcPriClassBase: 0,
-                dwFlags: 0,
-                szExeFile: [0u16; 260],
-            };
-
-            if Process32FirstW(handle, &mut entry) != 0 {
-                loop {
-                    let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
-                    let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
-                    running_processes.insert(name);
-
-                    if Process32NextW(handle, &mut entry) == 0 {
-                        break;
-                    }
-                }
-            }
-
-            CloseHandle(handle);
         }
     }
 
@@ -213,13 +177,59 @@ pub fn detect_running_game() -> Option<String> {
         ("diablo iv.exe", "Diablo IV"),
     ];
 
-    for &(exe, name) in &games {
-        if running_processes.contains(exe) {
-            return Some(name.to_string());
+    // 2. Fallback: Scan running processes on the fly with a single reusable buffer (no HashSet allocation)
+    let mut best_match_idx: Option<usize> = None;
+    let mut proc_name_buf = String::with_capacity(64);
+
+    unsafe {
+        let handle = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
+        if handle != -1 && handle != 0 {
+            let mut entry = PROCESSENTRY32W {
+                dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+                cntUsage: 0,
+                th32ProcessID: 0,
+                th32DefaultHeapID: 0,
+                th32ModuleID: 0,
+                cntThreads: 0,
+                th32ParentProcessID: 0,
+                pcPriClassBase: 0,
+                dwFlags: 0,
+                szExeFile: [0u16; 260],
+            };
+
+            if Process32FirstW(handle, &mut entry) != 0 {
+                loop {
+                    let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+                    proc_name_buf.clear();
+                    for ch in std::char::decode_utf16(entry.szExeFile[..len].iter().copied()) {
+                        let ch = ch.unwrap_or('\u{FFFD}');
+                        for lc in ch.to_lowercase() {
+                            proc_name_buf.push(lc);
+                        }
+                    }
+
+                    let search_limit = best_match_idx.unwrap_or(games.len());
+                    if let Some(idx) = games[..search_limit]
+                        .iter()
+                        .position(|&(exe, _)| exe == proc_name_buf)
+                    {
+                        best_match_idx = Some(idx);
+                        if idx == 0 {
+                            break;
+                        }
+                    }
+
+                    if Process32NextW(handle, &mut entry) == 0 {
+                        break;
+                    }
+                }
+            }
+
+            CloseHandle(handle);
         }
     }
 
-    None
+    best_match_idx.map(|idx| games[idx].1.to_string())
 }
 
 #[cfg(not(target_os = "windows"))]

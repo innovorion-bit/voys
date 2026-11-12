@@ -343,6 +343,24 @@ export const SettingsProvider = ({ children }) => {
     }
   }, [isPerformanceModeActive]);
 
+  // Background GPU Throttling: freeze visual animations/transitions/shadows while Voys is unfocused or hidden behind a game
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+    const syncWindowActivity = () => {
+      const inactive = document.hidden || !document.hasFocus();
+      document.documentElement.classList.toggle('voys-window-inactive', inactive);
+    };
+    syncWindowActivity();
+    document.addEventListener('visibilitychange', syncWindowActivity);
+    window.addEventListener('blur', syncWindowActivity);
+    window.addEventListener('focus', syncWindowActivity);
+    return () => {
+      document.removeEventListener('visibilitychange', syncWindowActivity);
+      window.removeEventListener('blur', syncWindowActivity);
+      window.removeEventListener('focus', syncWindowActivity);
+    };
+  }, []);
+
   // UI Sound Effects Callbacks
   const changeSoundEffectsEnabled = useCallback((enabled) => {
     setSoundEffectsEnabled(enabled);

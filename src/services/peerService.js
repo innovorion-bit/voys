@@ -73,12 +73,13 @@ export function optimizeOpusSdp(sdp) {
   if (!opusPt) return sdp;
 
   const desiredParams = {
-    minptime: '10',
+    minptime: '20',
+    ptime: '20',
     useinbandfec: '1',
-    usedtx: '0',
+    usedtx: '1',
     stereo: '0',
     'sprop-stereo': '0',
-    maxaveragebitrate: '64000',
+    maxaveragebitrate: '40000',
   };
 
   const fmtpPrefix = `a=fmtp:${opusPt} `;
@@ -646,15 +647,10 @@ export class MeshVoiceService {
 
     return new Promise((resolve, reject) => {
       const peerOptions = {
-        debug: 1,
+        debug: 0,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' },
             { urls: 'stun:stun.cloudflare.com:3478' },
           ],
         },
@@ -667,7 +663,6 @@ export class MeshVoiceService {
           this.myPeerId = id;
           this.emit('ready', id);
           this.setupMeshBroadcast();
-          this.startPingMonitoring();
           resolve(id);
         });
 

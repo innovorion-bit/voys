@@ -1,18 +1,30 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { WindowHeader } from './components/WindowHeader';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
-import { CreateChannelModal } from './components/CreateChannelModal';
-import { AddFriendModal } from './components/AddFriendModal';
-import { AddMemberModal } from './components/AddMemberModal';
-import { PeerConnectModal } from './components/PeerConnectModal';
-import { SettingsModal } from './components/SettingsModal';
-import { LogoutConfirmModal } from './components/LogoutConfirmModal';
 import { RemoteAudioPlayers } from './components/RemoteAudioPlayers';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
-import { AuthPage } from './components/AuthPage';
+
+const CreateChannelModal = lazy(() =>
+  import('./components/CreateChannelModal').then((m) => ({ default: m.CreateChannelModal }))
+);
+const AddFriendModal = lazy(() =>
+  import('./components/AddFriendModal').then((m) => ({ default: m.AddFriendModal }))
+);
+const AddMemberModal = lazy(() =>
+  import('./components/AddMemberModal').then((m) => ({ default: m.AddMemberModal }))
+);
+const SettingsModal = lazy(() =>
+  import('./components/SettingsModal').then((m) => ({ default: m.SettingsModal }))
+);
+const LogoutConfirmModal = lazy(() =>
+  import('./components/LogoutConfirmModal').then((m) => ({ default: m.LogoutConfirmModal }))
+);
+const AuthPage = lazy(() =>
+  import('./components/AuthPage').then((m) => ({ default: m.AuthPage }))
+);
 import { useVoiceWebRTC } from './hooks/useVoiceWebRTC';
 import { useRealtimeChat } from './hooks/useRealtimeChat';
 import { useGameDetection } from './hooks/useGameDetection';
@@ -647,15 +659,12 @@ function StanduppApp() {
     myPeerId,
     remotePeers,
     peerMetadata,
-    peerLatencies,
-    myPing,
     audioError,
     connectVoice,
     disconnectVoice,
     toggleMute,
     setMuted,
     toggleDeafen,
-    callPeer,
     switchVoiceRoom,
     stopScreenShare,
     toggleScreenShare,
@@ -903,7 +912,6 @@ function StanduppApp() {
 
   // Modals State
   const [modalOpen, setModalOpen] = useState(false);
-  const [peerModalOpen, setPeerModalOpen] = useState(false);
 
   // Steam-style in-chat voice call start / join (instantly connected, no ringing)
   const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
@@ -1137,7 +1145,6 @@ function StanduppApp() {
           substatus: matchedProfile?.substatus || 'Seste',
           statusColor: 'text-[#57cbde]',
           isAway: matchedProfile?.status === 'idle',
-          ping: peerLatencies[peerId] || myPing || 28,
         };
       })
       .filter(Boolean);
@@ -1156,7 +1163,6 @@ function StanduppApp() {
             substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
             statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
             isAway: activeUserProfile.status === 'idle',
-            ping: myPing || 24,
           },
         ]
         : []),
@@ -1167,11 +1173,9 @@ function StanduppApp() {
     activeUserProfile,
     isSpeaking,
     isMuted,
-    myPing,
     remotePeers,
     peerMetadata,
     myPeerId,
-    peerLatencies,
     activeCallChannelId,
     channelCalls,
     liveChannelMembers,
@@ -1632,7 +1636,7 @@ function StanduppApp() {
 
       {/* Audio permission notice if mic access requires interaction */}
       {audioError && isConnected && (
-        <div className="bg-amber-950/40 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-300 flex items-center justify-between select-none backdrop-blur-md">
+        <div className="bg-amber-950/80 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-300 flex items-center justify-between select-none">
           <span>{audioError}</span>
           <button
             type="button"
@@ -1753,60 +1757,59 @@ function StanduppApp() {
 
 
 
-      {/* Create Channel Modal */}
-      <CreateChannelModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onCreateChannel={handleCreateChannel}
-      />
+      {/* Lazy-mounted Modals (rendered only when opened to avoid background DOM/effect overhead) */}
+      <Suspense fallback={null}>
+        {modalOpen && (
+          <CreateChannelModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onCreateChannel={handleCreateChannel}
+          />
+        )}
 
-      {/* WebRTC PeerJS Connection Modal */}
-      <PeerConnectModal
-        isOpen={peerModalOpen}
-        onClose={() => setPeerModalOpen(false)}
-        myPeerId={myPeerId}
-        connectedPeers={remotePeers.map((p) => p.peerId)}
-        onCallPeer={callPeer}
-      />
+        {isSettingsOpen && (
+          <SettingsModal onLogout={() => setIsLogoutModalOpen(true)} onUserDeleted={handleUserDeleted} />
+        )}
 
-      {/* Stand.upp Settings & Audio Devices Modal */}
-      <SettingsModal onLogout={() => setIsLogoutModalOpen(true)} onUserDeleted={handleUserDeleted} />
+        {isLogoutModalOpen && (
+          <LogoutConfirmModal
+            isOpen={isLogoutModalOpen}
+            onClose={() => setIsLogoutModalOpen(false)}
+            onConfirm={handleLogout}
+            userName={activeUserProfile?.name || 'Kullanıcı'}
+          />
+        )}
 
-      {/* Logout Confirmation Modal */}
-      <LogoutConfirmModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        onConfirm={handleLogout}
-        userName={activeUserProfile?.name || 'Kullanıcı'}
-      />
+        {isAddFriendModalOpen && (
+          <AddFriendModal
+            isOpen={isAddFriendModalOpen}
+            onClose={() => setIsAddFriendModalOpen(false)}
+            currentUser={activeUserProfile}
+            onFriendshipUpdated={loadFriendships}
+            friends={friends}
+            incomingRequests={friendshipsData.incoming}
+            outgoingRequests={friendshipsData.outgoing}
+          />
+        )}
 
-      {/* Add Friend / Friend Requests Modal */}
-      <AddFriendModal
-        isOpen={isAddFriendModalOpen}
-        onClose={() => setIsAddFriendModalOpen(false)}
-        currentUser={activeUserProfile}
-        onFriendshipUpdated={loadFriendships}
-        friends={friends}
-        incomingRequests={friendshipsData.incoming}
-        outgoingRequests={friendshipsData.outgoing}
-      />
-
-      {/* Add Member to Channel Modal */}
-      <AddMemberModal
-        isOpen={isAddMemberModalOpen}
-        onClose={() => setIsAddMemberModalOpen(false)}
-        activeChannel={activeChannel}
-        channelName={
-          activeChannel === 'home'
-            ? 'Home'
-            : (textChannels.find((c) => c.id === activeChannel)?.name ||
-              (typeof activeChannel === 'string' ? activeChannel.replace(/^text-/, '') : 'Sohbet'))
-        }
-        channelType="text"
-        friends={friends}
-        currentMembers={channelMembers}
-        onMemberAdded={handleMemberAdded}
-      />
+        {isAddMemberModalOpen && (
+          <AddMemberModal
+            isOpen={isAddMemberModalOpen}
+            onClose={() => setIsAddMemberModalOpen(false)}
+            activeChannel={activeChannel}
+            channelName={
+              activeChannel === 'home'
+                ? 'Home'
+                : (textChannels.find((c) => c.id === activeChannel)?.name ||
+                  (typeof activeChannel === 'string' ? activeChannel.replace(/^text-/, '') : 'Sohbet'))
+            }
+            channelType="text"
+            friends={friends}
+            currentMembers={channelMembers}
+            onMemberAdded={handleMemberAdded}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
@@ -1815,64 +1818,66 @@ function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <Routes>
-          {/* Public Auth Routes (Guest Only) */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <AuthPage initialMode="login" />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicRoute>
-                <AuthPage initialMode="register" />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/forgot-password"
-            element={
-              <PublicRoute>
-                <AuthPage initialMode="forgot" />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/reset-password"
-            element={<AuthPage initialMode="reset" />}
-          />
+        <Suspense fallback={<div className="min-h-screen w-full bg-[#09090b]" />}>
+          <Routes>
+            {/* Public Auth Routes (Guest Only) */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <AuthPage initialMode="login" />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <AuthPage initialMode="register" />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <AuthPage initialMode="forgot" />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/reset-password"
+              element={<AuthPage initialMode="reset" />}
+            />
 
-          {/* Protected Application Routes */}
-          <Route
-            path="/channel/:channelId"
-            element={
-              <ProtectedRoute>
-                <StanduppApp />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dm/:userId"
-            element={
-              <ProtectedRoute>
-                <StanduppApp />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <StanduppApp />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Protected Application Routes */}
+            <Route
+              path="/channel/:channelId"
+              element={
+                <ProtectedRoute>
+                  <StanduppApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dm/:userId"
+              element={
+                <ProtectedRoute>
+                  <StanduppApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <StanduppApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </SettingsProvider>
     </AuthProvider>
   );

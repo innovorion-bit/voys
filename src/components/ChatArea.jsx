@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
   Send,
@@ -53,7 +53,7 @@ import {
   Camera,
   Upload
 } from 'lucide-react';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
+const EmojiPicker = lazy(() => import('emoji-picker-react'));
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
 
@@ -115,9 +115,7 @@ function formatFullDateTime(rawDate) {
 }
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
-import { VoiceControls } from './VoiceControls';
 import { ScreenShareStage } from './ScreenShareStage';
-import { InChatCallStage } from './InChatCallStage';
 import { dbService, getDmRoomId } from '../lib/supabase';
 import { pickDisplayName, isRealDisplayName, getCachedUserProfile, isUuidLike, partitionSidebarGroupMembers } from '../utils/userDisplay';
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
@@ -1156,7 +1154,7 @@ export const ChatArea = ({
   if (!hasActiveChat) {
     return (
       <main className="flex-1 flex flex-col h-full bg-[#08080a] voys-glass-chat select-none relative overflow-hidden items-center justify-center p-6 text-center border-l border-white/5">
-        <div className="max-w-md flex flex-col items-center space-y-4 animate-in fade-in duration-200">
+        <div className="max-w-md flex flex-col items-center space-y-4">
           <div className="space-y-1.5">
             <h3 className="text-sm font-bold text-gray-100 tracking-wide">
               Henüz Aktif Bir Sohbet Yok
@@ -1171,7 +1169,7 @@ export const ChatArea = ({
               <button
                 type="button"
                 onClick={onOpenAddMember}
-                className="px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-indigo-600/25 flex items-center space-x-2 cursor-pointer"
+                className="px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-semibold rounded-xl text-xs transition flex items-center space-x-2 cursor-pointer"
               >
                 <UserPlus size={15} />
                 <span>Arkadaş Ekle</span>
@@ -1181,7 +1179,7 @@ export const ChatArea = ({
               <button
                 type="button"
                 onClick={onOpenCreateChannel}
-                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-indigo-600/25 flex items-center space-x-2 cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs transition flex items-center space-x-2 cursor-pointer"
               >
                 <Plus size={14} />
                 <span>Yeni Grup Oluştur</span>
@@ -1202,7 +1200,7 @@ export const ChatArea = ({
 
       {/* Drag and Drop Fullscreen Overlay (Windows Desktop & Browser) */}
       {(isDragActive || isWindowDragging) && (
-        <div className="absolute inset-0 bg-[#08080a]/95 z-50 flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-150 pointer-events-none">
+        <div className="absolute inset-0 bg-[#08080a]/95 z-50 flex flex-col items-center justify-center p-6 select-none pointer-events-none">
           <div className="w-full h-full max-w-2xl max-h-[85%] border-2 border-dashed border-indigo-500/80 rounded-3xl bg-[#121216]/90 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
             {/* Static Icon Container */}
             <div className="w-20 h-20 rounded-3xl bg-indigo-500/15 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mb-5">
@@ -1243,7 +1241,7 @@ export const ChatArea = ({
       )}
 
       {/* Top Header Bar (Channel or Direct Message) */}
-      <div className="min-h-[50px] px-2 sm:px-3 py-2 border-b border-white/5 flex items-center justify-between bg-[#0c0c0e]/95 voys-chat-header backdrop-blur-md select-none z-30 relative flex-shrink-0">
+      <div className="min-h-[50px] px-2 sm:px-3 py-2 border-b border-white/5 flex items-center justify-between bg-[#0c0c0e] voys-chat-header select-none z-30 relative flex-shrink-0">
         {chatInnerView !== 'messages' ? (
           /* Header when showing Kişi Bilgisi or Tema Ayarları */
           <div className="flex items-center justify-between w-full">
@@ -1509,7 +1507,7 @@ export const ChatArea = ({
                   className="fixed inset-0 z-40 bg-transparent"
                   onClick={() => setIsOptionsMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[#121216] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-[#121216] border border-white/10 rounded-2xl shadow-xl p-1.5 z-50">
                   <button
                     type="button"
                     onClick={() => {
@@ -1905,7 +1903,7 @@ export const ChatArea = ({
             <button
               type="button"
               onClick={() => updateRightPanelCompact(!isRightPanelCompact)}
-              className="absolute top-2.5 right-3 z-20 w-7 h-7 rounded-lg bg-[#13141a]/90 hover:bg-[#1e1f28] border border-white/10 hover:border-white/20 text-gray-400 hover:text-white shadow-md backdrop-blur-sm flex items-center justify-center transition cursor-pointer"
+              className="absolute top-2.5 right-3 z-20 w-7 h-7 rounded-lg bg-[#13141a] hover:bg-[#1e1f28] border border-white/10 hover:border-white/20 text-gray-400 hover:text-white flex items-center justify-center transition cursor-pointer"
               title={isRightPanelCompact ? 'Üye menüsünü genişlet' : 'Üye menüsünü daralt'}
               aria-label={isRightPanelCompact ? 'Üye menüsünü genişlet' : 'Üye menüsünü daralt'}
             >
@@ -1972,7 +1970,7 @@ export const ChatArea = ({
                 <button
                   type="button"
                   onClick={onOpenCreateChannel}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/25 transition active:scale-95 cursor-pointer"
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
                 >
                   <Plus size={14} />
                   <span>Yeni Grup Oluştur</span>
@@ -1986,7 +1984,7 @@ export const ChatArea = ({
               className="flex-1 overflow-y-auto px-2 md:px-4 py-3 space-y-0.5 select-text scroll-smooth"
             >
               {filteredMessages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center py-16 px-4 text-center select-none space-y-2 animate-in fade-in duration-200">
+                <div className="h-full flex flex-col items-center justify-center py-16 px-4 text-center select-none space-y-2">
                   <div className="space-y-1 max-w-sm">
                     <h3 className="text-sm font-bold text-gray-200 tracking-wide">
                       {searchTerm
@@ -2072,7 +2070,7 @@ export const ChatArea = ({
                       <div
                         className={`voys-msg-action-bar absolute right-2 sm:right-3 ${
                           isFirstMsg && !showDateDivider ? 'top-0.5' : '-top-3'
-                        } transition-all duration-150 z-20 flex items-center bg-[#141418]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl px-1 py-0.5 gap-0.5 select-none ${
+                        } transition-all duration-150 z-20 flex items-center bg-[#141418] border border-white/10 rounded-lg shadow-lg px-1 py-0.5 gap-0.5 select-none ${
                           activeReactionPickerMsgId === msg.id
                             ? 'opacity-100 pointer-events-auto'
                             : isOptionsMenuOpen
@@ -2129,7 +2127,7 @@ export const ChatArea = ({
                       {/* Floating Emoji Picker Popover anchored to this message */}
                       {activeReactionPickerMsgId === msg.id && (
                         <div
-                          className={`emoji-picker-container absolute z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#141418] animate-in fade-in zoom-in-95 right-2 sm:right-3 ${
+                          className={`emoji-picker-container absolute z-50 shadow-xl rounded-2xl overflow-hidden border border-white/10 bg-[#141418] right-2 sm:right-3 ${
                             filteredMessages.length > 3 && index >= filteredMessages.length - 3
                               ? 'bottom-8'
                               : 'top-7'
@@ -2145,19 +2143,21 @@ export const ChatArea = ({
                               <X size={13} />
                             </button>
                           </div>
-                          <EmojiPicker
-                            theme={chatSettings?.theme === 'light' ? Theme.LIGHT : Theme.DARK}
-                            onEmojiClick={(emojiData) => {
-                              onToggleReaction?.(msg.id, emojiData.emoji);
-                              setActiveReactionPickerMsgId(null);
-                            }}
-                            searchPlaceHolder="Emoji ara..."
-                            width={300}
-                            height={360}
-                            lazyLoadEmojis
-                            skinTonesDisabled
-                            previewConfig={{ showPreview: false }}
-                          />
+                          <Suspense fallback={<div className="w-[300px] h-[360px] flex items-center justify-center text-xs text-gray-500">Yükleniyor...</div>}>
+                            <EmojiPicker
+                              theme={chatSettings?.theme === 'light' ? 'light' : 'dark'}
+                              onEmojiClick={(emojiData) => {
+                                onToggleReaction?.(msg.id, emojiData.emoji);
+                                setActiveReactionPickerMsgId(null);
+                              }}
+                              searchPlaceHolder="Emoji ara..."
+                              width={300}
+                              height={360}
+                              lazyLoadEmojis
+                              skinTonesDisabled
+                              previewConfig={{ showPreview: false }}
+                            />
+                          </Suspense>
                         </div>
                       )}
 
@@ -2261,7 +2261,7 @@ export const ChatArea = ({
                                       />
                                       {/* Hover zoom overlay */}
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                        <div className="px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20 shadow-md">
+                                        <div className="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20">
                                           <Eye size={13} className="text-indigo-400" />
                                           <span>Büyüt</span>
                                         </div>
@@ -2538,7 +2538,7 @@ export const ChatArea = ({
 
               {/* Replying Preview Banner */}
               {replyingTo && (
-                <div className="px-3 md:px-4 pt-2 bg-[#08080a] voys-chat-input-bar flex-shrink-0 animate-in fade-in slide-in-from-bottom-1">
+                <div className="px-3 md:px-4 pt-2 bg-[#08080a] voys-chat-input-bar flex-shrink-0">
                   <div className="voys-reply-banner px-3.5 py-2 bg-[#141418] border border-white/10 border-l-2 border-l-[#8B51FF] rounded-xl flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Reply size={13} className="text-[#a36eff] flex-shrink-0" />
@@ -2599,7 +2599,7 @@ export const ChatArea = ({
                   {/* Emoji Picker Popover */}
                   <div className="relative flex-shrink-0 ml-1">
                     {showEmojiPicker && (
-                      <div className="emoji-picker-container absolute bottom-12 right-0 shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50 animate-in fade-in zoom-in-95">
+                      <div className="emoji-picker-container absolute bottom-12 right-0 shadow-xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50">
                         <div className="bg-white/[0.02] p-2 px-3 border-b border-white/10 flex items-center justify-between text-xs text-gray-300">
                           <span className="font-semibold text-[11px] text-gray-200">Emoji Seç</span>
                           <button
@@ -2610,16 +2610,18 @@ export const ChatArea = ({
                             <X size={13} />
                           </button>
                         </div>
-                        <EmojiPicker
-                          theme={chatSettings?.theme === 'light' ? Theme.LIGHT : Theme.DARK}
-                          onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
-                          searchPlaceHolder="Emoji ara..."
-                          width={300}
-                          height={360}
-                          lazyLoadEmojis
-                          skinTonesDisabled
-                          previewConfig={{ showPreview: false }}
-                        />
+                        <Suspense fallback={<div className="w-[300px] h-[360px] flex items-center justify-center text-xs text-gray-500">Yükleniyor...</div>}>
+                          <EmojiPicker
+                            theme={chatSettings?.theme === 'light' ? 'light' : 'dark'}
+                            onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
+                            searchPlaceHolder="Emoji ara..."
+                            width={300}
+                            height={360}
+                            lazyLoadEmojis
+                            skinTonesDisabled
+                            previewConfig={{ showPreview: false }}
+                          />
+                        </Suspense>
                       </div>
                     )}
                     <button
@@ -2664,7 +2666,7 @@ export const ChatArea = ({
         {/* Right Side: Channel / Call Members Panel (Grup sohbetinde sürekli açık, kişisel DM'de yalnızca sesli sohbet varken açık) */}
         {shouldShowRightPanel && (
           <aside
-            className={`flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e]/95 voys-glass-right-panel backdrop-blur-md flex flex-col select-none overflow-y-auto z-10 animate-in slide-in-from-right duration-150 custom-scrollbar transition-[width,padding] ease-out ${
+            className={`flex-shrink-0 h-full border-l border-white/5 bg-[#0c0c0e] voys-glass-right-panel flex flex-col select-none overflow-y-auto z-10 custom-scrollbar transition-[width,padding] ease-out ${
               isRightPanelCompact
                 ? 'w-[64px] px-1.5 py-2.5 items-center space-y-3'
                 : 'w-56 md:w-64 p-3 space-y-3.5'
@@ -2673,7 +2675,7 @@ export const ChatArea = ({
             {/* Sesli Sohbette Olan Kişiler (Yalnızca sesli sohbette birileri varken gösterilir) */}
             {showVoiceSection && (
               <div
-                className={`w-full border-b border-white/10 pb-2.5 animate-in fade-in duration-150 ${
+                className={`w-full border-b border-white/10 pb-2.5 ${
                   isRightPanelCompact ? 'flex flex-col items-center space-y-2' : 'space-y-1.5'
                 }`}
               >
@@ -2863,7 +2865,7 @@ export const ChatArea = ({
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
                           : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 text-xs font-semibold'
-                      } rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition active:scale-95 cursor-pointer`}
+                      } rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer`}
                       title="Sesli Sohbetten Ayrıl"
                     >
                       <PhoneOff size={14} />
@@ -2878,7 +2880,7 @@ export const ChatArea = ({
                       isRightPanelCompact
                         ? 'w-9 h-8 mt-1 flex items-center justify-center'
                         : 'w-full mt-1.5 flex items-center justify-center space-x-1.5 py-1.5 px-3 text-xs font-bold'
-                    } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer`}
+                    } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer`}
                     title="Sese Katıl"
                   >
                     <Phone size={13} />
@@ -2889,7 +2891,7 @@ export const ChatArea = ({
             )}
 
             {isAddingMember && !isRightPanelCompact ? (
-              <div className="flex flex-col space-y-3 animate-in fade-in duration-150">
+              <div className="flex flex-col space-y-3">
                 {/* Header: Geri & Kapat */}
                 <div className="flex items-center justify-between px-1 pb-1.5 border-b border-white/10">
                   <button
@@ -3315,7 +3317,7 @@ export const ChatArea = ({
             ref={voiceContextMenuRef}
             style={{ top: voiceContextMenu.y, left: voiceContextMenu.x }}
             onContextMenu={(e) => e.preventDefault()}
-            className="fixed z-50 w-[268px] max-h-[calc(100vh-24px)] overflow-y-auto custom-scrollbar rounded-2xl bg-[#131418]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/75 p-2 text-xs text-gray-200 select-none animate-in fade-in zoom-in-95 duration-100"
+            className="fixed z-50 w-[268px] max-h-[calc(100vh-24px)] overflow-y-auto custom-scrollbar rounded-2xl bg-[#131418] border border-white/10 shadow-xl p-2 text-xs text-gray-200 select-none"
           >
             {/* Header Info */}
             <div className="flex items-center space-x-2.5 px-2 py-1.5 mb-1 border-b border-white/5">
@@ -3682,7 +3684,7 @@ export const ChatArea = ({
       {activeMediaModal && (
         <div
           onClick={() => setActiveMediaModal(null)}
-          className="fixed inset-0 bg-black/85 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-6 select-none"
         >
           {/* Header Bar */}
           <div
@@ -3760,11 +3762,11 @@ export const ChatArea = ({
       {isConfirmDeleteOpen && (
         <div 
           onClick={() => setIsConfirmDeleteOpen(false)}
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4"
           >
             <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
               <Trash2 size={24} />
@@ -3794,7 +3796,7 @@ export const ChatArea = ({
                 type="button"
                 disabled={isDeletingChat}
                 onClick={handleDeleteChat}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow-lg shadow-rose-600/30 flex items-center justify-center space-x-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5"
               >
                 {isDeletingChat ? (
                   <>
@@ -3814,11 +3816,11 @@ export const ChatArea = ({
       {isConfirmDeleteGroupOpen && (
         <div 
           onClick={() => setIsConfirmDeleteGroupOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4"
           >
             <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
               <Trash2 size={24} />
@@ -3848,7 +3850,7 @@ export const ChatArea = ({
                 type="button"
                 disabled={isDeletingGroup}
                 onClick={handleDeleteGroup}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow-lg shadow-rose-600/30 flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 {isDeletingGroup ? (
                   <>

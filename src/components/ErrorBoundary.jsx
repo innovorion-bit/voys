@@ -33,7 +33,7 @@ export class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen w-screen bg-[#08080a] text-gray-200 flex flex-col items-center justify-center p-6 select-none font-sans">
-          <div className="max-w-md w-full bg-[#0c0c0e]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 text-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_50px_rgba(0,0,0,0.5)]">
+          <div className="max-w-md w-full bg-[#0c0c0e] border border-white/10 rounded-3xl p-6 text-center shadow-xl">
             <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shadow-inner">
               <AlertTriangle size={28} />
             </div>
@@ -55,7 +55,7 @@ export class ErrorBoundary extends React.Component {
               <button
                 type="button"
                 onClick={this.handleReload}
-                className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-xl flex items-center space-x-2 shadow-lg shadow-indigo-600/25 transition active:scale-95"
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl flex items-center space-x-2 transition"
               >
                 <RefreshCw size={14} />
                 <span>Yeniden Dene</span>

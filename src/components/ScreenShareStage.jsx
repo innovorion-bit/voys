@@ -72,7 +72,7 @@ export const ScreenShareStage = ({
       }`}
     >
       {/* Stage Header Overlay Bar */}
-      <div className="px-3.5 py-2 bg-[#0c0c0e]/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between text-xs text-gray-200 z-10 relative">
+      <div className="px-3.5 py-2 bg-[#0c0c0e] border-b border-white/5 flex items-center justify-between text-xs text-gray-200 z-10 relative">
         <div className="flex items-center space-x-2.5 min-w-0">
           {/* Live badge */}
           <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold tracking-wider flex-shrink-0">
@@ -183,7 +183,7 @@ export const ScreenShareStage = ({
           />
 
           {/* Watermark in bottom corner */}
-          <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded-md text-[9px] font-mono text-gray-400 pointer-events-none border border-white/5 backdrop-blur-sm">
+          <div className="absolute bottom-2 right-2 bg-black/75 px-2 py-0.5 rounded-md text-[9px] font-mono text-gray-400 pointer-events-none border border-white/5">
             Voys Screen Link • P2P
           </div>
         </div>

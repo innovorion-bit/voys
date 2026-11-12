@@ -1470,7 +1470,7 @@ export const Sidebar = ({
               <button
                 type="submit"
                 disabled={!newGroupName.trim() || isCreatingGroup}
-                className="flex-1 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-indigo-600/25 transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="flex-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 {isCreatingGroup ? (
                   <Loader2 size={13} className="animate-spin text-white" />
@@ -1540,7 +1540,7 @@ export const Sidebar = ({
 
                 {/* Açılır Menü (Popup) */}
                 {isPlusMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#141418] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#141418] border border-white/10 rounded-2xl shadow-xl p-1.5 z-50">
                     <button
                       type="button"
                       onClick={() => {
@@ -1869,7 +1869,7 @@ export const Sidebar = ({
         <div className="flex items-center gap-2.5 min-w-0 relative" ref={statusPickerRef}>
           {/* Status Picker Popover Menu (opens upward) */}
           {isStatusPickerOpen && (
-            <div className="absolute left-0 bottom-[68px] w-44 bg-[#121216] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute left-0 bottom-[68px] w-44 bg-[#121216] border border-white/10 rounded-xl shadow-xl p-1.5 z-50">
               <div className="space-y-0.5">
                 {STATUS_OPTIONS.map((opt) => {
                   const isCurrent = (currentStatusKey === 'offline' ? 'invisible' : currentStatusKey) === opt.id;
@@ -1962,7 +1962,7 @@ export const Sidebar = ({
         <div
           ref={chatContextMenuRef}
           style={{ top: `${chatContextMenu.y}px`, left: `${chatContextMenu.x}px` }}
-          className="fixed z-[9999] w-48 rounded-xl bg-[#121216]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/80 p-1.5 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-[9999] w-48 rounded-xl bg-[#121216] border border-white/10 shadow-xl p-1.5 text-xs select-none"
         >
           <div className="px-2.5 py-1.5 border-b border-white/10 mb-1">
             <p className="font-semibold text-white truncate text-xs">

@@ -2,7 +2,7 @@ import React from 'react';
 
 export const ChatSkeleton = () => {
   return (
-    <div className="flex-1 px-5 py-4 space-y-5 animate-pulse select-none">
+    <div className="flex-1 px-5 py-4 space-y-5 select-none">
       {/* Skeleton Message 1 */}
       <div className="flex items-start space-x-3.5 p-2 rounded-2xl">
         <div className="w-9 h-9 bg-white/5 rounded-2xl flex-shrink-0 border border-white/5"></div>

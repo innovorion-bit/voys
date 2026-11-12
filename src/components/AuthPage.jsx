@@ -241,7 +241,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
               src="/voys_logo.png"
               alt="Voys"
               draggable={false}
-              className="w-11 h-11 object-contain select-none pointer-events-none drop-shadow-md"
+              className="w-11 h-11 object-contain select-none pointer-events-none"
             />
           )}
         </div>
@@ -263,7 +263,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       <div className="flex-1 px-4 py-3 flex flex-col justify-between overflow-y-auto custom-scrollbar">
         {/* Error Message Alert */}
         {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2 animate-in fade-in">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2">
             <div className="leading-relaxed flex items-start space-x-2">
               <span className="flex-1">{errorMsg}</span>
             </div>
@@ -285,7 +285,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
 
         {/* Success Message Alert */}
         {successMsg && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-start space-x-2 animate-in fade-in">
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-start space-x-2">
             <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
             <div className="leading-relaxed">{successMsg}</div>
           </div>
@@ -458,7 +458,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/25 transition duration-150 active:scale-95 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
+              className="w-full mt-3 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <span className="inline-flex items-center space-x-2">
@@ -483,7 +483,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
               )}
             </button>
             {slowNotice && isSubmitting && (
-              <p className="text-[10px] text-indigo-300/80 text-center animate-pulse pt-1">
+              <p className="text-[10px] text-indigo-300/80 text-center pt-1">
                 Sunucu yanıtı bekleniyor, lütfen bekleyin...
               </p>
             )}

@@ -184,7 +184,7 @@ export const AddFriendModal = ({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-8 z-40 bg-[#08080a] flex flex-col w-full text-gray-200 select-none animate-in fade-in duration-150">
+    <div className="fixed inset-x-0 bottom-0 top-8 z-40 bg-[#08080a] flex flex-col w-full text-gray-200 select-none">
       {/* Fullscreen Header with Window Drag Region */}
       <div 
         data-tauri-drag-region
@@ -396,7 +396,7 @@ export const AddFriendModal = ({
                               type="button"
                               disabled={isAcceptingThis}
                               onClick={() => handleAccept(incomingReq.friendshipId, user.name)}
-                              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-600/20 transition flex-shrink-0 disabled:opacity-50"
+                              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex-shrink-0 disabled:opacity-50"
                             >
                               {isAcceptingThis ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                               <span>Kabul Et</span>
@@ -411,7 +411,7 @@ export const AddFriendModal = ({
                               type="button"
                               disabled={isSending}
                               onClick={() => handleSendRequest(user.id, user.name)}
-                              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex-shrink-0 disabled:opacity-50"
+                              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition flex-shrink-0 disabled:opacity-50"
                             >
                               {isSending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                               <span>İstek Gönder</span>
