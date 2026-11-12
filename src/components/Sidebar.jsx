@@ -842,7 +842,7 @@ export const Sidebar = ({
   const activeCallsCount = Object.values(channelCalls).filter(c => c.active).length;
 
   return (
-    <aside className="w-[320px] flex-shrink-0 h-full bg-[#0c0c0e] voys-glass-sidebar border-r border-white/[0.06] flex flex-col select-none overflow-hidden z-10 font-sans">
+    <aside className="w-[275px] flex-shrink-0 h-full bg-[#0c0c0e] voys-glass-sidebar border-r border-white/[0.06] flex flex-col select-none overflow-hidden z-10 font-sans">
       {sidebarView === 'friends' ? (
         /* Tüm Arkadaşlar Paneli (Sol kenar penceresinde açılan sayfa) */
         <div className="flex-1 flex flex-col min-h-0 bg-[#0c0c0e] sidebar-transparent-on-glass">
