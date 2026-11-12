@@ -200,7 +200,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       className="h-screen w-screen bg-[#0c0c0e] border border-white/10 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden relative select-none"
     >
       {/* Window Controls (Minimize & Close) on top-right of the window */}
-      <div 
+      <div
         data-tauri-drag-region="false"
         className="absolute right-2.5 top-2.5 flex items-center space-x-1 z-30"
       >
@@ -261,283 +261,285 @@ export const AuthPage = ({ initialMode = 'login' }) => {
 
       {/* Form Content */}
       <div className="flex-1 p-3.5 flex flex-col justify-between overflow-y-auto custom-scrollbar">
-          {/* Error Message Alert */}
-          {errorMsg && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2 animate-in fade-in">
-              <div className="leading-relaxed flex items-start space-x-2">
-                <span className="flex-1">{errorMsg}</span>
-              </div>
-              {errorMsg.includes('bağlanılamadı') && (
-                <div className="pt-2 border-t border-rose-500/20 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-[11px] font-semibold transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw size={11} className={isSubmitting ? 'animate-spin' : ''} />
-                    <span>Tekrar Dene</span>
-                  </button>
-                </div>
-              )}
+        {/* Error Message Alert */}
+        {errorMsg && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2 animate-in fade-in">
+            <div className="leading-relaxed flex items-start space-x-2">
+              <span className="flex-1">{errorMsg}</span>
             </div>
-          )}
-
-          {/* Success Message Alert */}
-          {successMsg && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-start space-x-2 animate-in fade-in">
-              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
-              <div className="leading-relaxed">{successMsg}</div>
-            </div>
-          )}
-
-          {emailConfirmationRequired ? (
-            <div className="pt-2 text-center space-y-3">
-              <p className="text-xs text-gray-300">
-                E-postanızı onayladıktan sonra hemen giriş yapabilirsiniz.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('login');
-                  setEmailConfirmationRequired(false);
-                  setSuccessMsg('');
-                }}
-                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition"
-              >
-                Giriş Ekranına Dön
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : mode === 'register' ? 'pt-3.5' : ''}`}>
-              {/* Register: Adınız & Kullanıcı adınız */}
-              {mode === 'register' && (
-                <>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                      Adınız
-                    </label>
-                    <div className="relative flex items-center">
-                      <User size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                      <input
-                        type="text"
-                        required
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                      Kullanıcı adınız
-                    </label>
-                    <div className="relative flex items-center">
-                      <AtSign size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                      <input
-                        type="text"
-                        required
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Email Input (Login, Register, Forgot Password) */}
-              {mode !== 'reset' && (
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    {mode === 'register' ? 'E-posta adresiniz' : 'E-Posta Adresi'}
-                  </label>
-                  <div className="relative flex items-center">
-                    <Mail size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Password Input (Login, Register, Reset) */}
-              {mode !== 'forgot' && (
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                      {mode === 'register' ? 'Şifreniz' : mode === 'reset' ? 'Yeni Şifre' : 'Şifre'}
-                    </label>
-                    {mode === 'login' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('forgot');
-                          setErrorMsg('');
-                          setSuccessMsg('');
-                          resizeToAuthWindow('forgot');
-                        }}
-                        className="text-[10px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
-                      >
-                        Şifremi Unuttum?
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative flex items-center">
-                    <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 text-gray-500 hover:text-gray-300 transition"
-                    >
-                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Confirm Password (Register and Reset mode) */}
-              {(mode === 'register' || mode === 'reset') && (
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    {mode === 'register' ? 'Şifreniz' : 'Şifreyi Doğrula'}
-                  </label>
-                  <div className="relative flex items-center">
-                    <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Remember Me Checkbox */}
-              {mode === 'login' && (
-                <div className="flex items-center space-x-2 pt-0.5">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded bg-[#141418] border-white/10 text-indigo-500 focus:ring-0 cursor-pointer accent-indigo-500"
-                  />
-                  <label htmlFor="remember" className="text-xs text-gray-300 cursor-pointer select-none">
-                    Beni bu cihazda hatırla
-                  </label>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full mt-1.5 py-2 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/25 transition duration-150 active:scale-95 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <span className="inline-flex items-center space-x-2">
-                    <Loader2 size={14} className="animate-spin" />
-                    <span>
-                      {mode === 'login' ? 'Giriş Yapılıyor...' : 'İşlem Yapılıyor...'}
-                    </span>
-                  </span>
-                ) : (
-                  <>
-                    <span>
-                      {mode === 'login'
-                        ? 'Giriş Yap'
-                        : mode === 'register'
-                        ? 'Kayıt Ol'
-                        : mode === 'forgot'
-                        ? 'Sıfırlama Bağlantısı Gönder'
-                        : 'Yeni Şifreyi Kaydet'}
-                    </span>
-                    <ArrowRight size={14} />
-                  </>
-                )}
-              </button>
-              {slowNotice && isSubmitting && (
-                <p className="text-[10px] text-indigo-300/80 text-center animate-pulse pt-1">
-                  Sunucu yanıtı bekleniyor, lütfen bekleyin...
-                </p>
-              )}
-            </form>
-          )}
-
-          {/* Mode Switchers / Footer Links */}
-          <div className="text-center pt-2 border-t border-white/5 text-xs text-gray-400">
-            {mode === 'login' && (
-              <div className="space-y-2">
-                <div>
-                  Henüz bir hesabınız yok mu?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('register');
-                      setErrorMsg('');
-                      setSuccessMsg('');
-                      resizeToAuthWindow('register');
-                    }}
-                    className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
-                  >
-                    Ücretsiz Kayıt Ol
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {mode === 'register' && (
-              <div>
-                Zaten bir hesabınız var mı?{' '}
+            {errorMsg.includes('bağlanılamadı') && (
+              <div className="pt-2 border-t border-rose-500/20 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setErrorMsg('');
-                    setSuccessMsg('');
-                    resizeToAuthWindow('login');
-                  }}
-                  className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-[11px] font-semibold transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
-                  Giriş Yap
-                </button>
-              </div>
-            )}
-
-            {(mode === 'forgot' || mode === 'reset') && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setErrorMsg('');
-                    setSuccessMsg('');
-                    resizeToAuthWindow('login');
-                  }}
-                  className="text-indigo-400 hover:text-indigo-300 inline-flex items-center space-x-1 cursor-pointer"
-                >
-                  <ArrowLeft size={12} />
-                  <span>Giriş ekranına dön</span>
+                  <RefreshCw size={11} className={isSubmitting ? 'animate-spin' : ''} />
+                  <span>Tekrar Dene</span>
                 </button>
               </div>
             )}
           </div>
+        )}
+
+        {/* Success Message Alert */}
+        {successMsg && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-start space-x-2 animate-in fade-in">
+            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+            <div className="leading-relaxed">{successMsg}</div>
+          </div>
+        )}
+
+        {emailConfirmationRequired ? (
+          <div className="pt-2 text-center space-y-3">
+            <p className="text-xs text-gray-300">
+              E-postanızı onayladıktan sonra hemen giriş yapabilirsiniz.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setEmailConfirmationRequired(false);
+                setSuccessMsg('');
+              }}
+              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition"
+            >
+              Giriş Ekranına Dön
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className={`space-y-2.5 ${mode === 'login' ? 'pt-4' : mode === 'register' ? 'pt-3.5' : ''}`}>
+            {/* Register: Adınız & Kullanıcı adınız */}
+            {mode === 'register' && (
+              <>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                    Adınız
+                  </label>
+                  <div className="relative flex items-center">
+                    <User size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                    Kullanıcı adınız
+                  </label>
+                  <div className="relative flex items-center">
+                    <AtSign size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Email Input (Login, Register, Forgot Password) */}
+            {mode !== 'reset' && (
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                  {mode === 'register' ? 'E-posta adresiniz' : 'E-Posta Adresi'}
+                </label>
+                <div className="relative flex items-center">
+                  <Mail size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Password Input (Login, Register, Reset) */}
+            {mode !== 'forgot' && (
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                    {mode === 'register' ? 'Şifreniz' : mode === 'reset' ? 'Yeni Şifre' : 'Şifre'}
+                  </label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => {
+                        setMode('forgot');
+                        setErrorMsg('');
+                        setSuccessMsg('');
+                        resizeToAuthWindow('forgot');
+                      }}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                    >
+                      Şifremi Unuttum?
+                    </button>
+                  )}
+                </div>
+                <div className="relative flex items-center">
+                  <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 text-gray-500 hover:text-gray-300 transition"
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Confirm Password (Register and Reset mode) */}
+            {(mode === 'register' || mode === 'reset') && (
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                  {mode === 'register' ? 'Tekrar Şifreniz' : 'Şifreyi Doğrula'}
+                </label>
+                <div className="relative flex items-center">
+                  <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Remember Me Checkbox */}
+            {mode === 'login' && (
+              <div className="flex items-center space-x-2 pt-0.5">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded bg-[#141418] border-white/10 text-indigo-500 focus:ring-0 cursor-pointer accent-indigo-500"
+                />
+                <label htmlFor="remember" className="text-xs text-gray-300 cursor-pointer select-none">
+                  Beni bu cihazda hatırla
+                </label>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full mt-1.5 py-2 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/25 transition duration-150 active:scale-95 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              {isSubmitting ? (
+                <span className="inline-flex items-center space-x-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>
+                    {mode === 'login' ? 'Giriş Yapılıyor...' : 'İşlem Yapılıyor...'}
+                  </span>
+                </span>
+              ) : (
+                <>
+                  <span>
+                    {mode === 'login'
+                      ? 'Giriş Yap'
+                      : mode === 'register'
+                        ? 'Kayıt Ol'
+                        : mode === 'forgot'
+                          ? 'Sıfırlama Bağlantısı Gönder'
+                          : 'Yeni Şifreyi Kaydet'}
+                  </span>
+                  <ArrowRight size={14} />
+                </>
+              )}
+            </button>
+            {slowNotice && isSubmitting && (
+              <p className="text-[10px] text-indigo-300/80 text-center animate-pulse pt-1">
+                Sunucu yanıtı bekleniyor, lütfen bekleyin...
+              </p>
+            )}
+          </form>
+        )}
+
+        {/* Mode Switchers / Footer Links */}
+        <div className="text-center pt-2 border-t border-white/5 text-xs text-gray-400">
+          {mode === 'login' && (
+            <div className="space-y-2">
+              <div>
+                Henüz bir hesabınız yok mu?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('register');
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                    resizeToAuthWindow('register');
+                  }}
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
+                >
+                  Ücretsiz Kayıt Ol
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div>
+              Zaten bir hesabınız var mı?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setErrorMsg('');
+                  setSuccessMsg('');
+                  resizeToAuthWindow('login');
+                }}
+                className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
+              >
+                Giriş Yap
+              </button>
+            </div>
+          )}
+
+          {(mode === 'forgot' || mode === 'reset') && (
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setErrorMsg('');
+                  setSuccessMsg('');
+                  resizeToAuthWindow('login');
+                }}
+                className="text-indigo-400 hover:text-indigo-300 inline-flex items-center space-x-1 cursor-pointer"
+              >
+                <ArrowLeft size={12} />
+                <span>Giriş ekranına dön</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+    </div>
   );
 };
