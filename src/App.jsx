@@ -1564,13 +1564,11 @@ function StanduppApp() {
     navigate('/');
   };
 
-  // Auto-redirect only after membership load: stay on '/' if 0 channels, and guard unjoined '/channel/:id' URLs
+  // Guard invalid channel routes: redirect to empty home '/' if channel doesn't exist
   useEffect(() => {
     if (isChannelsLoading || !currentUserId) return;
-    if (location.pathname === '/' || location.pathname === '/channel/home') {
-      if (textChannels.length > 0) {
-        navigate(`/channel/${textChannels[0].id}`, { replace: true });
-      }
+    if (location.pathname === '/channel/home') {
+      navigate('/', { replace: true });
       return;
     }
     if (pathParts[1] === 'channel' && pathParts[2] && pathParts[2] !== 'home' && !matchedChannel) {
@@ -1581,7 +1579,7 @@ function StanduppApp() {
           chatService.setVoiceChannel?.(null);
         });
       }
-      navigate(textChannels.length > 0 ? `/channel/${textChannels[0].id}` : '/', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [
     isChannelsLoading,
@@ -1589,7 +1587,6 @@ function StanduppApp() {
     location.pathname,
     pathParts,
     matchedChannel,
-    textChannels,
     navigate,
     activeCallChannelId,
     disconnectVoice,
@@ -1682,7 +1679,7 @@ function StanduppApp() {
             onDeleteChannel={handleDeleteChannel}
             channelExists={channelExists}
             onOpenCreateChannel={() => setModalOpen(true)}
-            onOpenAddMember={null}
+            onOpenAddMember={() => setIsAddFriendModalOpen(true)}
             onOpenGroupAddMember={() => setIsAddMemberModalOpen(true)}
             friends={friends}
             incomingRequests={friendshipsData.incoming || []}

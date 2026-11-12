@@ -1108,15 +1108,20 @@ export const ChatArea = ({
     return (
       <main className="flex-1 flex flex-col h-full bg-[#08080a] voys-glass-chat select-none relative overflow-hidden items-center justify-center p-6 text-center border-l border-white/5">
         <div className="max-w-md flex flex-col items-center space-y-4 animate-in fade-in duration-200">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-xl">
-            <Users size={24} />
+          <div className="w-14 h-14 rounded-2xl bg-[#8B51FF]/10 border border-[#8B51FF]/20 flex items-center justify-center shadow-xl mb-1">
+            <img
+              src="/voys_logo.png"
+              alt="Voys"
+              draggable={false}
+              className="w-8 h-8 object-contain select-none pointer-events-none opacity-85"
+            />
           </div>
           <div className="space-y-1.5">
             <h3 className="text-sm font-bold text-gray-100 tracking-wide">
               Henüz Aktif Bir Sohbet Yok
             </h3>
             <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
-              Soldaki listeden bir arkadaşınızı seçebilir, bir gruptan davet edilmeyi bekleyebilir veya yeni bir grup oluşturabilirsiniz.
+              Soldaki listeden bir arkadaşınızı seçebilir veya yeni bir sohbet başlatabilirsiniz.
             </p>
           </div>
 
@@ -1256,7 +1261,7 @@ export const ChatArea = ({
                     <button
                       type="button"
                       onClick={onBackToChannels}
-                      title="Kanallara Dön"
+                      title="Sohbeti Kapat"
                       className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition flex-shrink-0"
                     >
                       <ArrowLeft size={16} />
@@ -1366,7 +1371,7 @@ export const ChatArea = ({
                 <button
                   type="button"
                   onClick={onBackToChannels}
-                  title="Kanallara Dön"
+                  title="Sohbeti Kapat"
                   className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition flex-shrink-0"
                 >
                   <ArrowLeft size={16} />

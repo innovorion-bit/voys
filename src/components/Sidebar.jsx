@@ -1768,10 +1768,12 @@ export const Sidebar = ({
                   const callInfo = channelCalls[chan.id];
                   const isCallActive = callInfo?.active;
                   const isSelected = !activeDmUserId && Boolean(
-                    activeChannel === chan.id ||
-                    chan.id === `text-${activeChannel}` ||
-                    chan.id?.replace(/^text-/, '') === activeChannel?.replace(/^text-/, '') ||
-                    chan.name?.toLowerCase() === activeChannel?.toLowerCase()
+                    activeChannel && (
+                      activeChannel === chan.id ||
+                      chan.id === `text-${activeChannel}` ||
+                      chan.id?.replace(/^text-/, '') === activeChannel?.replace(/^text-/, '') ||
+                      chan.name?.toLowerCase() === activeChannel?.toLowerCase()
+                    )
                   );
 
                   const lastMsg = (activeChannel === chan.id && activeLastMessage)
