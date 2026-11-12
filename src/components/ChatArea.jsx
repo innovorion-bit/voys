@@ -9,7 +9,6 @@ import {
   Plus,
   Crown,
   ArrowDown,
-  Menu,
   ArrowLeft,
   ShieldCheck,
   Hash,
@@ -1285,16 +1284,6 @@ export const ChatArea = ({
         ) : (
           <>
             <div className="flex items-center min-w-0">
-              {/* Mobile hamburger button */}
-              <button
-                type="button"
-                onClick={onOpenMobileSidebar}
-                title="Menüyü Aç"
-                className="md:hidden text-gray-300 hover:text-white p-1.5 mr-1.5 rounded-xl hover:bg-white/10 transition flex items-center flex-shrink-0"
-              >
-                <Menu size={18} />
-              </button>
-
               {isDmMode && activeDmFriend ? (
                 /* Direct Message User Profile Header */
                 <div className="flex items-center space-x-2 min-w-0">
