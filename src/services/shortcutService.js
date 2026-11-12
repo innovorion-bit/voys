@@ -1,4 +1,6 @@
 import { isTauriEnvironment } from '../utils/windowManager.js';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 /**
  * Shortcut Service
@@ -626,8 +628,7 @@ export async function registerPttShortcut(shortcutKey, onStateChange) {
   if (inTauri) {
     let tempUnlisten = null;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const { listen } = await import('@tauri-apps/api/event');
+      const invokeFn = (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) || invoke;
 
       const typingSensitiveSingleKey = isTypingSensitiveKey(parsed);
 
@@ -813,7 +814,6 @@ export async function unregisterPttShortcut() {
 
   if (wasNative && isTauriEnvironment()) {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       await invoke('stop_ptt_listener').catch(() => {});
     } catch {}
   }

@@ -1,4 +1,5 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 export const LOGIN_SIZE = { width: 380, height: 400, minWidth: 360, minHeight: 380 };
 export const REGISTER_SIZE = { width: 380, height: 580, minWidth: 360, minHeight: 500 };
@@ -120,7 +121,11 @@ export async function applyWindowTransparency(opacityPercent = 100) {
 export async function detectRunningGame() {
   if (!isTauriEnvironment()) return null;
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
+    // Prefer window.__TAURI_INTERNALS__.invoke if available directly (instant, zero-overhead)
+    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) {
+      const result = await window.__TAURI_INTERNALS__.invoke('detect_running_game');
+      return result || null;
+    }
     const result = await invoke('detect_running_game');
     return result || null;
   } catch (err) {
