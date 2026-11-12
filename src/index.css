@@ -793,9 +793,9 @@ html.glass-mode .voys-glass-settings-content {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Clean static speaking indicators (no GPU-heavy pulsing shadows) */
+/* Clean static speaking indicators (crisp emerald ring) */
 .speaking-ring {
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.85);
+  box-shadow: 0 0 0 2.5px rgba(52, 211, 153, 0.95), 0 0 0 4px #0c0c0e !important;
 }
 
 .speaking-card-glow {
@@ -883,7 +883,7 @@ html.voys-window-inactive *::after {
 html.voys-performance-mode .speaking-ring,
 html.voys-window-inactive .speaking-ring {
   animation: none !important;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.85) !important;
+  box-shadow: 0 0 0 2.5px rgba(52, 211, 153, 0.95), 0 0 0 4px #0c0c0e !important;
 }
 
 html.voys-performance-mode .speaking-card-glow,

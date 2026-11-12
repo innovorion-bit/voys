@@ -1340,18 +1340,47 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <label className="text-xs font-semibold text-gray-200">Mikrofon Ses Seviyesi</label>
-                      <span className="text-xs text-gray-400 font-mono">{inputVolume}%</span>
+                      <div className="flex items-center space-x-2">
+                        {inputVolume !== 100 && (
+                          <button
+                            type="button"
+                            onClick={() => changeInputVolume(100)}
+                            className="text-[10px] text-gray-400 hover:text-white underline transition cursor-pointer"
+                            title="Varsayılana Sıfırla (%100)"
+                          >
+                            %100
+                          </button>
+                        )}
+                        <span
+                          className={`text-xs font-mono font-semibold ${
+                            inputVolume > 100 ? 'text-amber-400' : 'text-gray-400'
+                          }`}
+                        >
+                          {inputVolume}%
+                        </span>
+                      </div>
                     </div>
                     <div className="relative flex items-center py-1">
+                      <span
+                        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1.5px] h-2.5 bg-white/30 rounded-full z-0"
+                        aria-hidden="true"
+                        title="Varsayılan (%100)"
+                      />
                       <input
                         type="range"
                         min="0"
-                        max="100"
+                        max={MAX_VOLUME_PERCENT}
                         value={inputVolume}
                         onChange={(e) => changeInputVolume(Number(e.target.value))}
-                        className="w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider"
+                        className="relative z-10 w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider"
                         style={{
-                          background: `linear-gradient(to right, #8B51FF ${inputVolume}%, #232428 ${inputVolume}%)`
+                          background: getVolumeSliderFillStyle(
+                            inputVolume,
+                            MAX_VOLUME_PERCENT,
+                            '#8B51FF',
+                            '#f59e0b',
+                            '#232428'
+                          ),
                         }}
                       />
                     </div>

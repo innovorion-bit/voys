@@ -1300,7 +1300,12 @@ export const ChatArea = ({
               {/* Friend Avatar (Tıklandığında büyük ekranda açar, sesli aramada konuşma halkası ve sağ tık menüsü gösterir) */}
               {(() => {
                 const dmCallMember = (callMembers || []).find(
-                  (m) => m?.id === activeDmFriend?.id || (m?.name && m.name === activeDmFriend?.name)
+                  (m) => m && m.id !== currentUser?.id && (
+                    m.id === activeDmFriend?.id ||
+                    m.userId === activeDmFriend?.id ||
+                    (m.name && activeDmFriend?.name && m.name.toLowerCase() === activeDmFriend.name.toLowerCase()) ||
+                    isDmMode
+                  )
                 );
                 const dmPref = dmCallMember
                   ? (peerAudioPrefs[String(dmCallMember.id)] || (dmCallMember.peerId ? peerAudioPrefs[String(dmCallMember.peerId)] : null))
@@ -2734,9 +2739,10 @@ export const ChatArea = ({
                       return (
                         <div
                           key={memberKey}
+                          onClick={(e) => openVoiceContextMenu(e, m)}
                           onContextMenu={(e) => openVoiceContextMenu(e, m)}
-                          className="relative p-1 rounded-xl hover:bg-white/[0.06] transition cursor-context-menu flex items-center justify-center"
-                          title={`${m.name || 'Katılımcı'}${isMe ? ' (Sen)' : ''} • ${voiceStatusLabel} (Sağ tıkla)`}
+                          className="relative p-1 rounded-xl hover:bg-white/[0.06] transition cursor-pointer flex items-center justify-center"
+                          title={`${m.name || 'Katılımcı'}${isMe ? ' (Sen)' : ''} • ${voiceStatusLabel} (Ses ayarı için tıklayın)`}
                         >
                           <UserAvatar
                             user={m}
@@ -2759,9 +2765,10 @@ export const ChatArea = ({
                     return (
                       <div
                         key={memberKey}
+                        onClick={(e) => openVoiceContextMenu(e, m)}
                         onContextMenu={(e) => openVoiceContextMenu(e, m)}
-                        className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/[0.06] transition cursor-context-menu group"
-                        title="Ses seviyesini ve seçenekleri ayarlamak için sağ tıklayın"
+                        className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/[0.06] transition cursor-pointer group"
+                        title="Ses seviyesini ve seçenekleri ayarlamak için tıklayın"
                       >
                         <div className="relative flex-shrink-0">
                           <UserAvatar

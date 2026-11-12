@@ -88,8 +88,8 @@ export function buildAudioDspPlan({
   const useAntiStatic = Boolean(antiStaticFilter);
 
   const volNum = Number(inputVolume);
-  const safeVolume = Math.max(0, Math.min(100, Number.isFinite(volNum) ? volNum : 100));
-  const inputGain = Math.max(0, Math.min(1.5, safeVolume / 100));
+  const safeVolume = Math.max(0, Math.min(200, Number.isFinite(volNum) ? volNum : 100));
+  const inputGain = Math.max(0, Math.min(2.5, safeVolume / 100));
 
   const openThreshold = clampNoiseGateThreshold(noiseGateThreshold);
   const closeThreshold = Math.max(-75, openThreshold - NOISE_GATE_HYSTERESIS_DB);
@@ -258,9 +258,9 @@ export async function buildMicDspChain(ctx, sourceNode, config = {}, overrides =
     lowpass.Q.value = 0.707;
 
     const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -18;
-    compressor.knee.value = 12;
-    compressor.ratio.value = 3.5;
+    compressor.threshold.value = -12;
+    compressor.knee.value = 10;
+    compressor.ratio.value = 2.5;
     compressor.attack.value = 0.005;
     compressor.release.value = 0.12;
 

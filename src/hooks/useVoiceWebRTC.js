@@ -3,17 +3,22 @@ import { toast } from 'sonner';
 import { peerService } from '../services/peerService';
 import { sounds } from '../utils/audio';
 
-const VAD_RMS_THRESHOLD = 3.2;
-const VAD_HANGOVER_MS = 260;
+const VAD_RMS_THRESHOLD = 1.2;
+const VAD_PEAK_DEV_THRESHOLD = 4;
+const VAD_HANGOVER_MS = 400;
 
 function measureSpeechLevel(analyser, dataArray) {
   analyser.getByteTimeDomainData(dataArray);
   let sumSq = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    const centered = dataArray[i] - 128;
+  let maxDev = 0;
+  const len = dataArray.length;
+  for (let i = 0; i < len; i++) {
+    const centered = Math.abs(dataArray[i] - 128);
     sumSq += centered * centered;
+    if (centered > maxDev) maxDev = centered;
   }
-  return Math.sqrt(sumSq / dataArray.length);
+  const rms = Math.sqrt(sumSq / len);
+  return { rms, maxDev, isSpeaking: rms > VAD_RMS_THRESHOLD || maxDev >= VAD_PEAK_DEV_THRESHOLD };
 }
 
 export const useVoiceWebRTC = () => {
@@ -78,7 +83,7 @@ export const useVoiceWebRTC = () => {
       }
 
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 128;
+      analyser.fftSize = 512;
       analyser.smoothingTimeConstant = 0.45;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -95,7 +100,7 @@ export const useVoiceWebRTC = () => {
       const scheduleNext = () => {
         if (disposed) return;
         if (typeof document !== 'undefined' && document.hidden) return;
-        const delay = typeof document !== 'undefined' && !document.hasFocus() ? 320 : 140;
+        const delay = typeof document !== 'undefined' && !document.hasFocus() ? 180 : 90;
         timerId = setTimeout(tick, delay);
       };
 
@@ -112,9 +117,9 @@ export const useVoiceWebRTC = () => {
 
         let speakingNow = false;
         if (!isMutedRef.current) {
-          const rms = measureSpeechLevel(localAnalyserRef.current, dataArray);
+          const level = measureSpeechLevel(localAnalyserRef.current, dataArray);
           const now = Date.now();
-          if (rms > VAD_RMS_THRESHOLD) {
+          if (level.isSpeaking) {
             localLastSpokeRef.current = now;
             speakingNow = true;
           } else if (now - localLastSpokeRef.current < VAD_HANGOVER_MS) {
@@ -214,6 +219,7 @@ export const useVoiceWebRTC = () => {
       try {
         entry.source?.disconnect();
         entry.analyser?.disconnect();
+        entry.silenceGain?.disconnect();
       } catch {}
     });
     remoteAnalysersRef.current.clear();
@@ -232,6 +238,7 @@ export const useVoiceWebRTC = () => {
         try {
           existing.source?.disconnect();
           existing.analyser?.disconnect();
+          existing.silenceGain?.disconnect();
         } catch {}
       }
 
@@ -247,15 +254,22 @@ export const useVoiceWebRTC = () => {
       }
 
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 128;
+      analyser.fftSize = 512;
       analyser.smoothingTimeConstant = 0.45;
       const source = ctx.createMediaStreamSource(stream);
       source.connect(analyser);
+
+      // Web Audio zero-gain node connected to ctx.destination forces Chromium to pull audio frames from WebRTC
+      const silenceGain = ctx.createGain();
+      silenceGain.gain.value = 0;
+      analyser.connect(silenceGain);
+      silenceGain.connect(ctx.destination);
 
       remoteAnalysersRef.current.set(peerId, {
         stream,
         source,
         analyser,
+        silenceGain,
         dataArray: new Uint8Array(analyser.fftSize),
         lastSpokeAt: 0,
         isSpeaking: false,
@@ -360,6 +374,27 @@ export const useVoiceWebRTC = () => {
     };
   }, [cleanupLocalVAD, cleanupRemoteVAD]);
 
+  // Resume AudioContexts automatically on user gesture (bypasses Chromium autoplay lock)
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const resumeAudioContexts = () => {
+      if (localAudioContextRef.current && localAudioContextRef.current.state === 'suspended') {
+        localAudioContextRef.current.resume().catch(() => {});
+      }
+      if (remoteAudioContextRef.current && remoteAudioContextRef.current.state === 'suspended') {
+        remoteAudioContextRef.current.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('pointerdown', resumeAudioContexts);
+    window.addEventListener('keydown', resumeAudioContexts);
+    window.addEventListener('click', resumeAudioContexts);
+    return () => {
+      window.removeEventListener('pointerdown', resumeAudioContexts);
+      window.removeEventListener('keydown', resumeAudioContexts);
+      window.removeEventListener('click', resumeAudioContexts);
+    };
+  }, []);
+
   // Listen to incoming remote streams, remote speaking VAD, and peer leaves
   useEffect(() => {
     const handleStream = ({ peerId, stream }) => {
@@ -384,6 +419,7 @@ export const useVoiceWebRTC = () => {
         try {
           analyserEntry.source?.disconnect();
           analyserEntry.analyser?.disconnect();
+          analyserEntry.silenceGain?.disconnect();
         } catch {}
         remoteAnalysersRef.current.delete(peerId);
       }
@@ -435,6 +471,10 @@ export const useVoiceWebRTC = () => {
     const runRemoteVadTick = () => {
       if (remoteVadDisposed) return;
 
+      if (remoteAudioContextRef.current && remoteAudioContextRef.current.state === 'suspended') {
+        remoteAudioContextRef.current.resume().catch(() => {});
+      }
+
       if (typeof document !== 'undefined' && document.hidden) {
         resetRemoteSpeaking();
         return;
@@ -447,9 +487,9 @@ export const useVoiceWebRTC = () => {
 
         remoteAnalysersRef.current.forEach((entry, peerId) => {
           if (!entry?.analyser || !entry.stream?.active) return;
-          const rms = measureSpeechLevel(entry.analyser, entry.dataArray);
+          const level = measureSpeechLevel(entry.analyser, entry.dataArray);
           let speakingNow = false;
-          if (rms > VAD_RMS_THRESHOLD) {
+          if (level.isSpeaking) {
             entry.lastSpokeAt = now;
             speakingNow = true;
           } else if (now - entry.lastSpokeAt < VAD_HANGOVER_MS) {
@@ -473,7 +513,7 @@ export const useVoiceWebRTC = () => {
         }
       }
 
-      const delay = typeof document !== 'undefined' && !document.hasFocus() ? 320 : 140;
+      const delay = typeof document !== 'undefined' && !document.hasFocus() ? 180 : 90;
       remoteVadTimer = setTimeout(runRemoteVadTick, delay);
     };
 

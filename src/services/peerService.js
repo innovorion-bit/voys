@@ -140,14 +140,14 @@ export class MeshVoiceService {
 
     this.selectedAudioInputId = null;
     this.advancedAudioFiltering = readStoredBool('standupp_advanced_audio_filtering', true);
-    this.autoGainControlEnabled = readStoredBool('standupp_auto_gain_control', false);
+    this.autoGainControlEnabled = readStoredBool('standupp_auto_gain_control', true);
     this.antiStaticFilterEnabled = readStoredBool('standupp_anti_static_filter', true);
     this.aiNoiseSuppressionEnabled = DEFAULT_AI_NOISE_SUPPRESSION;
     this.noiseSuppressionMode = readStoredNoiseSuppressionMode();
     this.noiseGateThreshold = clampNoiseGateThreshold(
       readStoredNumber(STORAGE_KEYS.noiseGateThreshold, DEFAULT_NOISE_GATE_THRESHOLD)
     );
-    this.inputVolume = Math.max(0, Math.min(100, readStoredNumber('standupp_input_volume', 100)));
+    this.inputVolume = Math.max(0, Math.min(200, readStoredNumber('standupp_input_volume', 100)));
     this.lastDspInfo = {
       aiNsApplied: false,
       noiseGateApplied: false,
@@ -436,7 +436,7 @@ export class MeshVoiceService {
 
   setInputVolume(volumePercent) {
     const rawNum = Number(volumePercent);
-    const clamped = Math.max(0, Math.min(100, Number.isFinite(rawNum) ? rawNum : 100));
+    const clamped = Math.max(0, Math.min(200, Number.isFinite(rawNum) ? rawNum : 100));
     this.inputVolume = clamped;
 
     if (this.micGainNode && this.micAudioCtx && this.micAudioCtx.state !== 'closed') {

@@ -102,9 +102,9 @@ export const SettingsProvider = ({ children }) => {
     }
   });
 
-  // Standard Balanced Audio Processing (locked defaults: AI RNNoise + Echo/Noise + Anti-Static enabled, AGC off)
+  // Standard Balanced Audio Processing (locked defaults: AI RNNoise + Echo/Noise + Anti-Static enabled, AGC on)
   const advancedAudioFiltering = true;
-  const autoGainControl = false;
+  const autoGainControl = true;
   const antiStaticFilter = true;
   const aiNoiseSuppression = DEFAULT_AI_NOISE_SUPPRESSION;
   const noiseSuppressionMode = DEFAULT_NOISE_SUPPRESSION_MODE;
