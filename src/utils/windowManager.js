@@ -1,5 +1,6 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { chatService } from '../services/chatService.js';
 
 export const LOGIN_SIZE = { width: 380, height: 400, minWidth: 360, minHeight: 380 };
 export const REGISTER_SIZE = { width: 380, height: 580, minWidth: 360, minHeight: 500 };
@@ -84,15 +85,49 @@ export async function toggleMaximizeWindow() {
 }
 
 /**
- * Closes the current application window.
+ * Closes the current application window gracefully after leaving presence.
  */
 export async function closeWindow() {
   if (!isTauriEnvironment()) return;
   try {
+    if (chatService && typeof chatService.leavePresence === 'function') {
+      chatService.leavePresence();
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('beforeunload'));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
     await getCurrentWindow().close();
   } catch (err) {
     console.warn('Tauri close error:', err);
   }
+}
+
+/**
+ * Registers graceful departure handler when the user requests window close (e.g. via Alt+F4 or system close).
+ */
+export async function setupWindowCloseHandler() {
+  if (!isTauriEnvironment()) return null;
+  try {
+    const appWindow = getCurrentWindow();
+    if (typeof appWindow.onCloseRequested === 'function') {
+      const unlisten = await appWindow.onCloseRequested(async () => {
+        try {
+          if (chatService && typeof chatService.leavePresence === 'function') {
+            chatService.leavePresence();
+          }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('beforeunload'));
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        } catch {}
+      });
+      return unlisten;
+    }
+  } catch (err) {
+    console.warn('setupWindowCloseHandler warning:', err);
+  }
+  return null;
 }
 
 /**

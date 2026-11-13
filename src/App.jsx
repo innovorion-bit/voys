@@ -54,6 +54,7 @@ import {
   applyIncomingCallStatus,
 } from './utils/voiceCallState';
 import { normalizeUserId, removeCachedUserProfile } from './utils/userPurge';
+import { setupWindowCloseHandler } from './utils/windowManager';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
@@ -212,6 +213,11 @@ function StanduppApp() {
 
   // Listen to realtime presence updates via Socket.IO & BroadcastChannel
   useEffect(() => {
+    let unlistenClose = null;
+    setupWindowCloseHandler().then((fn) => {
+      unlistenClose = fn;
+    });
+
     const handlePresence = (data) => {
       if (!data) return;
       const key = data.userId || data.id;
@@ -219,11 +225,18 @@ function StanduppApp() {
       const now = Date.now();
       const keyStr = String(key);
       const keyLower = keyStr.toLowerCase();
+      const isOnline = data.status !== 'offline' && data.status !== 'invisible' && data.isOnline !== false;
+
       setPresences((prev) => {
+        const prevEntry = prev[keyStr] || prev[keyLower] || {};
         const entry = {
-          ...prev[keyStr],
-          ...prev[keyLower],
+          ...prevEntry,
           ...data,
+          status: isOnline ? (data.status || 'online') : 'offline',
+          isOnline,
+          voiceChannelId: isOnline ? data.voiceChannelId : null,
+          game: isOnline ? (data.game || null) : null,
+          substatus: isOnline ? (data.substatus || '') : '',
           timestamp: data.timestamp || now,
           receivedAt: now,
         };
@@ -238,17 +251,39 @@ function StanduppApp() {
     const handleAllPresences = (list) => {
       if (!Array.isArray(list)) return;
       const now = Date.now();
+      const activeIds = new Set();
+
+      list.forEach((item) => {
+        const key = item.userId || item.id;
+        if (key) {
+          activeIds.add(String(key).toLowerCase());
+        }
+      });
+
+      const selfId = activeUserProfile?.id ? String(activeUserProfile.id).toLowerCase() : null;
+      if (selfId && selfId !== 'you') {
+        activeIds.add(selfId);
+      }
+
       setPresences((prev) => {
-        const next = { ...prev };
+        const next = {};
+
+        // 1. First, populate all active presences from authoritative list
         list.forEach((item) => {
           const key = item.userId || item.id;
           if (key) {
             const keyStr = String(key);
             const keyLower = keyStr.toLowerCase();
+            const prevEntry = prev[keyStr] || prev[keyLower] || {};
+            const isOnline = item.status !== 'offline' && item.status !== 'invisible' && item.isOnline !== false;
             const entry = {
-              ...next[keyStr],
-              ...next[keyLower],
+              ...prevEntry,
               ...item,
+              status: isOnline ? (item.status || 'online') : 'offline',
+              isOnline,
+              voiceChannelId: isOnline ? item.voiceChannelId : null,
+              game: isOnline ? (item.game || null) : null,
+              substatus: isOnline ? (item.substatus || '') : '',
               timestamp: item.timestamp || now,
               receivedAt: now,
             };
@@ -258,6 +293,28 @@ function StanduppApp() {
             }
           }
         });
+
+        // 2. Reconcile previous entries: mark departed users as offline
+        Object.entries(prev).forEach(([key, oldEntry]) => {
+          if (!oldEntry || typeof oldEntry !== 'object') return;
+          const keyLower = String(key).toLowerCase();
+          const targetId = String(oldEntry.userId || oldEntry.id || key).toLowerCase();
+
+          if (!activeIds.has(targetId) && !activeIds.has(keyLower)) {
+            next[key] = {
+              ...oldEntry,
+              status: 'offline',
+              isOnline: false,
+              voiceChannelId: null,
+              game: null,
+              substatus: '',
+              receivedAt: now,
+            };
+          } else if (!next[key]) {
+            next[key] = oldEntry;
+          }
+        });
+
         return next;
       });
     };
@@ -270,8 +327,9 @@ function StanduppApp() {
     return () => {
       chatService.off('presence', handlePresence);
       chatService.off('all_presences', handleAllPresences);
+      if (typeof unlistenClose === 'function') unlistenClose();
     };
-  }, []);
+  }, [activeUserProfile?.id]);
 
   // Periodic presence heartbeat so other clients know we are active
   useEffect(() => {
@@ -294,6 +352,43 @@ function StanduppApp() {
       window.removeEventListener('online', handleFocus);
     };
   }, [activeUserProfile]);
+
+  // Stale presence sweeper: if a non-self user hasn't sent a heartbeat in 45s, mark them offline
+  useEffect(() => {
+    const sweepInterval = setInterval(() => {
+      const now = Date.now();
+      const STALE_THRESHOLD = 45000;
+      const selfId = activeUserProfile?.id ? String(activeUserProfile.id).toLowerCase() : null;
+
+      setPresences((prev) => {
+        let changed = false;
+        const next = { ...prev };
+
+        Object.entries(prev).forEach(([key, entry]) => {
+          if (!entry || !entry.isOnline) return;
+          const entryId = String(entry.userId || entry.id || key).toLowerCase();
+          if (selfId && (entryId === selfId || key.toLowerCase() === selfId)) return;
+
+          const lastSeen = entry.receivedAt || entry.timestamp || 0;
+          if (lastSeen > 0 && now - lastSeen > STALE_THRESHOLD) {
+            next[key] = {
+              ...entry,
+              status: 'offline',
+              isOnline: false,
+              voiceChannelId: null,
+              game: null,
+              substatus: '',
+            };
+            changed = true;
+          }
+        });
+
+        return changed ? next : prev;
+      });
+    }, 15000);
+
+    return () => clearInterval(sweepInterval);
+  }, [activeUserProfile?.id]);
 
   // Friendships state: accepted friends, incoming requests, outgoing requests
   const [friendshipsData, setFriendshipsData] = useState({
@@ -544,7 +639,7 @@ function StanduppApp() {
   // Compute dynamic friends list with real-time presences merged
   const friends = useMemo(() => {
     return (friendshipsData.friends || []).map((f) => {
-      const p = presences[f.id];
+      const p = resolveMemberPresence(presences, f);
       const fallbackProf = dmUserProfile?.id === f.id ? dmUserProfile : null;
       const cachedProf = getCachedUserProfile(f.id);
       const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
@@ -615,7 +710,7 @@ function StanduppApp() {
     const found = friends.find((f) => f.id === activeDmUserId);
     const fallbackProfile = dmUserProfile?.id === activeDmUserId ? dmUserProfile : null;
     const cachedProfile = getCachedUserProfile(activeDmUserId);
-    const p = presences[activeDmUserId];
+    const p = resolveMemberPresence(presences, { id: activeDmUserId, user_id: activeDmUserId });
     const isTargetOnline = Boolean(
       p &&
       p.status &&

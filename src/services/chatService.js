@@ -199,31 +199,29 @@ class RealtimeChatService {
               }
             }
             if (Array.isArray(leftPresences)) {
-              // Debounce departure check so temporary reconnects or re-tracks don't falsely flip members offline
-              setTimeout(() => {
-                const state = this.supabasePresenceChannel?.presenceState?.() || {};
-                const activeUserIds = new Set();
-                Object.values(state).forEach((items) => {
-                  if (Array.isArray(items)) {
-                    items.forEach((item) => {
-                      const id = item?.userId || item?.id;
-                      if (id) activeUserIds.add(String(id).toLowerCase());
-                    });
-                  }
-                });
-
-                leftPresences.forEach((p) => {
-                  const uid = p?.userId || p?.id;
-                  if (!uid) return;
-                  if (activeUserIds.has(String(uid).toLowerCase())) return;
-                  this.emitLocal('presence', {
-                    ...p,
-                    status: 'offline',
-                    isOnline: false,
-                    voiceChannelId: null,
+              const state = this.supabasePresenceChannel?.presenceState?.() || {};
+              const activeUserIds = new Set();
+              Object.values(state).forEach((items) => {
+                if (Array.isArray(items)) {
+                  items.forEach((item) => {
+                    const id = item?.userId || item?.id;
+                    if (id) activeUserIds.add(String(id).toLowerCase());
                   });
+                }
+              });
+
+              leftPresences.forEach((p) => {
+                const uid = p?.userId || p?.id;
+                if (!uid) return;
+                if (activeUserIds.has(String(uid).toLowerCase())) return;
+                this.emitLocal('presence', {
+                  ...p,
+                  status: 'offline',
+                  isOnline: false,
+                  voiceChannelId: null,
+                  timestamp: Date.now(),
                 });
-              }, 1800);
+              });
             }
           })
           .subscribe(async (status) => {
@@ -245,6 +243,17 @@ class RealtimeChatService {
           .on('broadcast', { event: 'call_update' }, ({ payload }) => {
             if (payload) {
               this.emitLocal('call_status', payload);
+            }
+          })
+          .on('broadcast', { event: 'user_departed' }, ({ payload }) => {
+            if (payload?.userId) {
+              this.emitLocal('presence', {
+                ...payload,
+                status: 'offline',
+                isOnline: false,
+                voiceChannelId: null,
+                timestamp: Date.now(),
+              });
             }
           })
           .on('broadcast', { event: 'account_deleted' }, ({ payload }) => {
@@ -399,11 +408,16 @@ class RealtimeChatService {
   }
 
   // Gracefully leave / set presence offline
-  leavePresence() {
+  leavePresence(profile = null) {
     this.activeVoiceChannelId = null;
-    if (!this.currentPresencePayload) return;
+    const base = this.currentPresencePayload || profile || {};
+    const userId = base.userId || base.id;
+    if (!userId || userId === 'you') return;
+
     const payload = {
-      ...this.currentPresencePayload,
+      ...base,
+      userId: String(userId),
+      id: String(userId),
       status: 'offline',
       isOnline: false,
       voiceChannelId: null,
@@ -411,10 +425,27 @@ class RealtimeChatService {
     };
 
     if (this.presenceBroadcastChannel) {
-      this.presenceBroadcastChannel.postMessage({
-        type: 'PRESENCE_LEAVE',
-        payload,
-      });
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'PRESENCE_LEAVE',
+          payload,
+        });
+      } catch {}
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'user_departed',
+          payload: {
+            userId: String(userId),
+            id: String(userId),
+            status: 'offline',
+            isOnline: false,
+          },
+        }).catch(() => {});
+      } catch {}
     }
 
     if (this.supabasePresenceChannel) {

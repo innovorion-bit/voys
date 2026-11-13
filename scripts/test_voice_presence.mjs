@@ -320,4 +320,49 @@ test('resolveChannelCall and isChannelMatch handle prefixes and casing gracefull
   assert.equal(resolved?.count, 2);
 });
 
+test('Users who closed app with status: online in DB are strictly offline when absent from presences', () => {
+  const members = [
+    { id: 'cm-self', user_id: 'u-lyring', name: 'Lyring', profile: { status: 'online' } },
+    { id: 'cm-rain', user_id: 'u-rain', name: 'RAİN', profile: { status: 'online' } },
+    { id: 'cm-huseyin', user_id: 'u-huseyin', name: 'MafiKK-Hüseyin', profile: { status: 'online' } },
+    { id: 'cm-berat', user_id: 'u-berat', name: 'Berat', profile: { status: 'online' } },
+    { id: 'cm-halil', user_id: 'u-halil', name: 'Halil', profile: { status: 'online' } },
+    { id: 'cm-yunus', user_id: 'u-yunus', name: 'yunus', profile: { status: 'online' } },
+  ];
+
+  const currentUser = { id: 'u-lyring', name: 'Lyring', status: 'online' };
+
+  // Only Lyring (self) is active; all other 5 users closed the window via 'X'
+  const presences = {
+    'u-lyring': { userId: 'u-lyring', name: 'Lyring', status: 'online', isOnline: true },
+  };
+
+  const computed = members.map((m) => {
+    const isSelf = m.user_id === currentUser.id;
+    const onlineInfo = computeMemberOnlineStatus({
+      member: m,
+      presences,
+      isSelf,
+      currentUser,
+      activeVoiceMembers: [],
+    });
+    return { ...m, ...onlineInfo };
+  });
+
+  const onlineList = computed.filter((m) => m.isOnline);
+  const offlineList = computed.filter((m) => !m.isOnline);
+
+  assert.equal(onlineList.length, 1);
+  assert.equal(onlineList[0].name, 'Lyring');
+  assert.equal(offlineList.length, 5);
+  assert.deepEqual(
+    offlineList.map((m) => m.name).sort(),
+    ['Berat', 'Halil', 'MafiKK-Hüseyin', 'RAİN', 'yunus']
+  );
+  offlineList.forEach((m) => {
+    assert.equal(m.status, 'offline');
+    assert.equal(m.isOnline, false);
+  });
+});
+
 console.log('All voice presence tests passed!');

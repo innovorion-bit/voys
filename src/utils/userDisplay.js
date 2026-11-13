@@ -282,7 +282,11 @@ export const computeMemberOnlineStatus = ({
 
   // 2. Real-time presence truth
   if (p) {
-    const isOnline = p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false;
+    const isOnline = Boolean(
+      p.status !== 'offline' &&
+      p.status !== 'invisible' &&
+      p.isOnline !== false
+    );
     return {
       status: isOnline ? (p.status || 'online') : 'offline',
       isOnline,
@@ -291,20 +295,13 @@ export const computeMemberOnlineStatus = ({
     };
   }
 
-  // 3. Fallback to database profile status if presence has not yet arrived
-  const fallbackStatus = profile.status || member.status;
-  const isFallbackOnline = Boolean(
-    fallbackStatus &&
-    fallbackStatus !== 'offline' &&
-    fallbackStatus !== 'invisible' &&
-    member.isOnline !== false
-  );
-
+  // 3. If neither in active voice nor present in real-time presences, user is strictly offline.
+  // Database profile.status reflects saved preference, never live connectivity.
   return {
-    status: isFallbackOnline ? (fallbackStatus || 'online') : 'offline',
-    isOnline: isFallbackOnline,
-    game: isFallbackOnline ? (profile.game || member.game || null) : null,
-    substatus: isFallbackOnline ? (profile.substatus || member.substatus || '') : '',
+    status: 'offline',
+    isOnline: false,
+    game: null,
+    substatus: '',
   };
 };
 
