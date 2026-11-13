@@ -24,6 +24,7 @@ import { UserAvatar } from './UserAvatar';
 import { getDmRoomId, localDb, dbService } from '../lib/supabase';
 import { chatService } from '../services/chatService';
 import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } from '../utils/dmIsolation';
+import { resolveChannelCall } from '../utils/userDisplay';
 
 // Format message timestamp: 23:14 (today), Dün (yesterday), Day Name (this week), DD.MM.YYYY (older)
 function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
@@ -818,7 +819,7 @@ export const Sidebar = ({
       if (hiddenChatIds.has(chan.id) && !searchQuery.trim()) return false;
       if (filterTab === 'unread') {
         // Show channels with active call
-        return Boolean(channelCalls[chan.id]?.active);
+        return Boolean(resolveChannelCall(channelCalls, chan.id)?.active);
       }
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
@@ -1773,7 +1774,7 @@ export const Sidebar = ({
 
                 {/* Channels Section */}
                 {filteredChannels.map((chan) => {
-                  const callInfo = channelCalls[chan.id];
+                  const callInfo = resolveChannelCall(channelCalls, chan.id);
                   const isCallActive = callInfo?.active;
                   const isSelected = !activeDmUserId && Boolean(
                     activeChannel && (

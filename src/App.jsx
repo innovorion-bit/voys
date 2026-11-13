@@ -43,6 +43,9 @@ import {
   mergeChannelCallsWithPresences,
   computeMemberOnlineStatus,
   resolveMemberPresence,
+  resolveChannelCall,
+  isChannelMatch,
+  mergeVoiceAndCallMembers,
 } from './utils/userDisplay';
 import { MAX_VOLUME_PERCENT, clampVolumePercent } from './utils/remoteAudioGain';
 import {
@@ -1678,6 +1681,24 @@ function StanduppApp() {
     return 'Ana Sayfa';
   }, [isSettingsOpen, isDm, pathParts, matchedChannel]);
 
+  const activeChannelCall = useMemo(
+    () => (activeChannel ? resolveChannelCall(effectiveChannelCalls, activeChannel) : null),
+    [effectiveChannelCalls, activeChannel]
+  );
+
+  const isCurrentChannelCallConnected = useMemo(
+    () => Boolean(activeChannel && activeCallChannelId && isConnected && isChannelMatch(activeCallChannelId, activeChannel)),
+    [activeChannel, activeCallChannelId, isConnected]
+  );
+
+  const resolvedCallMembers = useMemo(() => {
+    if (!activeChannel) return [];
+    if (isCurrentChannelCallConnected) {
+      return mergeVoiceAndCallMembers(voiceMembers, activeChannelCall?.members, activeUserProfile);
+    }
+    return activeChannelCall?.members || [];
+  }, [activeChannel, isCurrentChannelCallConnected, voiceMembers, activeChannelCall?.members, activeUserProfile]);
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#101214] voys-glass-app rounded-2xl border border-white/10 overflow-hidden select-none">
       {/* Hidden remote <audio autoPlay> tags managed within React component */}
@@ -1757,20 +1778,12 @@ function StanduppApp() {
             onOpenSettings={openSettings}
             onClearChat={handleClearActiveChat}
             // Universal In-Chat Voice Call Props (Steam-style joinable session)
-            isCallActive={Boolean(
-              activeChannel &&
-              (effectiveChannelCalls[activeChannel]?.active ||
-                (activeCallChannelId === activeChannel && isConnected))
-            )}
-            isInCall={Boolean(activeChannel && activeCallChannelId === activeChannel && isConnected)}
-            callMembers={
-              activeChannel && activeCallChannelId === activeChannel && isConnected
-                ? voiceMembers
-                : (activeChannel && effectiveChannelCalls[activeChannel]?.members) || []
-            }
+            isCallActive={Boolean(activeChannel && (activeChannelCall?.active || isCurrentChannelCallConnected))}
+            isInCall={isCurrentChannelCallConnected}
+            callMembers={resolvedCallMembers}
             callState="active"
             isCaller={false}
-            callInitiator={activeChannel ? effectiveChannelCalls[activeChannel]?.initiator : null}
+            callInitiator={activeChannelCall?.initiator || null}
             targetUser={activeDmFriend}
             ringCount={1}
             maxRings={3}
@@ -1779,7 +1792,7 @@ function StanduppApp() {
             onDeclineCall={null}
             onStartCall={() => activeChannel && handleStartCall(activeChannel)}
             onLeaveCall={handleLeaveCall}
-            onToggleDmCall={() => (activeChannel && activeCallChannelId === activeChannel && isConnected ? handleLeaveCall() : (activeChannel && handleStartCall(activeChannel)))}
+            onToggleDmCall={() => (isCurrentChannelCallConnected ? handleLeaveCall() : (activeChannel && handleStartCall(activeChannel)))}
             messages={messages}
             onSendMessage={sendMessage}
             onToggleReaction={toggleReaction}

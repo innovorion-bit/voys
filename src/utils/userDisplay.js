@@ -233,14 +233,43 @@ export const computeMemberOnlineStatus = ({
 
   const p = resolveMemberPresence(presences, member);
   const profile = member.profile || member.profiles || {};
-  const memberId = String(member.user_id || member.id || member.userId || '');
 
-  // 1. Check if member is actively connected in WebRTC voice session
-  const isInVoice = Array.isArray(activeVoiceMembers) && activeVoiceMembers.some((vm) => {
-    if (!vm) return false;
-    const vmId = String(vm.id || vm.user_id || vm.userId || '');
-    return Boolean(vmId && memberId && vmId.toLowerCase() === memberId.toLowerCase());
-  });
+  // 1. Check if member is actively connected in WebRTC voice session or has voiceChannelId
+  const candidateIds = [
+    member.user_id,
+    member.id,
+    member.userId,
+    profile.id,
+    profile.user_id,
+  ]
+    .filter(Boolean)
+    .map((id) => String(id).toLowerCase().trim());
+
+  const isInVoiceList =
+    Array.isArray(activeVoiceMembers) &&
+    activeVoiceMembers.some((vm) => {
+      if (!vm) return false;
+      const vmCandidates = [
+        vm.id,
+        vm.user_id,
+        vm.userId,
+        vm.peerId,
+        vm.profile?.id,
+      ]
+        .filter(Boolean)
+        .map((id) => String(id).toLowerCase().trim());
+      return vmCandidates.some((vId) => candidateIds.includes(vId));
+    });
+
+  const hasVoicePresence = Boolean(
+    p &&
+    p.voiceChannelId &&
+    p.status !== 'offline' &&
+    p.status !== 'invisible' &&
+    p.isOnline !== false
+  );
+
+  const isInVoice = isInVoiceList || hasVoicePresence;
 
   if (isInVoice) {
     return {
@@ -280,6 +309,150 @@ export const computeMemberOnlineStatus = ({
 };
 
 /**
+ * Normalizes a channel ID by lowercasing and stripping common route prefixes (`text-`, `voice-`).
+ */
+export const canonicalChannelId = (cid) => {
+  if (!cid) return '';
+  return String(cid).trim().toLowerCase().replace(/^(text-|voice-)/i, '');
+};
+
+/**
+ * Checks whether two channel identifiers point to the same chat channel,
+ * regardless of UUID casing or `text-` / `voice-` prefixes.
+ */
+export const isChannelMatch = (a, b) => {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const strA = String(a).trim();
+  const strB = String(b).trim();
+  if (strA === strB) return true;
+  const lowerA = strA.toLowerCase();
+  const lowerB = strB.toLowerCase();
+  if (lowerA === lowerB) return true;
+  return canonicalChannelId(lowerA) === canonicalChannelId(lowerB);
+};
+
+/**
+ * Resolves a channel call record from a channelCalls dictionary using resilient channel matching.
+ */
+export const resolveChannelCall = (callsMap = {}, targetChannelId) => {
+  if (!callsMap || !targetChannelId) return null;
+  if (callsMap[targetChannelId]) return callsMap[targetChannelId];
+
+  const targetStr = String(targetChannelId).trim();
+  const targetLower = targetStr.toLowerCase();
+  const targetCanon = canonicalChannelId(targetLower);
+
+  if (callsMap[targetLower]) return callsMap[targetLower];
+  if (callsMap[targetCanon]) return callsMap[targetCanon];
+  if (callsMap[`text-${targetCanon}`]) return callsMap[`text-${targetCanon}`];
+  if (callsMap[`voice-${targetCanon}`]) return callsMap[`voice-${targetCanon}`];
+
+  for (const [key, call] of Object.entries(callsMap)) {
+    if (!key || !call) continue;
+    if (isChannelMatch(key, targetChannelId)) {
+      return call;
+    }
+  }
+  return null;
+};
+
+/**
+ * Merges active local WebRTC voiceMembers (which have live VAD speaking states) with
+ * session-level callMembers (discovered via presence / broadcast) so that participants
+ * who are still establishing WebRTC mesh never disappear from the voice list.
+ */
+export const mergeVoiceAndCallMembers = (voiceMembers = [], callMembers = [], currentUser = null) => {
+  const mergedList = [];
+  const seenKeys = new Set();
+
+  const addKeys = (m, memberKey) => {
+    if (memberKey) {
+      const strKey = String(memberKey).trim();
+      seenKeys.add(strKey);
+      seenKeys.add(strKey.toLowerCase());
+    }
+    const candidates = [
+      m?.id,
+      m?.user_id,
+      m?.userId,
+      m?.peerId,
+      m?.profile?.id,
+      m?.profiles?.id,
+    ];
+    for (const c of candidates) {
+      if (!c) continue;
+      const str = String(c).trim();
+      seenKeys.add(str);
+      seenKeys.add(str.toLowerCase());
+    }
+    if (typeof m?.username === 'string' && m.username.trim() && !isUuidLike(m.username)) {
+      seenKeys.add(m.username.trim().toLowerCase());
+    }
+  };
+
+  const isAlreadySeen = (m) => {
+    const candidates = [
+      m?.id,
+      m?.user_id,
+      m?.userId,
+      m?.peerId,
+      m?.profile?.id,
+      m?.profiles?.id,
+    ];
+    for (const c of candidates) {
+      if (!c) continue;
+      const str = String(c).trim();
+      if (seenKeys.has(str) || seenKeys.has(str.toLowerCase())) return true;
+    }
+    if (typeof m?.username === 'string' && m.username.trim() && !isUuidLike(m.username)) {
+      if (seenKeys.has(m.username.trim().toLowerCase())) return true;
+    }
+    return false;
+  };
+
+  // 1. First add live WebRTC voiceMembers (contains real speaking states, volume prefs, live stream info)
+  (Array.isArray(voiceMembers) ? voiceMembers : []).forEach((vm) => {
+    if (!vm) return;
+    const vmKey = String(vm.id || vm.user_id || vm.userId || vm.peerId || '');
+    if (!vmKey) return;
+    if (isAlreadySeen(vm)) return;
+    addKeys(vm, vmKey);
+    mergedList.push(vm);
+  });
+
+  // 2. Then merge members from callMembers who may still be establishing WebRTC or discovered via presence
+  (Array.isArray(callMembers) ? callMembers : []).forEach((cm) => {
+    if (!cm) return;
+    if (isAlreadySeen(cm)) return;
+    const cmKey = String(cm.id || cm.user_id || cm.userId || cm.peerId || '');
+    if (!cmKey) return;
+    addKeys(cm, cmKey);
+    mergedList.push({
+      ...cm,
+      isSpeaking: Boolean(cm.isSpeaking),
+      substatus: cm.substatus || 'Seste',
+    });
+  });
+
+  // 3. Ensure connected currentUser is present if connected
+  if (currentUser?.id && !isAlreadySeen(currentUser)) {
+    const selfKey = String(currentUser.id);
+    addKeys(currentUser, selfKey);
+    mergedList.unshift({
+      id: currentUser.id,
+      name: currentUser.name || 'Sen (You)',
+      avatar: currentUser.avatar || currentUser.avatar_url || null,
+      isSpeaking: false,
+      status: currentUser.status || 'online',
+      substatus: 'Seste',
+    });
+  }
+
+  return mergedList;
+};
+
+/**
  * Splits a group channel's members between active voice-chat participants and
  * remaining group members so the same user is not shown in both sidebar sections.
  */
@@ -314,16 +487,27 @@ export const partitionSidebarGroupMembers = ({
   const effectiveById = new Map();
   const effectiveByUsername = new Map();
 
-  safeMembers.forEach((member) => {
-    if (!member) return;
-    const mId = member.id || member.user_id || member.userId;
-    if (mId) {
-      effectiveById.set(String(mId), member);
+  const registerMemberKeys = (m) => {
+    if (!m) return;
+    const candidateIds = [
+      m.id,
+      m.user_id,
+      m.userId,
+      m.profile?.id,
+      m.profiles?.id,
+    ];
+    for (const cid of candidateIds) {
+      if (!cid) continue;
+      const str = String(cid).trim();
+      effectiveById.set(str, m);
+      effectiveById.set(str.toLowerCase(), m);
     }
-    if (typeof member.username === 'string' && member.username.trim() && !isUuidLike(member.username)) {
-      effectiveByUsername.set(member.username.trim().toLowerCase(), member);
+    if (typeof m.username === 'string' && m.username.trim() && !isUuidLike(m.username)) {
+      effectiveByUsername.set(m.username.trim().toLowerCase(), m);
     }
-  });
+  };
+
+  safeMembers.forEach(registerMemberKeys);
 
   const voiceIdSet = new Set();
   const voiceUsernameSet = new Set();
@@ -333,13 +517,25 @@ export const partitionSidebarGroupMembers = ({
   rawVoiceList.forEach((cm) => {
     if (!cm) return;
 
-    const rawId = cm.id || cm.user_id || cm.userId;
+    const rawCandidates = [
+      cm.id,
+      cm.user_id,
+      cm.userId,
+      cm.peerId,
+      cm.profile?.id,
+    ].filter(Boolean).map((v) => String(v).trim());
+
     const rawUsername =
       typeof cm.username === 'string' && cm.username.trim() && !isUuidLike(cm.username)
         ? cm.username.trim().toLowerCase()
         : '';
 
-    let matchedMember = rawId ? effectiveById.get(String(rawId)) || null : null;
+    let matchedMember = null;
+    for (const cid of rawCandidates) {
+      matchedMember = effectiveById.get(cid) || effectiveById.get(cid.toLowerCase()) || null;
+      if (matchedMember) break;
+    }
+
     if (!matchedMember && rawUsername) {
       matchedMember = effectiveByUsername.get(rawUsername) || null;
     }
@@ -360,41 +556,88 @@ export const partitionSidebarGroupMembers = ({
 
     const canonicalId = matchedMember
       ? String(matchedMember.id || matchedMember.user_id || matchedMember.userId)
-      : rawId
-        ? String(rawId)
-        : '';
+      : rawCandidates[0] || '';
 
     const dedupeKey = canonicalId || (cm.peerId ? `peer:${String(cm.peerId)}` : '');
     if (dedupeKey) {
-      if (seenVoiceKeys.has(dedupeKey)) return;
-      seenVoiceKeys.add(dedupeKey);
+      const dedupeKeyLower = dedupeKey.toLowerCase();
+      if (seenVoiceKeys.has(dedupeKeyLower)) return;
+      seenVoiceKeys.add(dedupeKeyLower);
     }
 
-    if (canonicalId) voiceIdSet.add(canonicalId);
-    if (rawId) voiceIdSet.add(String(rawId));
+    const allVoiceIds = [
+      ...rawCandidates,
+      matchedMember?.id,
+      matchedMember?.user_id,
+      matchedMember?.userId,
+      matchedMember?.profile?.id,
+    ].filter(Boolean).map((v) => String(v).trim());
+
+    for (const vid of allVoiceIds) {
+      voiceIdSet.add(vid);
+      voiceIdSet.add(vid.toLowerCase());
+    }
+
     if (rawUsername) voiceUsernameSet.add(rawUsername);
     if (matchedMember?.username && !isUuidLike(matchedMember.username)) {
       voiceUsernameSet.add(matchedMember.username.trim().toLowerCase());
     }
 
-    voiceMembers.push(
-      matchedMember
-        ? {
-            ...cm,
-            id: matchedMember.id || cm.id,
-            role: cm.role || matchedMember.role,
-            username: cm.username || matchedMember.username || '',
-            avatar: cm.avatar || matchedMember.avatar || '',
-            game: matchedMember.game || cm.game || '',
-          }
-        : cm
+    const resolvedName = pickDisplayName(
+      [
+        matchedMember?.name,
+        matchedMember?.display_name,
+        matchedMember?.username,
+        cm.name,
+        cm.display_name,
+        cm.username,
+      ],
+      'Katılımcı'
     );
+    const resolvedAvatar =
+      matchedMember?.avatar ||
+      matchedMember?.avatar_url ||
+      cm.avatar ||
+      cm.avatar_url ||
+      '';
+    const resolvedUsername =
+      [matchedMember?.username, cm.username].find(
+        (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
+      ) || '';
+
+    voiceMembers.push({
+      ...cm,
+      ...(matchedMember || {}),
+      id: matchedMember?.id || cm.id || rawCandidates[0],
+      user_id: matchedMember?.user_id || cm.user_id || matchedMember?.id || cm.id,
+      name: resolvedName,
+      display_name: resolvedName,
+      username: resolvedUsername,
+      avatar: resolvedAvatar,
+      avatar_url: resolvedAvatar,
+      role: matchedMember?.role || cm.role || 'member',
+      game: matchedMember?.game || cm.game || '',
+      isSpeaking: Boolean(cm.isSpeaking),
+      peerId: cm.peerId || matchedMember?.peerId || null,
+      substatus: cm.substatus || matchedMember?.substatus || 'Seste',
+    });
   });
 
   const groupMembers = safeMembers.filter((member) => {
     if (!member) return false;
-    const mId = member.id || member.user_id || member.userId;
-    if (mId && voiceIdSet.has(String(mId))) return false;
+    const memberCandidates = [
+      member.id,
+      member.user_id,
+      member.userId,
+      member.profile?.id,
+      member.profiles?.id,
+    ].filter(Boolean).map((v) => String(v).trim());
+
+    const isMemberInVoice = memberCandidates.some(
+      (cid) => voiceIdSet.has(cid) || voiceIdSet.has(cid.toLowerCase())
+    );
+    if (isMemberInVoice) return false;
+
     if (typeof member.username === 'string' && member.username.trim() && !isUuidLike(member.username)) {
       if (voiceUsernameSet.has(member.username.trim().toLowerCase())) return false;
     }
@@ -429,16 +672,18 @@ export const mergeChannelCallsWithPresences = ({
     if (pid) {
       const key = String(pid);
       profileLookup.set(key, { ...profileLookup.get(key), ...prof });
+      profileLookup.set(key.toLowerCase(), { ...profileLookup.get(key.toLowerCase()), ...prof });
     }
   });
   if (currentUser?.id) {
     const selfKey = String(currentUser.id);
     profileLookup.set(selfKey, { ...profileLookup.get(selfKey), ...currentUser });
+    profileLookup.set(selfKey.toLowerCase(), { ...profileLookup.get(selfKey.toLowerCase()), ...currentUser });
   }
 
   const normalizeVoiceMember = (rawMember, fallbackId = null) => {
     const uid = String(rawMember?.id || rawMember?.user_id || rawMember?.userId || fallbackId || '');
-    const matched = uid ? profileLookup.get(uid) : null;
+    const matched = uid ? profileLookup.get(uid) || profileLookup.get(uid.toLowerCase()) : null;
     const name = pickDisplayName(
       [
         matched?.display_name,
@@ -465,20 +710,28 @@ export const mergeChannelCallsWithPresences = ({
       username,
       avatar,
       avatar_url: avatar,
+      substatus: rawMember?.substatus || matched?.substatus || 'Seste',
     };
   };
 
-  const byChannel = new Map();
+  const byChannel = new Map(); // canonKey -> Map(uid -> member)
+  const displayChanIds = new Map(); // canonKey -> representative original chanId
+
   const ensureChanMap = (chanId) => {
-    const key = String(chanId);
-    if (!byChannel.has(key)) byChannel.set(key, new Map());
-    return byChannel.get(key);
+    const canonKey = canonicalChannelId(chanId);
+    if (!canonKey) return new Map();
+    if (!displayChanIds.has(canonKey) || (chanId && !String(chanId).startsWith('text-'))) {
+      displayChanIds.set(canonKey, String(chanId));
+    }
+    if (!byChannel.has(canonKey)) byChannel.set(canonKey, new Map());
+    return byChannel.get(canonKey);
   };
+
   const isUnconnectedSelf = (uid, chanId) =>
     Boolean(
       currentUser?.id &&
-        uid === String(currentUser.id) &&
-        !(isConnected && activeCallChannelId && String(activeCallChannelId) === String(chanId))
+        (uid === String(currentUser.id) || uid.toLowerCase() === String(currentUser.id).toLowerCase()) &&
+        !(isConnected && activeCallChannelId && isChannelMatch(activeCallChannelId, chanId))
     );
 
   // 1. Authoritative online global presences currently in a voice channel
@@ -508,7 +761,7 @@ export const mergeChannelCallsWithPresences = ({
       const mUid = String(m.id || m.user_id || m.userId || '');
       if (!mUid) return;
 
-      const p = presences?.[mUid];
+      const p = resolveMemberPresence(presences, m) || (mUid ? presences?.[mUid] : null);
       if (p) {
         if (p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false)) {
           return;
@@ -517,7 +770,7 @@ export const mergeChannelCallsWithPresences = ({
         const presenceChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
         if (
           hasExplicitVoiceField &&
-          presenceChan !== String(chanId) &&
+          (!presenceChan || !isChannelMatch(presenceChan, chanId)) &&
           (p.receivedAt || 0) >= (callInfo.receivedAt || 0) + 1500
         ) {
           return;
@@ -536,8 +789,7 @@ export const mergeChannelCallsWithPresences = ({
 
   // 3. Merge active local WebRTC call peers (carries speaking state, peerId, ping)
   if (activeCallChannelId && isConnected) {
-    const chanKey = String(activeCallChannelId);
-    const chanMap = ensureChanMap(chanKey);
+    const chanMap = ensureChanMap(activeCallChannelId);
     if (currentUser?.id) {
       const selfKey = String(currentUser.id);
       const existing = chanMap.get(selfKey) || {};
@@ -553,24 +805,32 @@ export const mergeChannelCallsWithPresences = ({
   }
 
   const merged = {};
-  byChannel.forEach((memberMap, chanId) => {
+  byChannel.forEach((memberMap, canonKey) => {
     const members = Array.from(memberMap.values());
     if (members.length === 0) return;
-    const prevCall = channelCalls?.[chanId] || {};
+    const origChanId = displayChanIds.get(canonKey) || canonKey;
+    const prevCall = channelCalls?.[origChanId] || channelCalls?.[canonKey] || {};
     const initiatorStillPresent = prevCall.initiator && members.some(
-      (m) => String(m.id || m.user_id || m.userId) === String(prevCall.initiator.id || prevCall.initiator.user_id || prevCall.initiator.userId)
+      (m) => String(m.id || m.user_id || m.userId).toLowerCase() === String(prevCall.initiator.id || prevCall.initiator.user_id || prevCall.initiator.userId).toLowerCase()
     );
     const initiator = initiatorStillPresent ? prevCall.initiator : (members[0] || null);
 
-    merged[chanId] = {
+    const callRecord = {
       ...prevCall,
-      channelId: chanId,
+      channelId: origChanId,
+      canonicalChannelId: canonKey,
       active: true,
       stage: 'active',
       count: members.length,
       members,
       initiator,
     };
+
+    merged[origChanId] = callRecord;
+    merged[canonKey] = callRecord;
+    merged[canonKey.toLowerCase()] = callRecord;
+    merged[`text-${canonKey}`] = callRecord;
+    merged[`voice-${canonKey}`] = callRecord;
   });
 
   return merged;

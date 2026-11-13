@@ -4,6 +4,9 @@ import {
   partitionSidebarGroupMembers,
   computeMemberOnlineStatus,
   resolveMemberPresence,
+  resolveChannelCall,
+  isChannelMatch,
+  mergeVoiceAndCallMembers,
 } from '../src/utils/userDisplay.js';
 
 const test = (name, fn) => {
@@ -251,6 +254,70 @@ test('resolveMemberPresence matches case-insensitively and through candidate IDs
     profile: { id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d' },
   });
   assert.equal(foundProfile?.name, 'RAİN');
+});
+
+test('partitionSidebarGroupMembers matches group member with integer row id against UUID voice member', () => {
+  const channelMembers = [
+    { id: 42, user_id: 'RAIN-UUID-UPPER', name: 'RAİN', role: 'admin' },
+    { id: 43, user_id: 'huseyin-uuid', name: 'Hüseyin', role: 'member' },
+    { id: 44, user_id: 'berat-uuid', name: 'Berat', role: 'member' },
+  ];
+  const callMembers = [
+    { id: 'rain-uuid-upper', name: 'RAİN', isSpeaking: true },
+  ];
+
+  const partitioned = partitionSidebarGroupMembers({
+    effectiveMembers: channelMembers,
+    callMembers,
+    isCallActive: true,
+    isInCall: false,
+    currentUser: { id: 'berat-uuid', name: 'Berat' },
+  });
+
+  assert.equal(partitioned.showVoiceSection, true);
+  assert.equal(partitioned.voiceMembers.length, 1);
+  assert.equal(partitioned.voiceMembers[0].name, 'RAİN');
+  assert.equal(partitioned.voiceMembers[0].role, 'admin');
+  assert.equal(partitioned.voiceMembers[0].isSpeaking, true);
+
+  // RAİN must be removed from groupMembers, leaving only Hüseyin and Berat
+  assert.equal(partitioned.groupMembers.length, 2);
+  assert.deepEqual(
+    partitioned.groupMembers.map((m) => m.name).sort(),
+    ['Berat', 'Hüseyin']
+  );
+});
+
+test('mergeVoiceAndCallMembers preserves connecting participants alongside live WebRTC peers', () => {
+  const localWebRtcPeers = [
+    { id: 'u-self', name: 'Lyring', isSpeaking: true },
+    { id: 'u-peer1', name: 'RAİN', peerId: 'p-1', isSpeaking: false },
+  ];
+  const presenceCallMembers = [
+    { id: 'u-peer1', name: 'RAİN', status: 'online' },
+    { id: 'u-peer2-connecting', name: 'Halil', status: 'online' },
+  ];
+
+  const merged = mergeVoiceAndCallMembers(localWebRtcPeers, presenceCallMembers, { id: 'u-self', name: 'Lyring' });
+  assert.equal(merged.length, 3);
+  const byId = Object.fromEntries(merged.map((m) => [m.id, m]));
+  assert.equal(byId['u-self'].isSpeaking, true);
+  assert.equal(byId['u-peer1'].peerId, 'p-1');
+  assert.equal(byId['u-peer2-connecting'].name, 'Halil');
+  assert.equal(byId['u-peer2-connecting'].substatus, 'Seste');
+});
+
+test('resolveChannelCall and isChannelMatch handle prefixes and casing gracefully', () => {
+  const channelCalls = {
+    'text-c683b7f5-23fa-4001': { active: true, channelId: 'c683b7f5-23fa-4001', count: 2 },
+  };
+
+  assert.equal(isChannelMatch('C683B7F5-23FA-4001', 'text-c683b7f5-23fa-4001'), true);
+  assert.equal(isChannelMatch('voice-c683b7f5-23fa-4001', 'c683b7f5-23fa-4001'), true);
+
+  const resolved = resolveChannelCall(channelCalls, 'C683B7F5-23FA-4001');
+  assert.equal(resolved?.active, true);
+  assert.equal(resolved?.count, 2);
 });
 
 console.log('All voice presence tests passed!');
