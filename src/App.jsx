@@ -495,7 +495,6 @@ function StanduppApp() {
         presences,
         isSelf,
         currentUser: activeUserProfile,
-        activeVoiceMembers: voiceMembers,
       });
       const p = resolveMemberPresence(presences, m);
       const profile = m.profiles || m.profile || {};
@@ -522,7 +521,7 @@ function StanduppApp() {
         profiles: profile,
       };
     });
-  }, [channelMembers, presences, activeUserProfile, voiceMembers]);
+  }, [channelMembers, presences, activeUserProfile]);
 
   // Fetch recipient profile for DM if not in friends list yet
   const [dmUserProfile, setDmUserProfile] = useState(null);
