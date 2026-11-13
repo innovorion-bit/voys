@@ -450,8 +450,33 @@ function StanduppApp() {
     const unsubFriendships = dbService.subscribeToTable('friendships', () => {
       fetchAsync();
     });
-    const unsubProfiles = dbService.subscribeToTable('profiles', () => {
+    const unsubProfiles = dbService.subscribeToTable('profiles', (payload) => {
       fetchAsync();
+      const updatedUser = payload?.new;
+      if (updatedUser && updatedUser.id) {
+        const uidStr = String(updatedUser.id);
+        const uidLower = uidStr.toLowerCase();
+        const isOnline = updatedUser.status !== 'offline' && updatedUser.status !== 'invisible';
+        setPresences((prev) => {
+          const prevEntry = prev[uidStr] || prev[uidLower] || {};
+          const entry = {
+            ...prevEntry,
+            userId: uidStr,
+            id: uidStr,
+            status: isOnline ? (updatedUser.status || 'online') : 'offline',
+            isOnline,
+            substatus: isOnline ? (updatedUser.substatus || '') : '',
+            game: isOnline ? (updatedUser.game || null) : null,
+            name: updatedUser.display_name || updatedUser.username || prevEntry.name,
+            avatar: updatedUser.avatar_url || prevEntry.avatar,
+            timestamp: Date.now(),
+            receivedAt: Date.now(),
+          };
+          const next = { ...prev, [uidStr]: entry };
+          if (uidLower !== uidStr) next[uidLower] = entry;
+          return next;
+        });
+      }
     });
     const unsubDms = dbService.subscribeToTable('direct_messages', (payload) => {
       if (
@@ -566,8 +591,33 @@ function StanduppApp() {
     const unsubChannelMembers = dbService.subscribeToTable('channel_members', () => {
       fetchMembers();
     });
-    const unsubProfilesChannel = dbService.subscribeToTable('profiles', () => {
+    const unsubProfilesChannel = dbService.subscribeToTable('profiles', (payload) => {
       fetchMembers();
+      const updatedUser = payload?.new;
+      if (updatedUser && updatedUser.id) {
+        const uidStr = String(updatedUser.id);
+        const uidLower = uidStr.toLowerCase();
+        const isOnline = updatedUser.status !== 'offline' && updatedUser.status !== 'invisible';
+        setPresences((prev) => {
+          const prevEntry = prev[uidStr] || prev[uidLower] || {};
+          const entry = {
+            ...prevEntry,
+            userId: uidStr,
+            id: uidStr,
+            status: isOnline ? (updatedUser.status || 'online') : 'offline',
+            isOnline,
+            substatus: isOnline ? (updatedUser.substatus || '') : '',
+            game: isOnline ? (updatedUser.game || null) : null,
+            name: updatedUser.display_name || updatedUser.username || prevEntry.name,
+            avatar: updatedUser.avatar_url || prevEntry.avatar,
+            timestamp: Date.now(),
+            receivedAt: Date.now(),
+          };
+          const next = { ...prev, [uidStr]: entry };
+          if (uidLower !== uidStr) next[uidLower] = entry;
+          return next;
+        });
+      }
     });
 
     return () => {

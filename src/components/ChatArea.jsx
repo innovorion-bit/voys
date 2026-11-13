@@ -1606,14 +1606,19 @@ export const ChatArea = ({
                           fallbackUser: activeDmFriend,
                         });
                       }}
-                      className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
+                      className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] flex items-center justify-center cursor-pointer transition flex-shrink-0"
                       title="Profil fotoğrafını büyüt"
                     >
                       <UserAvatar
                         user={activeDmFriend}
-                        size="xl"
+                        size="2xl"
                         showStatus={false}
+                        className="!w-full !h-full !rounded-full"
                       />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
+                        <Eye size={16} className="mb-0.5 text-white" />
+                        <span>Büyüt</span>
+                      </div>
                     </div>
 
                     <div className="flex-1 space-y-1.5 text-center sm:text-left min-w-0">

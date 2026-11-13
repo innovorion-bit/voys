@@ -14,6 +14,8 @@ export const UserAvatar = ({
     md: 'w-9 h-9 text-xs rounded-full',
     lg: 'w-11 h-11 text-sm rounded-full',
     xl: 'w-14 h-14 text-base rounded-full',
+    '2xl': 'w-20 h-20 text-2xl rounded-full',
+    full: 'w-full h-full text-2xl rounded-full',
   }[size] || 'w-9 h-9 text-xs rounded-full';
 
   // Determine current user presence status

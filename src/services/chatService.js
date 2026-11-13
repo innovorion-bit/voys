@@ -245,6 +245,11 @@ class RealtimeChatService {
               this.emitLocal('call_status', payload);
             }
           })
+          .on('broadcast', { event: 'presence_update' }, ({ payload }) => {
+            if (payload && (payload.userId || payload.id)) {
+              this.emitLocal('presence', payload);
+            }
+          })
           .on('broadcast', { event: 'user_departed' }, ({ payload }) => {
             if (payload?.userId) {
               this.emitLocal('presence', {
@@ -412,6 +417,16 @@ class RealtimeChatService {
       } else {
         this.supabasePresenceChannel.untrack().catch(() => {});
       }
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'presence_update',
+          payload,
+        });
+      } catch {}
     }
 
     this.emitLocal('presence', payload);
