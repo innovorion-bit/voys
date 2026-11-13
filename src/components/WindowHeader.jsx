@@ -56,7 +56,7 @@ export const WindowHeader = ({
         <button
           type="button"
           onClick={handleOpenHelp}
-          className="w-7 h-6 flex items-center justify-center text-gray-400 hover:text-[#a36eff] hover:bg-[#8B51FF]/15 rounded transition cursor-pointer mr-1"
+          className="w-7 h-6 flex items-center justify-center text-purple-400 hover:text-[#a36eff] hover:bg-[#8B51FF]/20 rounded transition cursor-pointer mr-1"
           title="Yardım (Rehber Videosu)"
         >
           <HelpCircle size={14} />

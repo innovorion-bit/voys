@@ -289,6 +289,19 @@ export const ChatArea = ({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
+
+  // Right sidebar inline add-member state (declared early to prevent TDZ in updateRightPanelCompact)
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState('');
+  const [addingMemberId, setAddingMemberId] = useState(null);
+
+  // Reset add member panel state when active channel changes
+  useEffect(() => {
+    setIsAddingMember(false);
+    setAddMemberSearch('');
+    setAddingMemberId(null);
+  }, [activeChannel]);
+
   const [isRightPanelCompact, setIsRightPanelCompact] = useState(() => {
     try {
       return localStorage.getItem('voys_right_panel_compact') === 'true';
@@ -762,17 +775,6 @@ export const ChatArea = ({
     isDmMode && (isCallActive || isInCall || showVoiceSection || (callMembers && callMembers.length > 0))
   );
 
-  // Right sidebar inline add-member state
-  const [isAddingMember, setIsAddingMember] = useState(false);
-  const [addMemberSearch, setAddMemberSearch] = useState('');
-  const [addingMemberId, setAddingMemberId] = useState(null);
-
-  // Reset add member panel state when active channel changes
-  useEffect(() => {
-    setIsAddingMember(false);
-    setAddMemberSearch('');
-    setAddingMemberId(null);
-  }, [activeChannel]);
 
   const memberIdSet = useMemo(() => {
     return new Set(
@@ -2658,7 +2660,7 @@ export const ChatArea = ({
             {/* Sesli Sohbette Olan Kişiler (Yalnızca sesli sohbette birileri varken gösterilir) */}
             {showVoiceSection && (
               <div
-                className={`w-full border-b border-white/10 pb-2.5 ${
+                className={`w-full ${sidebarGroupMembers.length > 0 ? 'border-b border-white/10 pb-2.5' : ''} ${
                   isRightPanelCompact ? 'flex flex-col items-center space-y-2' : 'space-y-1.5'
                 }`}
               >
@@ -2674,6 +2676,17 @@ export const ChatArea = ({
                     <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
                       SESLİ SOHBET
                     </span>
+                    {!isDmMode && sidebarGroupMembers.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingMember(true)}
+                        className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 cursor-pointer transition"
+                        title="Yeni Üye Ekle"
+                      >
+                        <UserPlus size={12} />
+                        <span>Ekle</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -3003,7 +3016,7 @@ export const ChatArea = ({
                   </button>
                 </div>
               </div>
-            ) : (
+            ) : sidebarGroupMembers.length > 0 ? (
               <>
                 {/* Header: GRUP ÜYELERİ / SOHBET KATILIMCILARI */}
                 {isRightPanelCompact ? (
@@ -3044,51 +3057,19 @@ export const ChatArea = ({
 
                 {/* Sesli Sohbette Olmayan Grup / Sohbet Üyeleri */}
                 <div className={isRightPanelCompact ? 'space-y-1.5 flex flex-col items-center w-full' : 'space-y-1'}>
-                  {sidebarGroupMembers.length === 0 ? (
-                    isRightPanelCompact ? (
-                      <div
-                        className="py-2 flex items-center justify-center text-gray-600"
-                        title={isDmMode ? "Tüm katılımcılar sesli sohbette." : "Tüm grup üyeleri sesli sohbette."}
-                      >
-                        <Users size={14} />
-                      </div>
-                    ) : (
-                      <div className="py-3 px-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-500 text-center">
-                        {isDmMode ? "Tüm katılımcılar sesli sohbette." : "Tüm grup üyeleri sesli sohbette."}
-                      </div>
-                    )
-                  ) : (
-                    [...sidebarOnlineMembers, ...sidebarOfflineMembers].map((member) => {
-                      const memberStatusLabel = member.isOnline && member.game
-                        ? `${member.game} Oynuyor`
-                        : getMemberStatusDisplay(member);
-                      const offlineOpacityClass = !member.isOnline ? 'opacity-60 hover:opacity-100' : '';
+                  {[...sidebarOnlineMembers, ...sidebarOfflineMembers].map((member) => {
+                    const memberStatusLabel = member.isOnline && member.game
+                      ? `${member.game} Oynuyor`
+                      : getMemberStatusDisplay(member);
+                    const offlineOpacityClass = !member.isOnline ? 'opacity-60 hover:opacity-100' : '';
 
-                      if (isRightPanelCompact) {
-                        return (
-                          <div
-                            key={member.id}
-                            onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
-                            title={`${member.name}${member.role === 'admin' ? ' (Yönetici)' : ''} • ${memberStatusLabel} — Seçenekler için sağ tıklayın`}
-                            className={`relative p-1 rounded-xl hover:bg-white/5 transition cursor-pointer flex items-center justify-center ${offlineOpacityClass}`}
-                          >
-                            <UserAvatar
-                              user={member}
-                              size="sm"
-                              isSpeaking={false}
-                              showStatus={true}
-                              status={member.isOnline ? member.status : 'offline'}
-                            />
-                          </div>
-                        );
-                      }
-
+                    if (isRightPanelCompact) {
                       return (
                         <div
                           key={member.id}
                           onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
-                          title="Seçenekler için sağ tıklayın"
-                          className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${offlineOpacityClass}`}
+                          title={`${member.name}${member.role === 'admin' ? ' (Yönetici)' : ''} • ${memberStatusLabel} — Seçenekler için sağ tıklayın`}
+                          className={`relative p-1 rounded-xl hover:bg-white/5 transition cursor-pointer flex items-center justify-center ${offlineOpacityClass}`}
                         >
                           <UserAvatar
                             user={member}
@@ -3097,45 +3078,62 @@ export const ChatArea = ({
                             showStatus={true}
                             status={member.isOnline ? member.status : 'offline'}
                           />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center space-x-1">
-                              <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
-                                {member.name}
-                              </span>
-                              {member.role === 'admin' && (
-                                <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
-                              )}
-                              {member.id === currentUser?.id && (
-                                <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">Sen</span>
-                              )}
-                            </div>
-
-                            {member.isOnline && member.game ? (
-                              <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-semibold">
-                                <Gamepad2 size={11} className="flex-shrink-0 text-emerald-400" />
-                                <span className="truncate">{member.game} Oynuyor</span>
-                              </div>
-                            ) : (
-                              <p className={`text-[10px] truncate mt-0.5 ${
-                                !member.isOnline || member.status === 'offline' || member.status === 'invisible'
-                                  ? 'text-gray-500'
-                                  : member.status === 'dnd'
-                                    ? 'text-rose-400/90'
-                                    : member.status === 'idle'
-                                      ? 'text-amber-400/90'
-                                      : 'text-gray-400'
-                              }`}>
-                                {memberStatusLabel}
-                              </p>
-                            )}
-                          </div>
                         </div>
                       );
-                    })
-                  )}
+                    }
+
+                    return (
+                      <div
+                        key={member.id}
+                        onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                        title="Seçenekler için sağ tıklayın"
+                        className={`flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group ${offlineOpacityClass}`}
+                      >
+                        <UserAvatar
+                          user={member}
+                          size="sm"
+                          isSpeaking={false}
+                          showStatus={true}
+                          status={member.isOnline ? member.status : 'offline'}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-1">
+                            <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
+                              {member.name}
+                            </span>
+                            {member.role === 'admin' && (
+                              <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                            )}
+                            {member.id === currentUser?.id && (
+                              <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">Sen</span>
+                            )}
+                          </div>
+
+                          {member.isOnline && member.game ? (
+                            <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-semibold">
+                              <Gamepad2 size={11} className="flex-shrink-0 text-emerald-400" />
+                              <span className="truncate">{member.game} Oynuyor</span>
+                            </div>
+                          ) : (
+                            <p className={`text-[10px] truncate mt-0.5 ${
+                              !member.isOnline || member.status === 'offline' || member.status === 'invisible'
+                                ? 'text-gray-500'
+                                : member.status === 'dnd'
+                                  ? 'text-rose-400/90'
+                                  : member.status === 'idle'
+                                    ? 'text-amber-400/90'
+                                    : 'text-gray-400'
+                            }`}>
+                              {memberStatusLabel}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
-            )}
+            ) : null}
           </aside>
         )}
       </div>
