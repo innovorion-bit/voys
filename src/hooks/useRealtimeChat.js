@@ -75,6 +75,8 @@ const parseReplyTo = (replyTo) => {
 const formatDbMessageRow = (row, channelId) => {
   const parsedSentAt = parseMessageSentAt(row) || Date.now();
   const senderId = normalizeParticipantId(row.user_id || row.sender_id || row.userId);
+  const readAtNum = row.read_at ? Number(row.read_at) : null;
+  const deliveredAtNum = row.delivered_at ? Number(row.delivered_at) : null;
   return {
     id: row.id,
     room: channelId,
@@ -95,6 +97,10 @@ const formatDbMessageRow = (row, channelId) => {
     sentAt: parsedSentAt,
     sent_at: parsedSentAt,
     created_at: row.created_at,
+    read_at: readAtNum,
+    delivered_at: deliveredAtNum,
+    read: Boolean(readAtNum || row.read || row.is_read),
+    is_read: Boolean(readAtNum || row.read || row.is_read),
   };
 };
 
@@ -556,9 +562,15 @@ export const useRealtimeChat = (
           const idx = list.findIndex((m) => m.id === row.id);
           if (idx === -1) return prevMap;
           const updated = [...list];
+          const readAtNum = row.read_at ? Number(row.read_at) : updated[idx].read_at;
+          const deliveredAtNum = row.delivered_at ? Number(row.delivered_at) : updated[idx].delivered_at;
           updated[idx] = {
             ...updated[idx],
             reactions: parseReactions(row.reactions),
+            read_at: readAtNum,
+            delivered_at: deliveredAtNum,
+            read: Boolean(readAtNum || updated[idx].read || row.read || row.is_read),
+            is_read: Boolean(readAtNum || updated[idx].is_read || row.read || row.is_read),
           };
           return { ...prevMap, [channelId]: updated };
         });
@@ -566,6 +578,45 @@ export const useRealtimeChat = (
         appendMessage(formatDbMessageRow(row, channelId));
       }
     });
+
+    const handleMessageRead = (data) => {
+      if (!data) return;
+      const targetRoom = data.roomId || data.room;
+      if (targetRoom && targetRoom !== channelId) return;
+      const readAt = data.readAt || Date.now();
+      setMessagesByChannel((prevMap) => {
+        const list = prevMap[channelId] || [];
+        if (!list.length) return prevMap;
+        const updated = list.map((m) => {
+          if (!m.read_at) {
+            return { ...m, read_at: readAt, read: true, is_read: true };
+          }
+          return m;
+        });
+        return { ...prevMap, [channelId]: updated };
+      });
+    };
+
+    const handleMessageDelivered = (data) => {
+      if (!data) return;
+      const targetRoom = data.roomId || data.room;
+      if (targetRoom && targetRoom !== channelId) return;
+      const deliveredAt = data.deliveredAt || Date.now();
+      setMessagesByChannel((prevMap) => {
+        const list = prevMap[channelId] || [];
+        if (!list.length) return prevMap;
+        const updated = list.map((m) => {
+          if (!m.delivered_at) {
+            return { ...m, delivered_at: deliveredAt };
+          }
+          return m;
+        });
+        return { ...prevMap, [channelId]: updated };
+      });
+    };
+
+    chatService.on('message_read', handleMessageRead);
+    chatService.on('message_delivered', handleMessageDelivered);
 
     const handleAccountDeleted = (payload) => {
       const deletedId = payload?.userId;
@@ -584,6 +635,8 @@ export const useRealtimeChat = (
     return () => {
       isCancelled = true;
       clearInterval(pollInterval);
+      chatService.off('message_read', handleMessageRead);
+      chatService.off('message_delivered', handleMessageDelivered);
       unsubRecovered?.();
       chatService.off('message', handleMessage);
       chatService.off('reaction', handleReaction);

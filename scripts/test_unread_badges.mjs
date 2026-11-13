@@ -240,5 +240,37 @@ assert.equal(status4.color, '#8B51FF');
 
 console.log('✓ Test 7 Passed: Checkmark transitions accurately (Tek tık -> Çift tık -> Mor çift tık)');
 
+// Test 8: Clicking on chat retains read receipt (never reverts to single tick)
+const baseDbMsg = { id: 'm-saol', text: 'Saol', sentAt: 1794610583278, read_at: 1794610586503, delivered_at: 1794610583735 };
+const activeMsgFromChat = { id: 'm-saol', text: 'Saol', sentAt: 1794610583278 }; // e.g. newly loaded in activeMessages
+
+// Unclicked state: uses baseDbMsg
+const unclickedStatus = computeMessageCheckStatus({
+  lastMsg: baseDbMsg,
+  friend: offlineFriend,
+  readReceipts: {},
+  dmRoomId: 'dm-me--udinese',
+});
+assert.equal(unclickedStatus.icon, 'CheckCheck');
+assert.equal(unclickedStatus.color, '#8B51FF', 'Unclicked message must be purple double check');
+
+// Clicked state: merges activeMsg with baseDbMsg
+const clickedMergedMsg = {
+  ...baseDbMsg,
+  ...activeMsgFromChat,
+  read_at: activeMsgFromChat.read_at || baseDbMsg.read_at,
+  delivered_at: activeMsgFromChat.delivered_at || baseDbMsg.delivered_at,
+};
+const clickedStatus = computeMessageCheckStatus({
+  lastMsg: clickedMergedMsg,
+  friend: offlineFriend,
+  readReceipts: {},
+  dmRoomId: 'dm-me--udinese',
+});
+assert.equal(clickedStatus.icon, 'CheckCheck');
+assert.equal(clickedStatus.color, '#8B51FF', 'Clicked message MUST remain purple double check');
+
+console.log('✓ Test 8 Passed: Clicked chat retains read receipt (does NOT revert to gray single tick)');
+
 console.log('ALL UNREAD BADGE & RECENCY SORTING TESTS PASSED!');
 

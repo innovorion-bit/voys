@@ -1217,13 +1217,26 @@ export const Sidebar = ({
           ? getDmRoomId(currentUserProfile.id, friend.id)
           : null;
 
-        const rawLastMsg = (
-          activeChannel === dmRoomId &&
+        const baseMsg = dmRoomId ? lastMessagesMap[dmRoomId] : null;
+        const isActiveChat = activeChannel === dmRoomId;
+        const activeMsg = (
+          isActiveChat &&
           activeLastMessage &&
           isDirectMessageForPair(activeLastMessage, currentUserProfile?.id, friend.id)
         )
           ? activeLastMessage
-          : (dmRoomId ? lastMessagesMap[dmRoomId] : null);
+          : null;
+
+        const rawLastMsg = activeMsg
+          ? {
+              ...(baseMsg || {}),
+              ...activeMsg,
+              read_at: activeMsg.read_at || baseMsg?.read_at || null,
+              delivered_at: activeMsg.delivered_at || baseMsg?.delivered_at || null,
+              read: Boolean(activeMsg.read || baseMsg?.read || activeMsg.read_at || baseMsg?.read_at),
+              is_read: Boolean(activeMsg.is_read || baseMsg?.is_read || activeMsg.read_at || baseMsg?.read_at),
+            }
+          : baseMsg;
 
         const lastMsg = (
           rawLastMsg &&
