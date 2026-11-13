@@ -365,4 +365,39 @@ test('Users who closed app with status: online in DB are strictly offline when a
   });
 });
 
+test('Self user in friends list or DM sidebar always reflects active currentUser online status', () => {
+  const currentUdinese = {
+    id: 'u-udinese',
+    name: 'Udinese',
+    username: 'udinese',
+    status: 'online',
+    isOnline: true,
+    substatus: 'Çevrimiçi',
+  };
+
+  // presences does not contain self
+  const presencesWithoutSelf = {
+    'u-friend-1': { userId: 'u-friend-1', name: 'Friend 1', status: 'online', isOnline: true },
+  };
+
+  const selfFriendItem = {
+    id: 'u-udinese',
+    user_id: 'u-udinese',
+    name: 'Udinese',
+    username: 'udinese',
+  };
+
+  const isSelf = selfFriendItem.id === currentUdinese.id;
+  const result = computeMemberOnlineStatus({
+    member: selfFriendItem,
+    presences: presencesWithoutSelf,
+    isSelf,
+    currentUser: currentUdinese,
+  });
+
+  assert.equal(result.isOnline, true);
+  assert.equal(result.status, 'online');
+  assert.equal(result.substatus, 'Çevrimiçi');
+});
+
 console.log('All voice presence tests passed!');

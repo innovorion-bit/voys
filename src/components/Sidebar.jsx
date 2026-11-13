@@ -943,6 +943,11 @@ export const Sidebar = ({
                         <span className="text-xs font-semibold text-white truncate">
                           {friend.name}
                         </span>
+                        {friend.isSelf && (
+                          <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">
+                            Sen
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] truncate mt-0.5">
                         {friend.game ? (
@@ -1700,9 +1705,16 @@ export const Sidebar = ({
                       {/* Middle Column (Name & Status / Preview) */}
                       <div className="flex-1 min-w-0 pr-1">
                         <div className="flex items-center justify-between">
-                          <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                            {friend.name}
-                          </p>
+                          <div className="flex items-center space-x-1.5 min-w-0 pr-1">
+                            <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
+                              {friend.name}
+                            </p>
+                            {friend.isSelf && (
+                              <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">
+                                Sen
+                              </span>
+                            )}
+                          </div>
                           {/* Timestamp / Son Mesaj Saati (HH:mm) */}
                           <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${lastMessageTime ? 'text-gray-400' : 'text-gray-500'}`}>
                             {lastMessageTime}
@@ -1739,7 +1751,7 @@ export const Sidebar = ({
                                 )
                               )}
                               <span className={`truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                                {lastMessageText || (friend.isOnline ? 'Müsait' : 'Çevrimdışı')}
+                                {lastMessageText || (friend.isOnline ? (friend.substatus || 'Çevrimiçi') : 'Çevrimdışı')}
                               </span>
                             </div>
                           )}

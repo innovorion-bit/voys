@@ -639,108 +639,118 @@ function StanduppApp() {
   // Compute dynamic friends list with real-time presences merged
   const friends = useMemo(() => {
     return (friendshipsData.friends || []).map((f) => {
-      const p = resolveMemberPresence(presences, f);
+      const friendId = f.id || f.user_id;
+      const isSelf = Boolean(
+        activeUserProfile?.id &&
+        (String(friendId) === String(activeUserProfile.id) || (f.user_id && String(f.user_id) === String(activeUserProfile.id)))
+      );
       const fallbackProf = dmUserProfile?.id === f.id ? dmUserProfile : null;
       const cachedProf = getCachedUserProfile(f.id);
+      const profile = f.profile || f.profiles || fallbackProf || cachedProf || {};
+
+      const { status, isOnline, game, substatus } = computeMemberOnlineStatus({
+        member: { ...f, profile },
+        presences,
+        isSelf,
+        currentUser: activeUserProfile,
+      });
+
+      const p = resolveMemberPresence(presences, f);
       const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
       const fallbackAv = (fallbackProf && (fallbackProf.avatar_url || fallbackProf.avatar)) || null;
       const cachedAv = cachedProf?.avatar_url || cachedProf?.avatar || null;
       const fAvatar = (f.avatar || f.avatar_url || '').trim?.() || (f.avatar || f.avatar_url || '');
-      const resolvedAv = pAvatar || fallbackAv || fAvatar || cachedAv || '';
+      const selfAv = (activeUserProfile?.avatar || activeUserProfile?.avatar_url) || null;
+      const resolvedAv = isSelf ? (selfAv || pAvatar || fallbackAv || fAvatar || cachedAv || '') : (pAvatar || fallbackAv || fAvatar || cachedAv || '');
 
-      // A friend is strictly online ONLY if active presence is confirmed and not offline/invisible
-      const isFriendOnline = Boolean(
-        p &&
-        p.status &&
-        p.status !== 'offline' &&
-        p.status !== 'invisible' &&
-        p.isOnline !== false
-      );
+      const resolvedName = isSelf
+        ? pickDisplayName([activeUserProfile?.name, activeUserProfile?.display_name, activeUserProfile?.username], 'Sen (You)')
+        : pickDisplayName(
+            [
+              isOnline ? p?.name : null,
+              isOnline ? p?.display_name : null,
+              f.name,
+              f.display_name,
+              fallbackProf?.display_name,
+              fallbackProf?.name,
+              p?.name,
+              p?.display_name,
+              f.username,
+              cachedProf?.display_name,
+              cachedProf?.name,
+              cachedProf?.username,
+            ],
+            'Kullanıcı'
+          );
 
-      const resolvedName = pickDisplayName(
-        [
-          isFriendOnline ? p?.name : null,
-          isFriendOnline ? p?.display_name : null,
-          f.name,
-          f.display_name,
-          fallbackProf?.display_name,
-          fallbackProf?.name,
-          p?.name,
-          p?.display_name,
-          f.username,
-          cachedProf?.display_name,
-          cachedProf?.name,
-          cachedProf?.username,
-        ],
-        'Kullanıcı'
-      );
-
-      if (!isFriendOnline) {
-        return {
-          ...f,
-          name: resolvedName,
-          display_name: resolvedName,
-          avatar: resolvedAv,
-          avatar_url: resolvedAv,
-          status: 'offline',
-          isOnline: false,
-          isAway: false,
-          game: null,
-          substatus: '',
-        };
-      }
+      const resolvedUsername = isSelf
+        ? (activeUserProfile?.username || '')
+        : ([p?.username, fallbackProf?.username, f.username, cachedProf?.username].find((u) => typeof u === 'string' && u.trim() && !isUuidLike(u)) || '');
 
       return {
         ...f,
+        id: friendId,
+        user_id: f.user_id || friendId,
         name: resolvedName,
         display_name: resolvedName,
+        username: resolvedUsername,
         avatar: resolvedAv,
         avatar_url: resolvedAv,
-        game: p.game || null,
-        substatus: p.substatus || f.substatus || '',
-        status: p.status || 'online',
-        isAway: p.status === 'idle' || !!p.isAway,
-        isOnline: true,
+        game,
+        substatus,
+        status,
+        isAway: status === 'idle' || !!p?.isAway,
+        isOnline,
+        isSelf,
+        profile,
+        profiles: profile,
       };
     });
-  }, [friendshipsData.friends, presences, dmUserProfile]);
+  }, [friendshipsData.friends, presences, dmUserProfile, activeUserProfile]);
 
   const activeDmFriend = useMemo(() => {
     if (!isDm || !activeDmUserId) return null;
     const found = friends.find((f) => f.id === activeDmUserId);
     const fallbackProfile = dmUserProfile?.id === activeDmUserId ? dmUserProfile : null;
     const cachedProfile = getCachedUserProfile(activeDmUserId);
+    const isSelf = Boolean(
+      activeUserProfile?.id &&
+      String(activeDmUserId).toLowerCase().trim() === String(activeUserProfile.id).toLowerCase().trim()
+    );
+    const profile = fallbackProfile || cachedProfile || found?.profile || {};
+    const { status, isOnline, game, substatus } = computeMemberOnlineStatus({
+      member: { id: activeDmUserId, user_id: activeDmUserId, profile },
+      presences,
+      isSelf,
+      currentUser: activeUserProfile,
+    });
     const p = resolveMemberPresence(presences, { id: activeDmUserId, user_id: activeDmUserId });
-    const isTargetOnline = Boolean(
-      p &&
-      p.status &&
-      p.status !== 'offline' &&
-      p.status !== 'invisible' &&
-      p.isOnline !== false
-    );
 
-    const resolvedName = pickDisplayName(
-      [
-        found?.name,
-        found?.display_name,
-        fallbackProfile?.display_name,
-        fallbackProfile?.name,
-        p?.name,
-        p?.display_name,
-        found?.username,
-        fallbackProfile?.username,
-        p?.username,
-        cachedProfile?.display_name,
-        cachedProfile?.name,
-        cachedProfile?.username,
-      ],
-      'Kullanıcı'
-    );
+    const resolvedName = isSelf
+      ? pickDisplayName([activeUserProfile?.name, activeUserProfile?.display_name, activeUserProfile?.username], 'Sen (You)')
+      : pickDisplayName(
+          [
+            found?.name,
+            found?.display_name,
+            fallbackProfile?.display_name,
+            fallbackProfile?.name,
+            p?.name,
+            p?.display_name,
+            found?.username,
+            fallbackProfile?.username,
+            p?.username,
+            cachedProfile?.display_name,
+            cachedProfile?.name,
+            cachedProfile?.username,
+          ],
+          'Kullanıcı'
+        );
 
-    const resolvedUsername =
-      [found?.username, fallbackProfile?.username, p?.username, cachedProfile?.username].find(
-        (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
-      ) || '';
+    const resolvedUsername = isSelf
+      ? (activeUserProfile?.username || '')
+      : ([found?.username, fallbackProfile?.username, p?.username, cachedProfile?.username].find(
+          (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
+        ) || '');
 
     const base = found || fallbackProfile || cachedProfile || {
       id: activeDmUserId,
@@ -754,15 +764,17 @@ function StanduppApp() {
     };
 
     const pAvatar = (p?.avatar && typeof p.avatar === 'string' && p.avatar.trim()) ? p.avatar.trim() : null;
-    const finalAvatar =
-      pAvatar ||
-      base.avatar ||
-      base.avatar_url ||
-      fallbackProfile?.avatar ||
-      fallbackProfile?.avatar_url ||
-      cachedProfile?.avatar ||
-      cachedProfile?.avatar_url ||
-      '';
+    const selfAv = (activeUserProfile?.avatar || activeUserProfile?.avatar_url) || null;
+    const finalAvatar = isSelf
+      ? (selfAv || pAvatar || base.avatar || base.avatar_url || fallbackProfile?.avatar || '')
+      : (pAvatar ||
+        base.avatar ||
+        base.avatar_url ||
+        fallbackProfile?.avatar ||
+        fallbackProfile?.avatar_url ||
+        cachedProfile?.avatar ||
+        cachedProfile?.avatar_url ||
+        '');
 
     return {
       ...base,
@@ -772,13 +784,14 @@ function StanduppApp() {
       username: resolvedUsername || base.username || '',
       avatar: finalAvatar,
       avatar_url: finalAvatar,
-      status: isTargetOnline ? (p?.status || 'online') : 'offline',
-      isOnline: isTargetOnline,
-      isAway: isTargetOnline && (p?.status === 'idle' || !!p?.isAway),
-      game: isTargetOnline ? (p?.game || null) : null,
-      substatus: isTargetOnline ? (p?.substatus || base.substatus || '') : '',
+      status,
+      isOnline,
+      isAway: isOnline && (status === 'idle' || !!p?.isAway),
+      game,
+      substatus,
+      isSelf,
     };
-  }, [isDm, activeDmUserId, friends, presences, dmUserProfile]);
+  }, [isDm, activeDmUserId, friends, presences, dmUserProfile, activeUserProfile]);
 
   // WebRTC Mesh Voice Hook
   const {
