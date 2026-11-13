@@ -170,6 +170,41 @@ function formatMessagePreview(message) {
   return '';
 }
 
+// Resolve sender display name for group messages (e.g. "Udinese", "Sen")
+function resolveMessageSenderName(msg, currentUserId, currentUserName, friends = []) {
+  if (!msg) return '';
+  const senderId = msg.userId || msg.sender_id || msg.user_id;
+  const isMe = Boolean(
+    msg.isMe ||
+    (currentUserId && senderId && String(senderId) === String(currentUserId)) ||
+    (currentUserName && (msg.user === currentUserName || msg.sender_name === currentUserName))
+  );
+  if (isMe) return 'Sen';
+
+  // 1. Direct sender name from message object
+  const rawName = msg.sender_name || msg.user || msg.user_name || msg.name;
+  if (rawName && typeof rawName === 'string' && rawName.trim() && rawName !== senderId) {
+    return rawName.trim();
+  }
+
+  // 2. Lookup in friends list
+  if (senderId && Array.isArray(friends)) {
+    const friend = friends.find((f) => f && (f.id === senderId || f.user_id === senderId));
+    if (friend?.name) return friend.name;
+  }
+
+  // 3. Fallback to cached profile
+  if (senderId) {
+    const cached = getCachedUserProfile(senderId);
+    if (cached) {
+      const resolved = pickDisplayName([cached.display_name, cached.name, cached.username], '');
+      if (resolved) return resolved;
+    }
+  }
+
+  return rawName || '';
+}
+
 const STATUS_OPTIONS = [
   {
     id: 'online',
@@ -502,28 +537,48 @@ export const Sidebar = ({
     const activeUid = effectiveUserId;
     if (!activeUid || activeUid === 'you') return;
 
-    // Single batched query for all friends' latest DMs (avoids N+1 query fan-out)
+    // Single batched query for all friends' latest DMs and text channels
     const friendIds = friendIdsKey ? friendIdsKey.split(',').filter(Boolean) : [];
+    const channelIds = (textChannels || [])
+      .map((c) => c?.id)
+      .filter((id) => id && id !== 'home' && id !== 'voice-sesli-sohbet');
+
     const loadLatestMessagesBatch = async () => {
-      if (friendIds.length === 0) return;
       try {
-        const batchMap = await dbService.fetchLatestDmMessagesBatch(activeUid, friendIds);
-        if (!cancelled && batchMap) {
+        const [batchMap, channelBatchMap] = await Promise.all([
+          friendIds.length > 0 ? dbService.fetchLatestDmMessagesBatch(activeUid, friendIds) : null,
+          channelIds.length > 0 ? dbService.fetchLatestChannelMessagesBatch(channelIds) : null,
+        ]);
+        if (!cancelled) {
           setLastMessagesMap((prev) => {
             const next = { ...prev };
-            friendIds.forEach((fid) => {
-              const canonical = getDmRoomId(activeUid, fid);
-              if (batchMap[canonical]) {
-                next[canonical] = batchMap[canonical];
-              } else {
-                const localMsgs = localDb.getDmMessages(canonical);
-                if (Array.isArray(localMsgs) && localMsgs.length > 0) {
-                  next[canonical] = localMsgs[localMsgs.length - 1];
+            if (batchMap) {
+              friendIds.forEach((fid) => {
+                const canonical = getDmRoomId(activeUid, fid);
+                if (batchMap[canonical]) {
+                  next[canonical] = batchMap[canonical];
                 } else {
-                  delete next[canonical];
+                  const localMsgs = localDb.getDmMessages(canonical);
+                  if (Array.isArray(localMsgs) && localMsgs.length > 0) {
+                    next[canonical] = localMsgs[localMsgs.length - 1];
+                  } else {
+                    delete next[canonical];
+                  }
                 }
-              }
-            });
+              });
+            }
+            if (channelBatchMap) {
+              channelIds.forEach((cid) => {
+                if (channelBatchMap[cid]) {
+                  next[cid] = channelBatchMap[cid];
+                } else {
+                  const localMsgs = localDb.getChannelMessages(cid);
+                  if (Array.isArray(localMsgs) && localMsgs.length > 0) {
+                    next[cid] = localMsgs[localMsgs.length - 1];
+                  }
+                }
+              });
+            }
             return next;
           });
         }
@@ -598,8 +653,10 @@ export const Sidebar = ({
         id: newMsg.id,
         channel_id: chanId,
         room_id: chanId,
-        userId: newMsg.user_id,
-        user: newMsg.user_name || newMsg.user,
+        userId: newMsg.sender_id || newMsg.user_id || newMsg.userId,
+        sender_id: newMsg.sender_id || newMsg.user_id || newMsg.userId,
+        user: newMsg.sender_name || newMsg.user_name || newMsg.user,
+        sender_name: newMsg.sender_name || newMsg.user_name || newMsg.user,
         lines: Array.isArray(newMsg.lines) ? newMsg.lines : (newMsg.lines ? [newMsg.lines] : []),
         attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
         timestamp: newMsg.timestamp_text,
@@ -2141,6 +2198,7 @@ export const Sidebar = ({
                 const lastMessageTime = lastMsg ? formatChatTimeOnly(rawTime, lastMsg.timestamp) : '';
                 const lastMessageDate = lastMsg ? formatChatDateOnly(rawTime, lastMsg.timestamp) : '';
                 const lastMessageText = formatMessagePreview(lastMsg);
+                const senderName = resolveMessageSenderName(lastMsg, currentUserProfile?.id, currentUserProfile?.name, combinedFriends);
 
                 return (
                   <div
@@ -2185,8 +2243,19 @@ export const Sidebar = ({
                       </div>
 
                       <div className="flex items-center justify-between mt-0.5">
-                        <p className={`text-[11px] truncate ${unreadCount > 0 ? 'text-white font-medium' : isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                          {lastMessageText || 'Grup sohbeti'}
+                        <p className={`text-[11px] truncate min-w-0 flex-1 ${unreadCount > 0 ? 'text-white font-medium' : isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
+                          {lastMessageText ? (
+                            <>
+                              {senderName && (
+                                <span className={`font-semibold mr-1 ${unreadCount > 0 ? 'text-[#bb94ff]' : isSelected ? 'text-gray-200' : 'text-gray-300'}`}>
+                                  {senderName}:
+                                </span>
+                              )}
+                              <span className="truncate">{lastMessageText}</span>
+                            </>
+                          ) : (
+                            'Grup sohbeti'
+                          )}
                         </p>
 
                         {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) & Purple Notification Badge */}

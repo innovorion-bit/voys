@@ -146,4 +146,47 @@ assert.equal(combined.length, 2);
 assert.equal(combined[1].id, 'new-user-123');
 console.log('✓ Test 5 Passed: Discovered DM users dynamically added and combined into chat list');
 
+// Test 6: Group chat sender name resolution
+function resolveMessageSenderName(msg, currentUserId, currentUserName, friends = []) {
+  if (!msg) return '';
+  const senderId = msg.userId || msg.sender_id || msg.user_id;
+  const isMe = Boolean(
+    msg.isMe ||
+    (currentUserId && senderId && String(senderId) === String(currentUserId)) ||
+    (currentUserName && (msg.user === currentUserName || msg.sender_name === currentUserName))
+  );
+  if (isMe) return 'Sen';
+
+  const rawName = msg.sender_name || msg.user || msg.user_name || msg.name;
+  if (rawName && typeof rawName === 'string' && rawName.trim() && rawName !== senderId) {
+    return rawName.trim();
+  }
+
+  if (senderId && Array.isArray(friends)) {
+    const friend = friends.find((f) => f && (f.id === senderId || f.user_id === senderId));
+    if (friend?.name) return friend.name;
+  }
+
+  return rawName || '';
+}
+
+const myUid = 'user-lyring-id';
+const myUname = 'Lyring';
+const testFriends = [{ id: 'user-udinese-id', name: 'Udinese' }, { id: 'user-mafik-id', name: 'Mafik' }];
+
+// Case A: Udinese sends message in group
+const gMsg1 = { id: '1', channel_id: 'game-fedaileri', sender_id: 'user-udinese-id', sender_name: 'Udinese', lines: ['sa'] };
+assert.equal(resolveMessageSenderName(gMsg1, myUid, myUname, testFriends), 'Udinese');
+
+// Case B: Sent by myself in group
+const gMsg2 = { id: '2', channel_id: 'game-fedaileri', sender_id: myUid, sender_name: 'Lyring', lines: ['as'] };
+assert.equal(resolveMessageSenderName(gMsg2, myUid, myUname, testFriends), 'Sen');
+
+// Case C: Message with only sender_id resolved via friends
+const gMsg3 = { id: '3', channel_id: 'game-fedaileri', sender_id: 'user-mafik-id', lines: ['gelin'] };
+assert.equal(resolveMessageSenderName(gMsg3, myUid, myUname, testFriends), 'Mafik');
+
+console.log('✓ Test 6 Passed: Group chat sender name resolved accurately ("Udinese", "Sen", friends lookup)');
+
 console.log('ALL UNREAD BADGE & RECENCY SORTING TESTS PASSED!');
+

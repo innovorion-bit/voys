@@ -1772,6 +1772,65 @@ export const dbService = {
     return latestByCanonicalRoom;
   },
 
+  // Batched latest Channel lookup for Sidebar
+  async fetchLatestChannelMessagesBatch(channelIds = []) {
+    const cleanIds = Array.from(new Set((channelIds || []).filter(Boolean)));
+    if (cleanIds.length === 0) return {};
+
+    const latestByChannel = {};
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await withTimeout(
+          supabase
+            .from('channel_messages')
+            .select('*')
+            .in('channel_id', cleanIds)
+            .order('sent_at', { ascending: false })
+            .limit(100),
+          6000,
+          'fetchLatestChannelMessagesBatch timeout'
+        );
+
+        if (!error && Array.isArray(data)) {
+          for (const row of data) {
+            if (!row?.channel_id || latestByChannel[row.channel_id]) continue;
+            const rawSentAt = row.sent_at ?? row.sentAt;
+            const parsedSentAt = rawSentAt
+              ? (typeof rawSentAt === 'number' ? rawSentAt : (!isNaN(Number(rawSentAt)) ? Number(rawSentAt) : new Date(rawSentAt).getTime()))
+              : (row.created_at ? new Date(row.created_at).getTime() : Date.now());
+
+            latestByChannel[row.channel_id] = {
+              id: row.id,
+              channel_id: row.channel_id,
+              room_id: row.channel_id,
+              userId: row.sender_id,
+              user: row.sender_name,
+              lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
+              attachments: Array.isArray(row.attachments) ? row.attachments : [],
+              timestamp: row.timestamp_text,
+              sentAt: parsedSentAt,
+              sent_at: parsedSentAt,
+            };
+          }
+          return latestByChannel;
+        }
+      } catch (err) {
+        console.warn('Supabase fetchLatestChannelMessagesBatch error:', err);
+      }
+    }
+
+    // Local fallback
+    cleanIds.forEach((cid) => {
+      const localMsgs = localDb.getChannelMessages(cid);
+      if (Array.isArray(localMsgs) && localMsgs.length > 0) {
+        latestByChannel[cid] = localMsgs[localMsgs.length - 1];
+      }
+    });
+
+    return latestByChannel;
+  },
+
   async saveDmMessage(roomId, message, senderId, receiverId) {
     let canonicalRoomId = roomId;
     if (senderId && receiverId) {
