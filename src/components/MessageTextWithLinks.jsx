@@ -31,7 +31,7 @@ export const MessageTextWithLinks = ({ text, className = '' }) => {
             target="_blank"
             rel="noopener noreferrer"
             title={`Tarayıcıda aç: ${token.href}`}
-            className="text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-2 decoration-indigo-400/50 hover:decoration-indigo-300 transition-colors cursor-pointer break-all inline-flex items-center gap-0.5 select-text group/link"
+            className="text-purple-400 hover:text-purple-300 font-medium underline underline-offset-2 decoration-purple-400/50 hover:decoration-purple-300 transition-colors cursor-pointer break-all inline-flex items-center gap-0.5 select-text group/link"
           >
             <span>{token.raw}</span>
             <ExternalLink
