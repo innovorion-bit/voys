@@ -88,7 +88,6 @@ export async function toggleMaximizeWindow() {
  * Closes the current application window gracefully after leaving presence.
  */
 export async function closeWindow() {
-  if (!isTauriEnvironment()) return;
   try {
     if (chatService && typeof chatService.leavePresence === 'function') {
       chatService.leavePresence();
@@ -96,10 +95,35 @@ export async function closeWindow() {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('beforeunload'));
     }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    await getCurrentWindow().close();
   } catch (err) {
-    console.warn('Tauri close error:', err);
+    console.warn('leavePresence before close error:', err);
+  }
+
+  // Brief pause so the websocket departure broadcast packet flushes out
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  if (isTauriEnvironment()) {
+    try {
+      const appWindow = getCurrentWindow();
+      await appWindow.close();
+      return;
+    } catch (err) {
+      console.warn('Tauri close error, attempting destroy fallback:', err);
+    }
+
+    try {
+      const appWindow = getCurrentWindow();
+      if (typeof appWindow.destroy === 'function') {
+        await appWindow.destroy();
+        return;
+      }
+    } catch (err) {
+      console.warn('Tauri destroy error:', err);
+    }
+  } else {
+    try {
+      window.close();
+    } catch {}
   }
 }
 
@@ -107,27 +131,25 @@ export async function closeWindow() {
  * Registers graceful departure handler when the user requests window close (e.g. via Alt+F4 or system close).
  */
 export async function setupWindowCloseHandler() {
-  if (!isTauriEnvironment()) return null;
-  try {
-    const appWindow = getCurrentWindow();
-    if (typeof appWindow.onCloseRequested === 'function') {
-      const unlisten = await appWindow.onCloseRequested(async () => {
-        try {
-          if (chatService && typeof chatService.leavePresence === 'function') {
-            chatService.leavePresence();
-          }
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('beforeunload'));
-          }
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        } catch {}
-      });
-      return unlisten;
-    }
-  } catch (err) {
-    console.warn('setupWindowCloseHandler warning:', err);
+  const handleUnload = () => {
+    try {
+      if (chatService && typeof chatService.leavePresence === 'function') {
+        chatService.leavePresence();
+      }
+    } catch {}
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', handleUnload);
+    window.addEventListener('pagehide', handleUnload);
   }
-  return null;
+
+  return () => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
+    }
+  };
 }
 
 /**

@@ -81,7 +81,11 @@ export const WindowHeader = ({
         </button>
         <button
           type="button"
-          onClick={closeWindow}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeWindow();
+          }}
           className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#ef4444] rounded transition cursor-pointer"
           title="Kapat"
         >
