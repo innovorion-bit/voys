@@ -2243,7 +2243,15 @@ export const Sidebar = ({
                                 )
                               )}
                               <span className={`truncate ${unreadCount > 0 ? 'text-white font-medium' : isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                                {lastMessageText || (friend.isOnline ? (friend.substatus || 'Çevrimiçi') : 'Çevrimdışı')}
+                                {lastMessageText || (
+                                  !friend.isOnline || friend.status === 'offline' || friend.status === 'invisible'
+                                    ? 'Çevrimdışı'
+                                    : friend.status === 'dnd'
+                                      ? 'Rahatsız Etmeyin'
+                                      : friend.status === 'idle'
+                                        ? 'Boşta'
+                                        : (friend.substatus || 'Çevrimiçi')
+                                )}
                               </span>
                             </div>
                           )}
