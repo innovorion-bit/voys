@@ -23,6 +23,35 @@ fn stop_ptt_listener(state: tauri::State<'_, ptt::PttController>) {
   ptt::stop_ptt_listener(&state);
 }
 
+#[tauri::command]
+fn open_external_url(url: String) -> Result<bool, String> {
+  let trimmed = url.trim();
+  if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
+    return Err("Geçersiz link protokolü".into());
+  }
+
+  #[cfg(target_os = "windows")]
+  {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    std::process::Command::new("cmd")
+      .args(["/C", "start", "", trimmed])
+      .creation_flags(CREATE_NO_WINDOW)
+      .spawn()
+      .map_err(|e| e.to_string())?;
+    Ok(true)
+  }
+
+  #[cfg(not(target_os = "windows"))]
+  {
+    std::process::Command::new("xdg-open")
+      .arg(trimmed)
+      .spawn()
+      .map_err(|e| e.to_string())?;
+    Ok(true)
+  }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   std::panic::set_hook(Box::new(|info| {
@@ -36,7 +65,8 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       detect_running_game,
       start_ptt_listener,
-      stop_ptt_listener
+      stop_ptt_listener,
+      open_external_url
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

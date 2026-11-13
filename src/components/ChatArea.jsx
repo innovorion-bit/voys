@@ -127,6 +127,7 @@ import {
   resolveMemberPresence,
 } from '../utils/userDisplay';
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
+import { MessageTextWithLinks } from './MessageTextWithLinks';
 
 // Helper to format file sizes nicely
 function formatFileSize(bytes) {
@@ -2224,7 +2225,7 @@ export const ChatArea = ({
                           <div className="space-y-0.5 text-[13.5px] leading-relaxed break-words text-gray-200 max-w-full">
                             {msg.lines.map((line, idx) => (
                               <div key={idx} className="font-normal font-sans">
-                                {line}
+                                <MessageTextWithLinks text={line} />
                               </div>
                             ))}
                           </div>

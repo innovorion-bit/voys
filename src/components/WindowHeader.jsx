@@ -5,7 +5,7 @@ import {
   Square,
   HelpCircle
 } from 'lucide-react';
-import { minimizeWindow, toggleMaximizeWindow, closeWindow } from '../utils/windowManager';
+import { minimizeWindow, toggleMaximizeWindow, closeWindow, openExternalUrl } from '../utils/windowManager';
 
 export const WindowHeader = ({
   pageTitle,
@@ -14,7 +14,7 @@ export const WindowHeader = ({
   const currentTitle = pageTitle || groupName || 'Voys';
 
   const handleOpenHelp = () => {
-    window.open('https://www.youtube.com/watch?v=ANnoNIMPWnQ', '_blank', 'noopener,noreferrer');
+    openExternalUrl('https://www.youtube.com/watch?v=ANnoNIMPWnQ');
   };
 
   return (

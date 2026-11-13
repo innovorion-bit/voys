@@ -168,3 +168,48 @@ export async function detectRunningGame() {
     return null;
   }
 }
+
+/**
+ * Opens an external internet URL in the user's default browser.
+ * Uses native Tauri process execution on desktop and standard window.open on web.
+ * @param {string} rawUrl - Target URL (e.g. "https://example.com" or "www.example.com")
+ */
+export async function openExternalUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return;
+
+  const targetUrl = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  // 1. Try Tauri native opener command if in Tauri desktop environment
+  if (isTauriEnvironment()) {
+    try {
+      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) {
+        await window.__TAURI_INTERNALS__.invoke('open_external_url', { url: targetUrl });
+        return;
+      }
+      await invoke('open_external_url', { url: targetUrl });
+      return;
+    } catch (err) {
+      console.warn('Tauri open_external_url fallback:', err);
+    }
+  }
+
+  // 2. Web browser fallback: window.open
+  try {
+    const opened = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (!opened && typeof document !== 'undefined') {
+      const a = document.createElement('a');
+      a.href = targetUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch (err) {
+    console.warn('openExternalUrl fallback error:', err);
+  }
+}
