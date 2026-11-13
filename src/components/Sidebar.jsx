@@ -24,7 +24,8 @@ import { UserAvatar } from './UserAvatar';
 import { getDmRoomId, localDb, dbService } from '../lib/supabase';
 import { chatService } from '../services/chatService';
 import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } from '../utils/dmIsolation';
-import { resolveChannelCall } from '../utils/userDisplay';
+import { resolveChannelCall, getCachedUserProfile, cacheUserProfiles, pickDisplayName } from '../utils/userDisplay';
+import { sounds } from '../utils/audio';
 
 // Format message timestamp: 23:14 (today), Dün (yesterday), Day Name (this week), DD.MM.YYYY (older)
 function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
@@ -253,6 +254,27 @@ function saveHiddenChats(userId, hiddenSet) {
   } catch { }
 }
 
+const getUnreadCountsStorageKey = (userId) => `voys_unread_counts_${userId || 'guest'}`;
+
+function readUnreadCounts(userId) {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(getUnreadCountsStorageKey(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch { }
+  return {};
+}
+
+function persistUnreadCounts(userId, counts) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(getUnreadCountsStorageKey(userId), JSON.stringify(counts));
+  } catch { }
+}
+
 export const Sidebar = ({
   textChannels = [],
   channelCalls = {}, // { [channelId]: { active: boolean, count: number } }
@@ -318,6 +340,97 @@ export const Sidebar = ({
       description: 'Mesajlar silinmedi. Kişiye yeni mesaj geldiğinde veya arandığında sohbet tekrar listelenir.',
     });
   }, [activeDmUserId, activeChannel, effectiveUserId, onSelectDm, onSelectChannel]);
+
+  // Persistent unread message counts: { [chatId]: count }
+  const [unreadCounts, setUnreadCounts] = useState(() => readUnreadCounts(effectiveUserId));
+  // Dynamically discovered DM partners from incoming direct messages (even if not yet in friends list)
+  const [discoveredDmUsers, setDiscoveredDmUsers] = useState([]);
+
+  useEffect(() => {
+    setUnreadCounts(readUnreadCounts(effectiveUserId));
+  }, [effectiveUserId]);
+
+  const activeDmUserIdRef = useRef(activeDmUserId);
+  activeDmUserIdRef.current = activeDmUserId;
+
+  const activeChannelRef = useRef(activeChannel);
+  activeChannelRef.current = activeChannel;
+
+  const clearUnread = useCallback((...keys) => {
+    setUnreadCounts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      keys.filter(Boolean).forEach((k) => {
+        if (next[k] !== undefined) {
+          delete next[k];
+          changed = true;
+        }
+      });
+      if (changed) {
+        persistUnreadCounts(effectiveUserId, next);
+        return next;
+      }
+      return prev;
+    });
+  }, [effectiveUserId]);
+
+  const ensureDiscoveredDmPartner = useCallback(async (partnerId, fallbackName) => {
+    if (!partnerId || partnerId === effectiveUserId) return;
+    setDiscoveredDmUsers((prev) => {
+      if (friends.some((f) => f.id === partnerId) || prev.some((d) => d.id === partnerId)) {
+        return prev;
+      }
+      const cached = getCachedUserProfile(partnerId);
+      const resolvedName = pickDisplayName([fallbackName, cached?.display_name, cached?.name, cached?.username], 'Kullanıcı');
+      return [
+        ...prev,
+        {
+          id: partnerId,
+          user_id: partnerId,
+          name: resolvedName,
+          display_name: resolvedName,
+          username: cached?.username || '',
+          avatar: cached?.avatar_url || cached?.avatar || '',
+          status: cached?.status || 'offline',
+          isOnline: false,
+        },
+      ];
+    });
+
+    if (!getCachedUserProfile(partnerId)) {
+      try {
+        const prof = await dbService.fetchUserProfile(partnerId);
+        if (prof) {
+          cacheUserProfiles([prof]);
+          setDiscoveredDmUsers((prev) =>
+            prev.map((d) =>
+              d.id === partnerId
+                ? {
+                    ...d,
+                    name: pickDisplayName([prof.display_name, prof.name, prof.username, fallbackName], 'Kullanıcı'),
+                    display_name: pickDisplayName([prof.display_name, prof.name, prof.username, fallbackName], 'Kullanıcı'),
+                    avatar: prof.avatar_url || prof.avatar || d.avatar,
+                    username: prof.username || d.username,
+                  }
+                : d
+            )
+          );
+        }
+      } catch { }
+    }
+  }, [effectiveUserId, friends]);
+
+  // Automatically clear unread badge for currently open chat
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    if (activeDmUserId) {
+      const dmRoomId = getDmRoomId(effectiveUserId, activeDmUserId);
+      clearUnread(activeDmUserId, dmRoomId);
+    } else if (activeChannel) {
+      const cleanChan = String(activeChannel).replace(/^text-/, '');
+      clearUnread(activeChannel, cleanChan, `text-${cleanChan}`);
+    }
+  }, [activeChannel, activeDmUserId, effectiveUserId, clearUnread]);
 
   const handleChatContextMenu = useCallback((e, chatItem) => {
     e.preventDefault();
@@ -427,6 +540,7 @@ export const Sidebar = ({
     const unsubDms = dbService.subscribeToTable('direct_messages', (payload) => {
       if (cancelled) return;
       const newMsg = payload?.new;
+      if (!newMsg) return;
       const partnerId = resolveDirectMessagePartner(newMsg, activeUid);
       if (!partnerId) return;
 
@@ -441,12 +555,85 @@ export const Sidebar = ({
         lines: Array.isArray(newMsg.lines) ? newMsg.lines : (newMsg.lines ? [newMsg.lines] : []),
         attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
         timestamp: newMsg.timestamp_text,
-        sentAt: newMsg.sent_at || (newMsg.created_at ? new Date(newMsg.created_at).getTime() : undefined),
+        sentAt: newMsg.sent_at || (newMsg.created_at ? new Date(newMsg.created_at).getTime() : Date.now()),
       };
+
+      unhideChat(partnerId);
+      unhideChat(roomId);
+      ensureDiscoveredDmPartner(partnerId, newMsg.sender_name);
+
       setLastMessagesMap((prev) => ({
         ...prev,
         [roomId]: formatted,
       }));
+
+      const isViewing = Boolean(
+        activeDmUserIdRef.current &&
+        String(activeDmUserIdRef.current).toLowerCase().trim() === String(partnerId).toLowerCase().trim()
+      );
+      const isFromMe = Boolean(
+        activeUid && String(newMsg.sender_id) === String(activeUid)
+      );
+
+      if (!isViewing && !isFromMe) {
+        setUnreadCounts((prev) => {
+          const current = prev[partnerId] || prev[roomId] || 0;
+          const next = { ...prev, [partnerId]: current + 1, [roomId]: current + 1 };
+          persistUnreadCounts(activeUid, next);
+          return next;
+        });
+        try { sounds.playMessage(); } catch {}
+      }
+    });
+
+    // Realtime subscription for channel messages
+    const unsubChannelMsgs = dbService.subscribeToTable('channel_messages', (payload) => {
+      if (cancelled) return;
+      const newMsg = payload?.new;
+      if (!newMsg) return;
+      const chanId = newMsg.channel_id || newMsg.room_id || newMsg.room;
+      if (!chanId) return;
+
+      const formatted = {
+        id: newMsg.id,
+        channel_id: chanId,
+        room_id: chanId,
+        userId: newMsg.user_id,
+        user: newMsg.user_name || newMsg.user,
+        lines: Array.isArray(newMsg.lines) ? newMsg.lines : (newMsg.lines ? [newMsg.lines] : []),
+        attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
+        timestamp: newMsg.timestamp_text,
+        sentAt: newMsg.sent_at || (newMsg.created_at ? new Date(newMsg.created_at).getTime() : Date.now()),
+      };
+
+      unhideChat(chanId);
+      setLastMessagesMap((prev) => ({
+        ...prev,
+        [chanId]: formatted,
+      }));
+
+      const curChan = activeChannelRef.current;
+      const isViewing = !activeDmUserIdRef.current && (
+        curChan === chanId ||
+        chanId === `text-${curChan}` ||
+        chanId?.replace(/^text-/, '') === curChan?.replace(/^text-/, '')
+      );
+      const isFromMe = Boolean(
+        activeUid && (
+          (newMsg.user_id && String(newMsg.user_id) === String(activeUid)) ||
+          (newMsg.sender_id && String(newMsg.sender_id) === String(activeUid))
+        )
+      );
+
+      if (!isViewing && !isFromMe) {
+        setUnreadCounts((prev) => {
+          const current = prev[chanId] || 0;
+          const next = { ...prev, [chanId]: current + 1 };
+          persistUnreadCounts(activeUid, next);
+          return next;
+        });
+        try { sounds.playMessage(); } catch {}
+      }
     });
 
     // Realtime broadcast/socket message
@@ -455,6 +642,14 @@ export const Sidebar = ({
       const rawRoomId = msg.room || msg.room_id || msg.channel_id;
       if (!rawRoomId) return;
 
+      const isFromMe = Boolean(
+        activeUid && (
+          (msg.sender_id && String(msg.sender_id) === String(activeUid)) ||
+          (msg.userId && String(msg.userId) === String(activeUid)) ||
+          msg.isMe
+        )
+      );
+
       if (String(rawRoomId).startsWith('dm-')) {
         const partnerId = resolveDirectMessagePartner(msg, activeUid);
         const pair = parseDmRoomPair(rawRoomId);
@@ -462,12 +657,29 @@ export const Sidebar = ({
           ? (pair[0] === String(activeUid) ? pair[1] : pair[0])
           : null);
         if (!targetPartner) return;
+
         unhideChat(targetPartner);
         const canonical = getDmRoomId(activeUid, targetPartner);
         setLastMessagesMap((prev) => ({
           ...prev,
           [canonical]: msg,
         }));
+        ensureDiscoveredDmPartner(targetPartner, msg.user || msg.sender_name);
+
+        const isViewing = Boolean(
+          activeDmUserIdRef.current &&
+          String(activeDmUserIdRef.current).toLowerCase().trim() === String(targetPartner).toLowerCase().trim()
+        );
+
+        if (!isViewing && !isFromMe) {
+          setUnreadCounts((prev) => {
+            const current = prev[targetPartner] || prev[canonical] || 0;
+            const next = { ...prev, [targetPartner]: current + 1, [canonical]: current + 1 };
+            persistUnreadCounts(activeUid, next);
+            return next;
+          });
+          try { sounds.playMessage(); } catch {}
+        }
         return;
       }
 
@@ -476,6 +688,23 @@ export const Sidebar = ({
         ...prev,
         [rawRoomId]: msg,
       }));
+
+      const curChan = activeChannelRef.current;
+      const isViewing = !activeDmUserIdRef.current && (
+        curChan === rawRoomId ||
+        rawRoomId === `text-${curChan}` ||
+        rawRoomId?.replace(/^text-/, '') === curChan?.replace(/^text-/, '')
+      );
+
+      if (!isViewing && !isFromMe) {
+        setUnreadCounts((prev) => {
+          const current = prev[rawRoomId] || 0;
+          const next = { ...prev, [rawRoomId]: current + 1 };
+          persistUnreadCounts(activeUid, next);
+          return next;
+        });
+        try { sounds.playMessage(); } catch {}
+      }
     };
 
     chatService.on('message', handleChatMessage);
@@ -484,9 +713,10 @@ export const Sidebar = ({
       cancelled = true;
       unsubRecovered?.();
       unsubDms?.();
+      unsubChannelMsgs?.();
       chatService.off('message', handleChatMessage);
     };
-  }, [effectiveUserId, friendIdsKey]);
+  }, [effectiveUserId, friendIdsKey, ensureDiscoveredDmPartner, unhideChat]);
 
   // Search query state
   const [searchQuery, setSearchQuery] = useState('');
@@ -791,45 +1021,166 @@ export const Sidebar = ({
 
 
 
-  // Filtered Friends
-  const filteredFriends = useMemo(() => {
-    if (filterTab === 'channels') return [];
-    return friends.filter((friend) => {
-      if (hiddenChatIds.has(friend.id) && !searchQuery.trim()) return false;
-      if (filterTab === 'unread') {
-        // In unread tab, show friends with active activity (online/game)
-        if (!friend.isOnline && !friend.game) return false;
-      }
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        friend.name?.toLowerCase().includes(q) ||
-        friend.username?.toLowerCase().includes(q) ||
-        friend.game?.toLowerCase().includes(q) ||
-        friend.substatus?.toLowerCase().includes(q)
-      );
-    });
-  }, [friends, searchQuery, filterTab, hiddenChatIds]);
+  // Combined Friends (props friends + dynamically discovered DM users from incoming messages)
+  const combinedFriends = useMemo(() => {
+    if (!discoveredDmUsers || discoveredDmUsers.length === 0) return friends || [];
+    const existingIds = new Set((friends || []).map((f) => f.id));
+    const extras = discoveredDmUsers.filter((d) => d && d.id && !existingIds.has(d.id));
+    return [...(friends || []), ...extras];
+  }, [friends, discoveredDmUsers]);
 
-  // Filtered Channels (only user-created channels, never default/pre-made 'home')
-  const filteredChannels = useMemo(() => {
-    if (filterTab === 'dms') return [];
-    return textChannels.filter((chan) => {
-      if (!chan || chan.id === 'home' || chan.is_home || chan.id === 'voice-sesli-sohbet') return false;
-      if (hiddenChatIds.has(chan.id) && !searchQuery.trim()) return false;
-      if (filterTab === 'unread') {
-        // Show channels with active call
-        return Boolean(resolveChannelCall(channelCalls, chan.id)?.active);
+  const getMessageTimestampNumber = useCallback((msg) => {
+    if (!msg) return 0;
+    const raw = msg.sentAt ?? msg.sent_at;
+    if (typeof raw === 'number' && !isNaN(raw)) return raw;
+    if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw);
+    if (raw) {
+      const parsed = new Date(raw).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (msg.created_at) {
+      const parsed = new Date(msg.created_at).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  }, []);
+
+  const totalDmUnreadCount = useMemo(() => {
+    return combinedFriends.reduce((acc, friend) => {
+      const dmRoomId = currentUserProfile?.id && friend?.id ? getDmRoomId(currentUserProfile.id, friend.id) : null;
+      const count = Number(unreadCounts[friend.id] || (dmRoomId ? unreadCounts[dmRoomId] : 0) || 0);
+      return acc + count;
+    }, 0);
+  }, [combinedFriends, currentUserProfile?.id, unreadCounts]);
+
+  const totalChannelUnreadCount = useMemo(() => {
+    return textChannels.reduce((acc, chan) => {
+      if (!chan || chan.id === 'home' || chan.is_home) return acc;
+      const count = Number(unreadCounts[chan.id] || unreadCounts[`text-${chan.id}`] || 0);
+      return acc + count;
+    }, 0);
+  }, [textChannels, unreadCounts]);
+
+  const totalUnreadCount = totalDmUnreadCount + totalChannelUnreadCount;
+
+  // Unified Chat Items: DMs and Channels, sorted chronologically by latest message (recency), unread status, and online status
+  const allChatItems = useMemo(() => {
+    const items = [];
+    const q = searchQuery.trim().toLowerCase();
+
+    // 1. DMs / Friends
+    if (filterTab !== 'channels') {
+      combinedFriends.forEach((friend) => {
+        if (!friend || !friend.id) return;
+        if (hiddenChatIds.has(friend.id) && !q) return;
+        if (q) {
+          const match =
+            friend.name?.toLowerCase().includes(q) ||
+            friend.username?.toLowerCase().includes(q) ||
+            friend.game?.toLowerCase().includes(q) ||
+            friend.substatus?.toLowerCase().includes(q);
+          if (!match) return;
+        }
+
+        const dmRoomId = currentUserProfile?.id && friend?.id
+          ? getDmRoomId(currentUserProfile.id, friend.id)
+          : null;
+
+        const rawLastMsg = (
+          activeChannel === dmRoomId &&
+          activeLastMessage &&
+          isDirectMessageForPair(activeLastMessage, currentUserProfile?.id, friend.id)
+        )
+          ? activeLastMessage
+          : (dmRoomId ? lastMessagesMap[dmRoomId] : null);
+
+        const lastMsg = (
+          rawLastMsg &&
+          isDirectMessageForPair(rawLastMsg, currentUserProfile?.id, friend.id)
+        )
+          ? rawLastMsg
+          : null;
+
+        const rawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
+        const msgTime = getMessageTimestampNumber(lastMsg);
+        const unreadCount = Number(unreadCounts[friend.id] || (dmRoomId ? unreadCounts[dmRoomId] : 0) || 0);
+
+        items.push({
+          type: 'dm',
+          id: friend.id,
+          key: `dm-${friend.id}`,
+          friend,
+          dmRoomId,
+          lastMsg,
+          rawTime,
+          msgTime,
+          unreadCount,
+        });
+      });
+    }
+
+    // 2. Channels / Groups
+    if (filterTab !== 'dms') {
+      textChannels.forEach((chan) => {
+        if (!chan || chan.id === 'home' || chan.is_home || chan.id === 'voice-sesli-sohbet') return;
+        if (hiddenChatIds.has(chan.id) && !q) return;
+        if (q && !chan.name?.toLowerCase().includes(q)) return;
+
+        const lastMsg = (activeChannel === chan.id && activeLastMessage)
+          ? activeLastMessage
+          : lastMessagesMap[chan.id];
+
+        const rawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
+        const msgTime = getMessageTimestampNumber(lastMsg);
+        const unreadCount = Number(unreadCounts[chan.id] || unreadCounts[`text-${chan.id}`] || 0);
+
+        items.push({
+          type: 'channel',
+          id: chan.id,
+          key: `chan-${chan.id}`,
+          chan,
+          lastMsg,
+          rawTime,
+          msgTime,
+          unreadCount,
+        });
+      });
+    }
+
+    // 3. Sort newest activity first, then unread, then online status, then name
+    return items.sort((a, b) => {
+      if (a.msgTime !== b.msgTime) {
+        return b.msgTime - a.msgTime;
       }
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return chan.name?.toLowerCase().includes(q);
+      if (a.unreadCount !== b.unreadCount) {
+        return b.unreadCount - a.unreadCount;
+      }
+      const aOnline = a.type === 'dm' && (a.friend.isOnline || a.friend.status === 'online');
+      const bOnline = b.type === 'dm' && (b.friend.isOnline || b.friend.status === 'online');
+      if (aOnline !== bOnline) {
+        return bOnline ? 1 : -1;
+      }
+      const aName = a.type === 'dm' ? (a.friend.name || '') : (a.chan.name || '');
+      const bName = b.type === 'dm' ? (b.friend.name || '') : (b.chan.name || '');
+      return aName.localeCompare(bName, 'tr', { sensitivity: 'base' });
     });
-  }, [textChannels, searchQuery, filterTab, channelCalls, hiddenChatIds]);
+  }, [
+    filterTab,
+    searchQuery,
+    combinedFriends,
+    hiddenChatIds,
+    currentUserProfile?.id,
+    activeChannel,
+    activeLastMessage,
+    lastMessagesMap,
+    getMessageTimestampNumber,
+    unreadCounts,
+    textChannels,
+  ]);
 
   // All Friends List (Filtered & Sorted: Game / Online first, then Alphabetical)
   const filteredAllFriends = useMemo(() => {
-    let list = Array.isArray(friends) ? [...friends] : [];
+    let list = Array.isArray(combinedFriends) ? [...combinedFriends] : [];
     if (friendsSearchQuery.trim()) {
       const q = friendsSearchQuery.toLowerCase();
       list = list.filter((f) =>
@@ -845,9 +1196,9 @@ export const Sidebar = ({
       if (aScore !== bScore) return bScore - aScore;
       return (a.name || '').localeCompare(b.name || '');
     });
-  }, [friends, friendsSearchQuery]);
+  }, [combinedFriends, friendsSearchQuery]);
 
-  const totalResultsCount = filteredFriends.length + filteredChannels.length;
+  const totalResultsCount = allChatItems.length;
   const activeCallsCount = Object.values(channelCalls).filter(c => c.active).length;
 
   return (
@@ -1585,34 +1936,49 @@ export const Sidebar = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('all')}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${filterTab === 'all'
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer ${filterTab === 'all'
                   ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
                   : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
                   }`}
               >
-                Tümü
+                <span>Tümü</span>
+                {totalUnreadCount > 0 && (
+                  <span className="min-w-[17px] h-[17px] px-1 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center select-none shadow-sm shadow-[#8B51FF]/30">
+                    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                  </span>
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={() => setFilterTab('dms')}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${filterTab === 'dms'
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer ${filterTab === 'dms'
                   ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
                   : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
                   }`}
               >
-                Kişiler
+                <span>Kişiler</span>
+                {totalDmUnreadCount > 0 && (
+                  <span className="min-w-[17px] h-[17px] px-1 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center select-none shadow-sm shadow-[#8B51FF]/30">
+                    {totalDmUnreadCount > 99 ? '99+' : totalDmUnreadCount}
+                  </span>
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={() => setFilterTab('channels')}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${filterTab === 'channels'
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer ${filterTab === 'channels'
                   ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
                   : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
                   }`}
               >
-                Gruplar
+                <span>Gruplar</span>
+                {totalChannelUnreadCount > 0 && (
+                  <span className="min-w-[17px] h-[17px] px-1 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center select-none shadow-sm shadow-[#8B51FF]/30">
+                    {totalChannelUnreadCount > 99 ? '99+' : totalChannelUnreadCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -1634,29 +2000,14 @@ export const Sidebar = ({
                 </button>
               </div>
             ) : (
-              <>
-                {/* Friends / Direct Messages Section */}
-                {filteredFriends.map((friend) => {
+              allChatItems.map((item) => {
+                if (item.type === 'dm') {
+                  const { friend, dmRoomId, lastMsg, rawTime, unreadCount } = item;
                   const isSelected = activeDmUserId === friend.id;
                   const isPlayingGame = !!friend.game;
-                  const dmRoomId = currentUserProfile?.id && friend?.id ? getDmRoomId(currentUserProfile.id, friend.id) : null;
 
-                  const rawLastMsg = (
-                    activeChannel === dmRoomId &&
-                    activeLastMessage &&
-                    isDirectMessageForPair(activeLastMessage, currentUserProfile?.id, friend.id)
-                  )
-                    ? activeLastMessage
-                    : (dmRoomId ? lastMessagesMap[dmRoomId] : null);
-                  const lastMsg = (
-                    rawLastMsg &&
-                    isDirectMessageForPair(rawLastMsg, currentUserProfile?.id, friend.id)
-                  )
-                    ? rawLastMsg
-                    : null;
-                  const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
-                  const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
-                  const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';
+                  const lastMessageTime = lastMsg ? formatChatTimeOnly(rawTime, lastMsg.timestamp) : '';
+                  const lastMessageDate = lastMsg ? formatChatDateOnly(rawTime, lastMsg.timestamp) : '';
                   const lastMessageText = formatMessagePreview(lastMsg);
                   const isSentByMe = Boolean(
                     lastMsg && (
@@ -1677,8 +2028,9 @@ export const Sidebar = ({
 
                   return (
                     <div
-                      key={`dm-${friend.id}`}
+                      key={item.key}
                       onClick={() => {
+                        clearUnread(friend.id, dmRoomId);
                         unhideChat(friend.id);
                         onSelectDm?.(friend.id);
                       }}
@@ -1716,7 +2068,7 @@ export const Sidebar = ({
                             )}
                           </div>
                           {/* Timestamp / Son Mesaj Saati (HH:mm) */}
-                          <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${lastMessageTime ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${unreadCount > 0 ? 'text-[#bb94ff] font-semibold' : lastMessageTime ? 'text-gray-400' : 'text-gray-500'}`}>
                             {lastMessageTime}
                           </span>
                         </div>
@@ -1728,7 +2080,7 @@ export const Sidebar = ({
                               <span className="truncate">{friend.game}</span>
                             </div>
                           ) : (
-                            <div className="flex items-center space-x-1 text-[11px] text-gray-400 truncate">
+                            <div className="flex items-center space-x-1 text-[11px] text-gray-400 truncate min-w-0 flex-1">
                               {isSentByMe && (
                                 isMessageRead ? (
                                   <CheckCheck
@@ -1750,17 +2102,22 @@ export const Sidebar = ({
                                   />
                                 )
                               )}
-                              <span className={`truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
+                              <span className={`truncate ${unreadCount > 0 ? 'text-white font-medium' : isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
                                 {lastMessageText || (friend.isOnline ? (friend.substatus || 'Çevrimiçi') : 'Çevrimdışı')}
                               </span>
                             </div>
                           )}
 
-                          {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
-                          <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                            {lastMessageDate && (
+                          {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) & Purple Notification Badge */}
+                          <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
+                            {lastMessageDate && unreadCount === 0 && (
                               <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
                                 {lastMessageDate}
+                              </span>
+                            )}
+                            {unreadCount > 0 && (
+                              <span className="min-w-[19px] h-[19px] px-1.5 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center shadow-md shadow-[#8B51FF]/40 select-none animate-in fade-in zoom-in duration-200">
+                                {unreadCount > 99 ? '99+' : unreadCount}
                               </span>
                             )}
                           </div>
@@ -1768,89 +2125,88 @@ export const Sidebar = ({
                       </div>
                     </div>
                   );
-                })}
+                }
 
-                {/* Channels Section */}
-                {filteredChannels.map((chan) => {
-                  const callInfo = resolveChannelCall(channelCalls, chan.id);
-                  const isCallActive = callInfo?.active;
-                  const isSelected = !activeDmUserId && Boolean(
-                    activeChannel && (
-                      activeChannel === chan.id ||
-                      chan.id === `text-${activeChannel}` ||
-                      chan.id?.replace(/^text-/, '') === activeChannel?.replace(/^text-/, '') ||
-                      chan.name?.toLowerCase() === activeChannel?.toLowerCase()
-                    )
-                  );
+                // Channel / Group Item
+                const { chan, lastMsg, rawTime, unreadCount } = item;
+                const isSelected = !activeDmUserId && Boolean(
+                  activeChannel && (
+                    activeChannel === chan.id ||
+                    chan.id === `text-${activeChannel}` ||
+                    chan.id?.replace(/^text-/, '') === activeChannel?.replace(/^text-/, '') ||
+                    chan.name?.toLowerCase() === activeChannel?.toLowerCase()
+                  )
+                );
 
-                  const lastMsg = (activeChannel === chan.id && activeLastMessage)
-                    ? activeLastMessage
-                    : lastMessagesMap[chan.id];
-                  const lastRawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
-                  const lastMessageTime = lastMsg ? formatChatTimeOnly(lastRawTime, lastMsg.timestamp) : '';
-                  const lastMessageDate = lastMsg ? formatChatDateOnly(lastRawTime, lastMsg.timestamp) : '';
-                  const lastMessageText = formatMessagePreview(lastMsg);
+                const lastMessageTime = lastMsg ? formatChatTimeOnly(rawTime, lastMsg.timestamp) : '';
+                const lastMessageDate = lastMsg ? formatChatDateOnly(rawTime, lastMsg.timestamp) : '';
+                const lastMessageText = formatMessagePreview(lastMsg);
 
-                  return (
-                    <div
-                      key={`chan-${chan.id}`}
-                      onClick={() => {
-                        unhideChat(chan.id);
-                        onSelectChannel?.(chan.id);
-                      }}
-                      onContextMenu={(e) => handleChatContextMenu(e, {
-                        type: 'channel',
-                        id: chan.id,
-                        name: chan.name,
-                      })}
-                      className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${isSelected
-                        ? 'bg-[#18181f]'
-                        : 'hover:bg-[#121215]'
-                        }`}
-                    >
-                      {/* Channel Group Avatar */}
-                      {chan.avatar_url || chan.avatar ? (
-                        <img
-                          src={chan.avatar_url || chan.avatar}
-                          alt={chan.name}
-                          className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 flex-shrink-0">
-                          <Users size={18} />
-                        </div>
-                      )}
+                return (
+                  <div
+                    key={item.key}
+                    onClick={() => {
+                      clearUnread(chan.id, `text-${chan.id}`);
+                      unhideChat(chan.id);
+                      onSelectChannel?.(chan.id);
+                    }}
+                    onContextMenu={(e) => handleChatContextMenu(e, {
+                      type: 'channel',
+                      id: chan.id,
+                      name: chan.name,
+                    })}
+                    className={`h-[68px] px-3.5 flex items-center space-x-3 cursor-pointer transition select-none relative ${isSelected
+                      ? 'bg-[#18181f]'
+                      : 'hover:bg-[#121215]'
+                      }`}
+                  >
+                    {/* Channel Group Avatar */}
+                    {chan.avatar_url || chan.avatar ? (
+                      <img
+                        src={chan.avatar_url || chan.avatar}
+                        alt={chan.name}
+                        className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 flex-shrink-0">
+                        <Users size={18} />
+                      </div>
+                    )}
 
-                      {/* Middle Column */}
-                      <div className="flex-1 min-w-0 pr-1">
-                        <div className="flex items-center justify-between">
-                          <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                            {chan.name}
-                          </p>
-                          <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1 font-normal">
-                            {lastMessageTime || 'Kanal'}
-                          </span>
-                        </div>
+                    {/* Middle Column */}
+                    <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200'}`}>
+                          {chan.name}
+                        </p>
+                        <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${unreadCount > 0 ? 'text-[#bb94ff] font-semibold' : 'text-gray-400'}`}>
+                          {lastMessageTime || 'Kanal'}
+                        </span>
+                      </div>
 
-                        <div className="flex items-center justify-between mt-0.5">
-                          <p className={`text-[11px] truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
-                            {lastMessageText || 'Grup sohbeti'}
-                          </p>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className={`text-[11px] truncate ${unreadCount > 0 ? 'text-white font-medium' : isSelected ? 'text-gray-200' : 'text-gray-400'}`}>
+                          {lastMessageText || 'Grup sohbeti'}
+                        </p>
 
-                          {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
-                          <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                            {lastMessageDate && (
-                              <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
-                                {lastMessageDate}
-                              </span>
-                            )}
-                          </div>
+                        {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) & Purple Notification Badge */}
+                        <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
+                          {lastMessageDate && unreadCount === 0 && (
+                            <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
+                              {lastMessageDate}
+                            </span>
+                          )}
+                          {unreadCount > 0 && (
+                            <span className="min-w-[19px] h-[19px] px-1.5 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center shadow-md shadow-[#8B51FF]/40 select-none animate-in fade-in zoom-in duration-200">
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </>
+                  </div>
+                );
+              })
             )}
           </div>
         </>
