@@ -1635,8 +1635,6 @@ export const Sidebar = ({
                   const isSelected = activeDmUserId === friend.id;
                   const isPlayingGame = !!friend.game;
                   const dmRoomId = currentUserProfile?.id && friend?.id ? getDmRoomId(currentUserProfile.id, friend.id) : null;
-                  const dmCallInfo = dmRoomId ? channelCalls[dmRoomId] : null;
-                  const isDmCallActive = dmCallInfo?.active;
 
                   const rawLastMsg = (
                     activeChannel === dmRoomId &&
@@ -1712,14 +1710,7 @@ export const Sidebar = ({
                         </div>
 
                         <div className="flex items-center justify-between mt-0.5">
-                          {isDmCallActive ? (
-                            <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-semibold">
-                              <Phone size={11} className="flex-shrink-0" />
-                              <span className="truncate">
-                                {dmCallInfo.stage === 'ringing' ? 'Arama çalıyor...' : 'Sesli görüşme aktif'}
-                              </span>
-                            </div>
-                          ) : isPlayingGame ? (
+                          {isPlayingGame ? (
                             <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-medium">
                               <Gamepad2 size={12} className="flex-shrink-0" />
                               <span className="truncate">{friend.game}</span>
@@ -1755,11 +1746,6 @@ export const Sidebar = ({
 
                           {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) */}
                           <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                            {isDmCallActive && (
-                              <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30 flex-shrink-0">
-                                {dmCallInfo.stage === 'ringing' ? 'Çalıyor' : 'Canlı'}
-                              </span>
-                            )}
                             {lastMessageDate && (
                               <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
                                 {lastMessageDate}

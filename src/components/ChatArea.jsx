@@ -1484,24 +1484,17 @@ export const ChatArea = ({
         {hasActiveChat && (
         <div className="flex items-center space-x-2 flex-shrink-0">
           {/* Universal Call Button:
-              - Sesli sohbet yokken başlatmak/katılmak için telefon butonu görünür (Grup & DM).
-              - Sesli sohbete girildiğinde üst bardaki bu buton kaybolur (kontroller sağ paneldeki sesli menüdedir).
+              - Sesli sohbet yokken başlatmak için telefon butonu görünür (Grup & DM).
+              - Sesli sohbet aktifken veya sohbete girildiğinde üst bardaki bu buton kaybolur (katılma ve kontroller sağ paneldeki sesli menüdedir).
           */}
-          {!isInCall && !isConnected && (
+          {!isCallActive && !isInCall && !isConnected && (
             <button
               type="button"
               onClick={onStartCall || onToggleDmCall || onConnect}
-              title={isCallActive ? `Sesli Sohbete Katıl ${callMembers?.length ? `(${callMembers.length} kişi seste)` : ''}` : "Sesli Sohbet Başlat"}
-              className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
-                isCallActive
-                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40'
-                  : 'text-gray-300 hover:text-white hover:bg-white/10'
-              }`}
+              title="Sesli Sohbet Başlat"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition active:scale-95 cursor-pointer"
             >
               <Phone size={17} />
-              {isCallActive && (
-                <span className="absolute -top-0.5 -right-0.5 inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0c0c0e]" />
-              )}
             </button>
           )}
 
@@ -1931,36 +1924,6 @@ export const ChatArea = ({
             </button>
           )}
 
-          {/* Steam-Style Active Voice Chat Banner (Sadece DM modunda gösterilir, grupta sağ panelde yer alır) */}
-          {isDmMode && isCallActive && !isInCall && (
-            <div className="mx-3 mt-2.5 p-3 rounded-2xl bg-[#10141e] border border-emerald-500/30 flex items-center justify-between flex-shrink-0 z-10">
-              <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                  <Volume2 size={18} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-white tracking-wide">
-                      Sesli Sohbet Aktif
-                    </span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  </div>
-                  <p className="text-[11px] text-gray-300 truncate">
-                    {callInitiator?.name || (isDmMode && activeDmFriend ? activeDmFriend.name : 'Bir katılımcı')} sesli sohbet başlattı • {callMembers?.length || 1} kişi katıldı
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={onStartCall || onToggleDmCall}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer flex-shrink-0 ml-3"
-              >
-                <Phone size={13} />
-                <span>Katıl</span>
-              </button>
-            </div>
-          )}
 
           {/* Screen Share Stage (Top Banner or PiP Video Component) */}
           {activeScreenShare && !isInCall && (
