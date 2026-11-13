@@ -261,6 +261,16 @@ class RealtimeChatService {
               this.emitLocal('account_deleted', payload);
             }
           })
+          .on('broadcast', { event: 'message_read' }, ({ payload }) => {
+            if (payload) {
+              this.emitLocal('message_read', payload);
+            }
+          })
+          .on('broadcast', { event: 'message_delivered' }, ({ payload }) => {
+            if (payload) {
+              this.emitLocal('message_delivered', payload);
+            }
+          })
           .subscribe();
       } catch (err) {
         console.warn('Supabase call channel error:', err);
@@ -550,22 +560,67 @@ class RealtimeChatService {
   }
 
   // Emit read receipt for a room
-  sendReadReceipt(roomId, readerId) {
+  sendReadReceipt(roomId, readerId, otherUserId = null) {
     if (!roomId) return;
-    const payload = { room: roomId, roomId, readerId, readAt: Date.now() };
+    const payload = { room: roomId, roomId, readerId, otherUserId, readAt: Date.now() };
 
     if (this.socket && this.socket.connected) {
       this.socket.emit('message_read', payload);
     }
 
     if (this.presenceBroadcastChannel) {
-      this.presenceBroadcastChannel.postMessage({
-        type: 'MESSAGE_READ',
-        payload,
-      });
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'MESSAGE_READ',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'message_read',
+          payload,
+        });
+      } catch (err) {
+        console.warn('Supabase message_read broadcast error:', err);
+      }
     }
 
     this.emitLocal('message_read', payload);
+  }
+
+  // Emit delivery receipt for a room
+  sendDeliveryReceipt(roomId, receiverId, senderId = null) {
+    if (!roomId) return;
+    const payload = { room: roomId, roomId, receiverId, senderId, deliveredAt: Date.now() };
+
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('message_delivered', payload);
+    }
+
+    if (this.presenceBroadcastChannel) {
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'MESSAGE_DELIVERED',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'message_delivered',
+          payload,
+        });
+      } catch { }
+    }
+
+    this.emitLocal('message_delivered', payload);
   }
 
   disconnect() {

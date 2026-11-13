@@ -441,12 +441,12 @@ export const Sidebar = ({
             prev.map((d) =>
               d.id === partnerId
                 ? {
-                    ...d,
-                    name: pickDisplayName([prof.display_name, prof.name, prof.username, fallbackName], 'Kullanıcı'),
-                    display_name: pickDisplayName([prof.display_name, prof.name, prof.username, fallbackName], 'Kullanıcı'),
-                    avatar: prof.avatar_url || prof.avatar || d.avatar,
-                    username: prof.username || d.username,
-                  }
+                  ...d,
+                  name: pickDisplayName([prof.display_name, prof.name, prof.username, fallbackName], 'Kullanıcı'),
+                  display_name: pickDisplayName([prof.display_name, prof.name, prof.username, fallbackName], 'Kullanıcı'),
+                  avatar: prof.avatar_url || prof.avatar || d.avatar,
+                  username: prof.username || d.username,
+                }
                 : d
             )
           );
@@ -600,6 +600,27 @@ export const Sidebar = ({
       if (!partnerId) return;
 
       const roomId = getDmRoomId(activeUid, partnerId);
+
+      if (payload?.eventType === 'UPDATE' && newMsg?.id) {
+        setLastMessagesMap((prev) => {
+          const existing = prev[roomId];
+          if (existing && existing.id === newMsg.id) {
+            return {
+              ...prev,
+              [roomId]: {
+                ...existing,
+                ...newMsg,
+                read_at: newMsg.read_at || existing.read_at,
+                read: Boolean(newMsg.read_at || existing.read_at),
+                delivered_at: newMsg.delivered_at || existing.delivered_at,
+              },
+            };
+          }
+          return prev;
+        });
+        return;
+      }
+
       const formatted = {
         id: newMsg.id,
         room_id: roomId,
@@ -611,6 +632,9 @@ export const Sidebar = ({
         attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
         timestamp: newMsg.timestamp_text,
         sentAt: newMsg.sent_at || (newMsg.created_at ? new Date(newMsg.created_at).getTime() : Date.now()),
+        read_at: newMsg.read_at || null,
+        read: Boolean(newMsg.read_at),
+        delivered_at: newMsg.delivered_at || null,
       };
 
       unhideChat(partnerId);
@@ -630,6 +654,11 @@ export const Sidebar = ({
         activeUid && String(newMsg.sender_id) === String(activeUid)
       );
 
+      if (!isFromMe && newMsg.sender_id) {
+        chatService.sendDeliveryReceipt(roomId, activeUid, newMsg.sender_id);
+        dbService.markDmMessagesDelivered?.(activeUid, newMsg.sender_id);
+      }
+
       if (!isViewing && !isFromMe) {
         setUnreadCounts((prev) => {
           const current = prev[partnerId] || prev[roomId] || 0;
@@ -637,7 +666,7 @@ export const Sidebar = ({
           persistUnreadCounts(activeUid, next);
           return next;
         });
-        try { sounds.playMessage(); } catch {}
+        try { sounds.playMessage(); } catch { }
       }
     });
 
@@ -689,7 +718,7 @@ export const Sidebar = ({
           persistUnreadCounts(activeUid, next);
           return next;
         });
-        try { sounds.playMessage(); } catch {}
+        try { sounds.playMessage(); } catch { }
       }
     });
 
@@ -735,7 +764,7 @@ export const Sidebar = ({
             persistUnreadCounts(activeUid, next);
             return next;
           });
-          try { sounds.playMessage(); } catch {}
+          try { sounds.playMessage(); } catch { }
         }
         return;
       }
@@ -760,7 +789,7 @@ export const Sidebar = ({
           persistUnreadCounts(activeUid, next);
           return next;
         });
-        try { sounds.playMessage(); } catch {}
+        try { sounds.playMessage(); } catch { }
       }
     };
 
@@ -798,24 +827,69 @@ export const Sidebar = ({
 
   useEffect(() => {
     const handleReadReceipt = (data) => {
-      if (!data?.roomId) return;
+      if (!data?.roomId && !data?.room) return;
+      const targetRoom = data.roomId || data.room;
       // Do not treat our own viewing as the recipient reading our sent messages
-      if (data.readerId && currentUserProfile?.id && data.readerId === currentUserProfile.id) {
+      if (data.readerId && currentUserProfile?.id && String(data.readerId) === String(currentUserProfile.id)) {
         return;
       }
+      const readAt = data.readAt || Date.now();
       setReadReceipts((prev) => {
-        const updated = { ...prev, [data.roomId]: data.readAt || Date.now() };
+        const updated = {
+          ...prev,
+          [targetRoom]: readAt,
+          ...(data.readerId ? { [data.readerId]: readAt } : {}),
+        };
         try {
           const key = `voys_read_receipts_${currentUserProfile?.id || 'default'}`;
           localStorage.setItem(key, JSON.stringify(updated));
         } catch { }
         return updated;
       });
+
+      setLastMessagesMap((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.keys(next).forEach((k) => {
+          if (k === targetRoom || k === data.readerId) {
+            const m = next[k];
+            if (m && !m.read_at) {
+              next[k] = { ...m, read_at: readAt, read: true, is_read: true };
+              changed = true;
+            }
+          }
+        });
+        return changed ? next : prev;
+      });
+    };
+
+    const handleDeliveryReceipt = (data) => {
+      if (!data?.roomId && !data?.receiverId) return;
+      if (data.receiverId && currentUserProfile?.id && String(data.receiverId) === String(currentUserProfile.id)) {
+        return;
+      }
+      const deliveredAt = data.deliveredAt || Date.now();
+      setLastMessagesMap((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.keys(next).forEach((k) => {
+          if (k === data.roomId || k === data.receiverId) {
+            const m = next[k];
+            if (m && !m.delivered_at) {
+              next[k] = { ...m, delivered_at: deliveredAt };
+              changed = true;
+            }
+          }
+        });
+        return changed ? next : prev;
+      });
     };
 
     chatService.on('message_read', handleReadReceipt);
+    chatService.on('message_delivered', handleDeliveryReceipt);
     return () => {
       chatService.off('message_read', handleReadReceipt);
+      chatService.off('message_delivered', handleDeliveryReceipt);
     };
   }, [currentUserProfile?.id]);
 
@@ -1783,7 +1857,7 @@ export const Sidebar = ({
               {/* Group Name Input */}
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                  Grup / Kanal Adı
+                  Grup Adı
                 </label>
                 <div className="h-10 px-3 bg-[#141418] rounded-xl flex items-center text-xs text-white border border-white/[0.08] focus-within:border-indigo-500/60 focus-within:ring-1 focus-within:ring-indigo-500/40 transition">
                   <Users size={16} className="text-gray-400 mr-2 flex-shrink-0" />
@@ -2079,8 +2153,17 @@ export const Sidebar = ({
                       lastMsg.read === true ||
                       lastMsg.is_read === true ||
                       Boolean(lastMsg.read_at) ||
-                      (dmRoomId && readReceipts[dmRoomId] && (!msgTimeNumber || Number(readReceipts[dmRoomId]) >= msgTimeNumber))
+                      (dmRoomId && readReceipts[dmRoomId] && (!msgTimeNumber || Number(readReceipts[dmRoomId]) >= msgTimeNumber)) ||
+                      (friend.id && readReceipts[friend.id] && (!msgTimeNumber || Number(readReceipts[friend.id]) >= msgTimeNumber))
                     )
+                  );
+                  const isMessageDelivered = Boolean(
+                    isMessageRead ||
+                    Boolean(lastMsg?.delivered_at) ||
+                    friend.isOnline ||
+                    friend.status === 'online' ||
+                    friend.status === 'idle' ||
+                    friend.status === 'dnd'
                   );
 
                   return (
@@ -2141,19 +2224,19 @@ export const Sidebar = ({
                               {isSentByMe && (
                                 isMessageRead ? (
                                   <CheckCheck
-                                    size={13}
-                                    className="flex-shrink-0 text-[#53bdeb]"
+                                    size={14}
+                                    className="flex-shrink-0 text-[#8B51FF]"
                                     title="Okundu"
                                   />
-                                ) : friend.isOnline ? (
+                                ) : isMessageDelivered ? (
                                   <CheckCheck
-                                    size={13}
-                                    className="flex-shrink-0 text-gray-500"
+                                    size={14}
+                                    className="flex-shrink-0 text-gray-400"
                                     title="İletildi"
                                   />
                                 ) : (
                                   <Check
-                                    size={13}
+                                    size={14}
                                     className="flex-shrink-0 text-gray-500"
                                     title="Gönderildi"
                                   />
@@ -2288,96 +2371,96 @@ export const Sidebar = ({
           STATUS_OPTIONS.find((opt) => opt.id === (currentStatusKey === 'offline' ? 'invisible' : currentStatusKey)) ||
           STATUS_OPTIONS[0];
         return (
-      <div className="h-[68px] px-3.5 bg-[#0a0a0c] sidebar-bottom-bar border-t border-white/[0.06] flex items-center justify-between flex-shrink-0 relative">
-        {/* Left: User Avatar (Click to change status) & Profile (Click to open settings) */}
-        <div className="flex items-center gap-2.5 min-w-0 relative" ref={statusPickerRef}>
-          {/* Status Picker Popover Menu (opens upward) */}
-          {isStatusPickerOpen && (
-            <div className="absolute left-0 bottom-[68px] w-44 bg-[#121216] border border-white/10 rounded-xl shadow-xl p-1.5 z-50">
-              <div className="space-y-0.5">
-                {STATUS_OPTIONS.map((opt) => {
-                  const isCurrent = (currentStatusKey === 'offline' ? 'invisible' : currentStatusKey) === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        onUpdateStatus?.(opt.id);
-                        setIsStatusPickerOpen(false);
-                      }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-left flex items-center justify-between transition ${isCurrent
-                        ? 'bg-[#1c1c24] text-white border border-white/10 shadow-sm'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
-                        }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.color}`} />
-                        <span className="text-xs font-medium leading-none">{opt.label}</span>
-                      </div>
-                      {isCurrent && (
-                        <Check size={13} className={`${opt.textColor} flex-shrink-0 ml-1.5`} />
-                      )}
-                    </button>
-                  );
-                })}
+          <div className="h-[68px] px-3.5 bg-[#0a0a0c] sidebar-bottom-bar border-t border-white/[0.06] flex items-center justify-between flex-shrink-0 relative">
+            {/* Left: User Avatar (Click to change status) & Profile (Click to open settings) */}
+            <div className="flex items-center gap-2.5 min-w-0 relative" ref={statusPickerRef}>
+              {/* Status Picker Popover Menu (opens upward) */}
+              {isStatusPickerOpen && (
+                <div className="absolute left-0 bottom-[68px] w-44 bg-[#121216] border border-white/10 rounded-xl shadow-xl p-1.5 z-50">
+                  <div className="space-y-0.5">
+                    {STATUS_OPTIONS.map((opt) => {
+                      const isCurrent = (currentStatusKey === 'offline' ? 'invisible' : currentStatusKey) === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            onUpdateStatus?.(opt.id);
+                            setIsStatusPickerOpen(false);
+                          }}
+                          className={`w-full px-2 py-1.5 rounded-lg text-left flex items-center justify-between transition ${isCurrent
+                            ? 'bg-[#1c1c24] text-white border border-white/10 shadow-sm'
+                            : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.color}`} />
+                            <span className="text-xs font-medium leading-none">{opt.label}</span>
+                          </div>
+                          {isCurrent && (
+                            <Check size={13} className={`${opt.textColor} flex-shrink-0 ml-1.5`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Interactive Avatar button for status toggle */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsStatusPickerOpen(prev => !prev);
+                }}
+                className="relative transition cursor-pointer flex-shrink-0 group"
+                title="Durumunu Değiştir (Çevrimiçi, Boşta, Rahatsız Etmeyin...)"
+              >
+                <UserAvatar
+                  user={currentUserProfile}
+                  size="md"
+                  showStatus={true}
+                  status={currentStatusKey}
+                />
+              </button>
+
+              {/* User Name & Details -> Clicking opens Settings */}
+              <div
+                onClick={() => onOpenSettings?.('account')}
+                className="min-w-0 cursor-pointer p-1 rounded-xl hover:bg-white/5 transition group flex-1"
+                title="Profil ve Ayarları Aç"
+              >
+                <div className="flex items-center gap-1">
+                  <span className={`text-xs font-bold text-white truncate transition ${activeStatusOption.hoverTextClass}`}>
+                    {currentUserProfile?.name || 'Sen'}
+                  </span>
+                </div>
+                {currentUserProfile?.game ? (
+                  <div className="flex items-center space-x-1 text-[11px] text-emerald-400 font-semibold truncate mt-0.5">
+                    <Gamepad2 size={12} className="flex-shrink-0 text-emerald-400" />
+                    <span className="truncate">{currentUserProfile.game} Oynuyor</span>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-gray-400 truncate">
+                    @{currentUserProfile?.username || 'user'}
+                  </p>
+                )}
               </div>
             </div>
-          )}
 
-          {/* Interactive Avatar button for status toggle */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsStatusPickerOpen(prev => !prev);
-            }}
-            className="relative transition cursor-pointer flex-shrink-0 group"
-            title="Durumunu Değiştir (Çevrimiçi, Boşta, Rahatsız Etmeyin...)"
-          >
-            <UserAvatar
-              user={currentUserProfile}
-              size="md"
-              showStatus={true}
-              status={currentStatusKey}
-            />
-          </button>
-
-          {/* User Name & Details -> Clicking opens Settings */}
-          <div
-            onClick={() => onOpenSettings?.('account')}
-            className="min-w-0 cursor-pointer p-1 rounded-xl hover:bg-white/5 transition group flex-1"
-            title="Profil ve Ayarları Aç"
-          >
-            <div className="flex items-center gap-1">
-              <span className={`text-xs font-bold text-white truncate transition ${activeStatusOption.hoverTextClass}`}>
-                {currentUserProfile?.name || 'Sen'}
-              </span>
+            {/* Right: Settings Icon (Sol alttaki üç nokta yerine ayarlar ikonu) */}
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => onOpenSettings?.('account')}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition"
+                title="Ayarlar"
+              >
+                <Settings2 size={18} />
+              </button>
             </div>
-            {currentUserProfile?.game ? (
-              <div className="flex items-center space-x-1 text-[11px] text-emerald-400 font-semibold truncate mt-0.5">
-                <Gamepad2 size={12} className="flex-shrink-0 text-emerald-400" />
-                <span className="truncate">{currentUserProfile.game} Oynuyor</span>
-              </div>
-            ) : (
-              <p className="text-[10px] text-gray-400 truncate">
-                @{currentUserProfile?.username || 'user'}
-              </p>
-            )}
           </div>
-        </div>
-
-        {/* Right: Settings Icon (Sol alttaki üç nokta yerine ayarlar ikonu) */}
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={() => onOpenSettings?.('account')}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition"
-            title="Ayarlar"
-          >
-            <Settings2 size={18} />
-          </button>
-        </div>
-      </div>
         );
       })()}
 

@@ -188,5 +188,57 @@ assert.equal(resolveMessageSenderName(gMsg3, myUid, myUname, testFriends), 'Mafi
 
 console.log('✓ Test 6 Passed: Group chat sender name resolved accurately ("Udinese", "Sen", friends lookup)');
 
+// Test 7: Message checkmark status (Tek tık, Çift tık, Mor çift tık)
+function computeMessageCheckStatus({ lastMsg, friend, readReceipts, dmRoomId }) {
+  const isMessageRead = Boolean(
+    lastMsg && (
+      lastMsg.read === true ||
+      lastMsg.is_read === true ||
+      Boolean(lastMsg.read_at) ||
+      (dmRoomId && readReceipts[dmRoomId] && (!lastMsg.sentAt || Number(readReceipts[dmRoomId]) >= lastMsg.sentAt)) ||
+      (friend.id && readReceipts[friend.id] && (!lastMsg.sentAt || Number(readReceipts[friend.id]) >= lastMsg.sentAt))
+    )
+  );
+
+  const isMessageDelivered = Boolean(
+    isMessageRead ||
+    Boolean(lastMsg?.delivered_at) ||
+    friend.isOnline ||
+    friend.status === 'online' ||
+    friend.status === 'idle' ||
+    friend.status === 'dnd'
+  );
+
+  if (isMessageRead) return { icon: 'CheckCheck', color: '#8B51FF', label: 'Mor Çift Tık (Okundu)' };
+  if (isMessageDelivered) return { icon: 'CheckCheck', color: 'gray-400', label: 'Gri Çift Tık (İletildi)' };
+  return { icon: 'Check', color: 'gray-500', label: 'Gri Tek Tık (Gönderildi)' };
+}
+
+// 7.1: Sent to offline user (e.g. Udinese offline) -> Tek tık
+const sentMsg = { id: 'm1', sentAt: 1000 };
+const offlineFriend = { id: 'udinese', isOnline: false, status: 'offline' };
+const status1 = computeMessageCheckStatus({ lastMsg: sentMsg, friend: offlineFriend, readReceipts: {}, dmRoomId: 'dm-me--udinese' });
+assert.equal(status1.icon, 'Check');
+assert.equal(status1.color, 'gray-500');
+
+// 7.2: Delivered to online user (e.g. Udinese comes online or message delivered) -> Çift tık
+const onlineFriend = { id: 'udinese', isOnline: true, status: 'online' };
+const status2 = computeMessageCheckStatus({ lastMsg: sentMsg, friend: onlineFriend, readReceipts: {}, dmRoomId: 'dm-me--udinese' });
+assert.equal(status2.icon, 'CheckCheck');
+assert.equal(status2.color, 'gray-400');
+
+// 7.3: Read by user -> Mor çift tık
+const readMsg = { id: 'm1', sentAt: 1000, read_at: 2000 };
+const status3 = computeMessageCheckStatus({ lastMsg: readMsg, friend: onlineFriend, readReceipts: {}, dmRoomId: 'dm-me--udinese' });
+assert.equal(status3.icon, 'CheckCheck');
+assert.equal(status3.color, '#8B51FF');
+
+// 7.4: Read via readReceipt timestamp
+const status4 = computeMessageCheckStatus({ lastMsg: sentMsg, friend: offlineFriend, readReceipts: { udinese: 2000 }, dmRoomId: 'dm-me--udinese' });
+assert.equal(status4.icon, 'CheckCheck');
+assert.equal(status4.color, '#8B51FF');
+
+console.log('✓ Test 7 Passed: Checkmark transitions accurately (Tek tık -> Çift tık -> Mor çift tık)');
+
 console.log('ALL UNREAD BADGE & RECENCY SORTING TESTS PASSED!');
 

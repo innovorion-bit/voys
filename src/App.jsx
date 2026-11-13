@@ -1051,7 +1051,8 @@ function StanduppApp() {
   // Automatically send read receipt when viewing a DM
   useEffect(() => {
     if (isDm && activeChannel && activeDmFriend?.id && activeUserProfile?.id) {
-      chatService.sendReadReceipt(activeChannel, activeUserProfile.id);
+      chatService.sendReadReceipt(activeChannel, activeUserProfile.id, activeDmFriend.id);
+      dbService.markDmMessagesRead(activeUserProfile.id, activeDmFriend.id).catch(() => {});
     }
   }, [isDm, activeChannel, activeDmFriend?.id, activeUserProfile?.id, messages?.length]);
 

@@ -108,6 +108,9 @@ const mapDirectMessageRow = (row) => {
     timestamp: row.timestamp_text || formatTimeHHMM(parsedSentAt),
     sentAt: parsedSentAt,
     sent_at: parsedSentAt,
+    read_at: row.read_at ?? (row.read ? parsedSentAt : null),
+    read: Boolean(row.read_at || row.read),
+    delivered_at: row.delivered_at ?? null,
     created_at: row.created_at,
   };
 };
@@ -470,6 +473,29 @@ class StanduppLocalEngine {
     const all = this.getItem('standupp_db_dm_msgs', {});
     all[canonical] = sanitized;
     this.setItem('standupp_db_dm_msgs', all);
+  }
+
+  markDmRead(roomId, readerId, readAt = Date.now()) {
+    this.ensureCleanDmCache();
+    const pair = parseDmRoomPair(roomId);
+    if (!pair) return;
+    const canonical = getCanonicalDmRoomId(pair[0], pair[1]);
+    const all = this.getItem('standupp_db_dm_msgs', {});
+    const list = all[canonical];
+    if (Array.isArray(list) && list.length > 0) {
+      let changed = false;
+      const updated = list.map((m) => {
+        if (m && String(m.sender_id || m.userId) !== String(readerId) && !m.read_at) {
+          changed = true;
+          return { ...m, read_at: readAt, read: true, is_read: true };
+        }
+        return m;
+      });
+      if (changed) {
+        all[canonical] = updated;
+        this.setItem('standupp_db_dm_msgs', all);
+      }
+    }
   }
 
   addDmMessage(roomId, message) {
@@ -1619,7 +1645,7 @@ export const dbService = {
     if (isSupabaseConfigured) {
       try {
         const dmColumns =
-          'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, created_at';
+          'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, read_at, delivered_at, created_at';
         const pairRoomIds = Array.from(new Set([canonical, `dm-${user2}--${user1}`]));
 
         // Query strictly by verified participant pair (captures legacy single-ID `dm-<id>` rows
@@ -1708,7 +1734,7 @@ export const dbService = {
     if (isSupabaseConfigured && supabase) {
       try {
         const dmColumns =
-          'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, created_at';
+          'id, room_id, sender_id, receiver_id, sender_name, color, has_crown, lines, attachments, parent_id, reply_to, reactions, timestamp_text, sent_at, read_at, delivered_at, created_at';
         const limit = Math.min(400, Math.max(40, cleanIds.length * 10));
 
         const [sentRes, recvRes] = await Promise.all([
@@ -1829,6 +1855,52 @@ export const dbService = {
     });
 
     return latestByChannel;
+  },
+
+  async markDmMessagesRead(readerId, otherUserId) {
+    if (!readerId || !otherUserId || readerId === 'you' || otherUserId === 'you') return;
+    const now = Date.now();
+    const roomId = getDmRoomId(readerId, otherUserId);
+
+    localDb.markDmRead(roomId, readerId, now);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await withTimeout(
+          supabase
+            .from('direct_messages')
+            .update({ read_at: now })
+            .eq('receiver_id', readerId)
+            .eq('sender_id', otherUserId)
+            .is('read_at', null),
+          6000,
+          'markDmMessagesRead timeout'
+        );
+      } catch (err) {
+        console.warn('Supabase markDmMessagesRead error:', err);
+      }
+    }
+  },
+
+  async markDmMessagesDelivered(receiverId, senderId) {
+    if (!receiverId || !senderId || receiverId === 'you' || senderId === 'you') return;
+    const now = Date.now();
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await withTimeout(
+          supabase
+            .from('direct_messages')
+            .update({ delivered_at: now })
+            .eq('receiver_id', receiverId)
+            .eq('sender_id', senderId)
+            .is('delivered_at', null),
+          6000,
+          'markDmMessagesDelivered timeout'
+        );
+      } catch (err) {
+        console.warn('Supabase markDmMessagesDelivered error:', err);
+      }
+    }
   },
 
   async saveDmMessage(roomId, message, senderId, receiverId) {
