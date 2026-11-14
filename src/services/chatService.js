@@ -20,6 +20,7 @@ class RealtimeChatService {
       all_presences: [],
       call_status: [],
       account_deleted: [],
+      delete_message: [],
     };
   }
 
@@ -124,6 +125,8 @@ class RealtimeChatService {
           this.emitLocal('reaction', event.data.payload);
         } else if (event.data?.type === 'USER_TYPING' && event.data.payload?.room === this.room) {
           this.emitLocal('typing', event.data.payload);
+        } else if (event.data?.type === 'DELETE_MESSAGE' && event.data.payload) {
+          this.emitLocal('delete_message', event.data.payload);
         }
       };
     } catch (err) {
@@ -160,6 +163,8 @@ class RealtimeChatService {
             this.emitLocal('message_read', event.data.payload);
           } else if (event.data?.type === 'ACCOUNT_DELETED' && event.data.payload) {
             this.emitLocal('account_deleted', event.data.payload);
+          } else if (event.data?.type === 'DELETE_MESSAGE' && event.data.payload) {
+            this.emitLocal('delete_message', event.data.payload);
           }
         };
 
@@ -274,6 +279,11 @@ class RealtimeChatService {
           .on('broadcast', { event: 'message_delivered' }, ({ payload }) => {
             if (payload) {
               this.emitLocal('message_delivered', payload);
+            }
+          })
+          .on('broadcast', { event: 'delete_message' }, ({ payload }) => {
+            if (payload?.messageId) {
+              this.emitLocal('delete_message', payload);
             }
           })
           .subscribe();
@@ -572,6 +582,53 @@ class RealtimeChatService {
     }
 
     this.emitLocal('account_deleted', payload);
+  }
+
+  // Broadcast single message deletion to connected clients and browser tabs
+  sendDeleteMessage(messageId, roomId, isDm = false) {
+    if (!messageId) return;
+    const payload = {
+      messageId: String(messageId),
+      roomId: roomId ? String(roomId) : null,
+      isDm: Boolean(isDm),
+      timestamp: Date.now(),
+    };
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'DELETE_MESSAGE',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (this.presenceBroadcastChannel) {
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'DELETE_MESSAGE',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'delete_message',
+          payload,
+        });
+      } catch (err) {
+        console.warn('Supabase delete_message broadcast send error:', err);
+      }
+    }
+
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('delete_message', payload);
+    }
+
+    this.emitLocal('delete_message', payload);
   }
 
   // Emit read receipt for a room

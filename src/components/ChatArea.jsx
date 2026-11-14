@@ -41,6 +41,7 @@ import {
   Settings2,
   Eye,
   MoreVertical,
+  MoreHorizontal,
   User,
   Phone,
   PhoneOff,
@@ -255,6 +256,7 @@ export const ChatArea = ({
   messages = [],
   onSendMessage,
   onToggleReaction,
+  onDeleteMessage = null,
   currentUser = null,
   channelMembers = [],
   presences = {},
@@ -815,6 +817,11 @@ export const ChatArea = ({
   const [replyingTo, setReplyingTo] = useState(null); // { id, user, color, text }
   const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState(null);
 
+  // Message 3-dots action menu and delete state
+  const [activeMsgMenuId, setActiveMsgMenuId] = useState(null);
+  const [msgToDelete, setMsgToDelete] = useState(null);
+  const [isDeletingMsg, setIsDeletingMsg] = useState(false);
+
   // File attachments state
   const [pendingFiles, setPendingFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -827,7 +834,7 @@ export const ChatArea = ({
   const typingTimeoutRef = useRef(null);
   const isNearBottomRef = useRef(true);
 
-  // Close emoji picker on outside click
+  // Close emoji picker and message options menu on outside click or Escape
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest('.emoji-picker-container')) {
@@ -838,16 +845,34 @@ export const ChatArea = ({
           setShowEmojiPicker(false);
         }
       }
+      if (!e.target.closest('.msg-options-menu') && !e.target.closest('.msg-options-trigger')) {
+        setActiveMsgMenuId(null);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setActiveMsgMenuId(null);
+        setActiveReactionPickerMsgId(null);
+        if (!isDeletingMsg) {
+          setMsgToDelete(null);
+        }
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDeletingMsg]);
 
   // Reset pending state on channel switch (render-time state sync)
   if (prevChannel !== activeChannel) {
     setPrevChannel(activeChannel);
     setPendingFiles([]); // clear pending files on channel switch
     setReplyingTo(null); // reset reply state
+    setActiveMsgMenuId(null);
+    setMsgToDelete(null);
   }
 
   // Smooth scroll to bottom
@@ -2041,6 +2066,12 @@ export const ChatArea = ({
                   const isDifferentDay = currentDate && prevDate && !isSameDay(currentDate, prevDate);
                   const showDateDivider = (isFirstMsg && currentDate) || isDifferentDay;
 
+                  const isCurrentUserGroupAdmin = Boolean(
+                    channelMembers?.some((m) => String(m.id) === String(currentUser?.id) && m.role === 'admin') ||
+                    (channelData?.created_by && currentUser?.id && String(channelData.created_by) === String(currentUser.id))
+                  );
+                  const canDeleteMsg = Boolean(isMe || (!isDmMode && isCurrentUserGroupAdmin));
+
                   return (
                     <React.Fragment key={msg.id}>
                       {showDateDivider && (
@@ -2056,12 +2087,12 @@ export const ChatArea = ({
                         id={`msg-${msg.id}`}
                         className="relative group/msg flex flex-col w-full py-1.5 px-2 sm:px-3 hover:bg-white/[0.025] transition-colors rounded-xl"
                       >
-                      {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + Reply */}
+                      {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + Reply + 3 Dots More */}
                       <div
                         className={`voys-msg-action-bar absolute right-2 sm:right-3 ${
                           isFirstMsg && !showDateDivider ? 'top-0.5' : '-top-3'
                         } transition-all duration-150 z-20 flex items-center bg-[#141418] border border-white/10 rounded-lg shadow-lg px-1 py-0.5 gap-0.5 select-none ${
-                          activeReactionPickerMsgId === msg.id
+                          activeReactionPickerMsgId === msg.id || activeMsgMenuId === msg.id
                             ? 'opacity-100 pointer-events-auto'
                             : isOptionsMenuOpen
                               ? 'opacity-0 pointer-events-none'
@@ -2089,7 +2120,10 @@ export const ChatArea = ({
                         {/* "Tepki Ekle" Button */}
                         <button
                           type="button"
-                          onClick={() => setActiveReactionPickerMsgId(activeReactionPickerMsgId === msg.id ? null : msg.id)}
+                          onClick={() => {
+                            setActiveMsgMenuId(null);
+                            setActiveReactionPickerMsgId(activeReactionPickerMsgId === msg.id ? null : msg.id);
+                          }}
                           className={`emoji-picker-trigger w-6 h-6 flex items-center justify-center rounded-md transition cursor-pointer ${
                             activeReactionPickerMsgId === msg.id
                               ? 'text-[#a36eff] bg-[#8B51FF]/20'
@@ -2105,14 +2139,96 @@ export const ChatArea = ({
                         {/* "Yanıtla" Button */}
                         <button
                           type="button"
-                          onClick={() => handleStartReply(msg, messageUser, isMe)}
+                          onClick={() => {
+                            setActiveMsgMenuId(null);
+                            setActiveReactionPickerMsgId(null);
+                            handleStartReply(msg, messageUser, isMe);
+                          }}
                           className="h-6 px-2 hover:bg-[#8B51FF]/20 text-gray-300 hover:text-white rounded-md transition flex items-center gap-1 text-xs font-medium cursor-pointer group/replybtn"
                           title="Mesajı Yanıtla"
                         >
                           <Reply size={13} className="text-[#a36eff] group-hover/replybtn:text-white transition-colors" />
                           <span className="hidden sm:inline text-[11px]">Yanıtla</span>
                         </button>
+
+                        <div className="w-px h-3.5 bg-white/10 mx-0.5" />
+
+                        {/* "Daha Fazla" (3 Nokta) Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveReactionPickerMsgId(null);
+                            setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
+                          }}
+                          className={`msg-options-trigger w-6 h-6 flex items-center justify-center rounded-md transition cursor-pointer ${
+                            activeMsgMenuId === msg.id
+                              ? 'text-[#a36eff] bg-[#8B51FF]/20'
+                              : 'text-gray-400 hover:text-white hover:bg-white/10'
+                          }`}
+                          title="Daha fazla seçenek"
+                        >
+                          <MoreHorizontal size={13} />
+                        </button>
                       </div>
+
+                      {/* Floating Message Options Menu Popover anchored to this message */}
+                      {activeMsgMenuId === msg.id && (
+                        <div
+                          className={`msg-options-menu absolute z-50 min-w-[170px] shadow-2xl rounded-xl border border-white/10 bg-[#16161b] backdrop-blur-md p-1 right-2 sm:right-3 ${
+                            filteredMessages.length > 3 && index >= filteredMessages.length - 2
+                              ? 'bottom-8'
+                              : 'top-7'
+                          } animate-in fade-in zoom-in-95 duration-100 select-none`}
+                        >
+                          {/* Metni Kopyala */}
+                          {msg.lines && msg.lines.join('\n').trim() && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const text = msg.lines.join('\n');
+                                navigator.clipboard?.writeText(text);
+                                setActiveMsgMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white hover:bg-white/10 transition cursor-pointer text-left"
+                            >
+                              <Copy size={13} className="text-gray-400" />
+                              <span>Metni Kopyala</span>
+                            </button>
+                          )}
+
+                          {/* Yanıtla */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleStartReply(msg, messageUser, isMe);
+                              setActiveMsgMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white hover:bg-white/10 transition cursor-pointer text-left"
+                          >
+                            <Reply size={13} className="text-[#a36eff]" />
+                            <span>Yanıtla</span>
+                          </button>
+
+                          {/* Mesajı Sil */}
+                          {canDeleteMsg && (
+                            <>
+                              <div className="w-full h-px bg-white/10 my-1" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMsgMenuId(null);
+                                  setMsgToDelete(msg);
+                                }}
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-200 hover:bg-rose-500/20 transition cursor-pointer text-left group/del"
+                              >
+                                <Trash2 size={13} className="text-rose-400 group-hover/del:text-rose-200" />
+                                <span>Mesajı Sil</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       {/* Floating Emoji Picker Popover anchored to this message */}
                       {activeReactionPickerMsgId === msg.id && (
@@ -3847,6 +3963,90 @@ export const ChatArea = ({
                   </>
                 ) : (
                   <span>Grubu Sil</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Tekil Mesajı / Dosyayı Sil Onay Modalı */}
+      {msgToDelete && (
+        <div 
+          onClick={() => !isDeletingMsg && setMsgToDelete(null)}
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+              <Trash2 size={24} />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-bold text-white">Mesajı Sil</h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Bu mesajı silmek istediğinize emin misiniz?
+                <br />
+                <span className="text-rose-400/90 font-medium">Bu işlem geri alınamaz.</span>
+              </p>
+            </div>
+
+            {/* Message preview snippet */}
+            <div className="p-3 rounded-2xl bg-black/40 border border-white/5 text-xs text-gray-300 max-h-32 overflow-y-auto space-y-1.5 text-left select-none">
+              {msgToDelete.lines && msgToDelete.lines.length > 0 && (
+                <p className="line-clamp-3 text-gray-200 whitespace-pre-wrap break-words">{msgToDelete.lines.join('\n')}</p>
+              )}
+              {msgToDelete.attachments && msgToDelete.attachments.length > 0 && (
+                <div className="space-y-1 pt-0.5">
+                  {msgToDelete.attachments.map((att, aIdx) => (
+                    <div key={att.id || aIdx} className="flex items-center gap-1.5 text-xs text-gray-300">
+                      <File size={13} className="text-[#a36eff] flex-shrink-0" />
+                      <span className="truncate">{att.name || 'Ekli dosya'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingMsg}
+                onClick={() => setMsgToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-xs transition border border-white/10 cursor-pointer disabled:opacity-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingMsg}
+                onClick={async () => {
+                  setIsDeletingMsg(true);
+                  try {
+                    if (onDeleteMessage) {
+                      await onDeleteMessage(msgToDelete.id);
+                    }
+                    setMsgToDelete(null);
+                  } catch (err) {
+                    console.error('Mesaj silinirken hata oluştu:', err);
+                  } finally {
+                    setIsDeletingMsg(false);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50 shadow-lg shadow-rose-900/30"
+              >
+                {isDeletingMsg ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Siliniyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Sil</span>
+                  </>
                 )}
               </button>
             </div>

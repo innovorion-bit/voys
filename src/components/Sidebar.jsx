@@ -591,9 +591,38 @@ export const Sidebar = ({
       if (!cancelled) loadLatestMessagesBatch();
     });
 
+    const handleDeleteLastMessage = (data) => {
+      const deletedId = data?.messageId;
+      if (!deletedId) return;
+      const targetRoom = data?.roomId || data?.room;
+      setLastMessagesMap((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.keys(next).forEach((k) => {
+          if (!targetRoom || k === targetRoom || k.includes(targetRoom) || targetRoom.includes(k)) {
+            if (next[k]?.id === deletedId) {
+              const isDm = k.startsWith('dm-');
+              const msgs = isDm ? localDb.getDmMessages(k) : localDb.getChannelMessages(k);
+              const remaining = Array.isArray(msgs) ? msgs.filter((m) => m.id !== deletedId) : [];
+              next[k] = remaining.length > 0 ? remaining[remaining.length - 1] : null;
+              changed = true;
+            }
+          }
+        });
+        return changed ? next : prev;
+      });
+    };
+
     // Realtime subscription for direct messages (strictly scoped to activeUid)
     const unsubDms = dbService.subscribeToTable('direct_messages', (payload) => {
       if (cancelled) return;
+      if (payload?.eventType === 'DELETE') {
+        const deletedId = payload?.old?.id || payload?.messageId;
+        if (deletedId) {
+          handleDeleteLastMessage({ messageId: deletedId, roomId: payload?.roomId });
+        }
+        return;
+      }
       const newMsg = payload?.new;
       if (!newMsg) return;
       const partnerId = resolveDirectMessagePartner(newMsg, activeUid);
@@ -673,6 +702,13 @@ export const Sidebar = ({
     // Realtime subscription for channel messages
     const unsubChannelMsgs = dbService.subscribeToTable('channel_messages', (payload) => {
       if (cancelled) return;
+      if (payload?.eventType === 'DELETE') {
+        const deletedId = payload?.old?.id || payload?.messageId;
+        if (deletedId) {
+          handleDeleteLastMessage({ messageId: deletedId, roomId: payload?.channelId || payload?.old?.channel_id });
+        }
+        return;
+      }
       const newMsg = payload?.new;
       if (!newMsg) return;
       const chanId = newMsg.channel_id || newMsg.room_id || newMsg.room;
@@ -794,6 +830,7 @@ export const Sidebar = ({
     };
 
     chatService.on('message', handleChatMessage);
+    chatService.on('delete_message', handleDeleteLastMessage);
 
     return () => {
       cancelled = true;
@@ -801,6 +838,7 @@ export const Sidebar = ({
       unsubDms?.();
       unsubChannelMsgs?.();
       chatService.off('message', handleChatMessage);
+      chatService.off('delete_message', handleDeleteLastMessage);
     };
   }, [effectiveUserId, friendIdsKey, ensureDiscoveredDmPartner, unhideChat]);
 

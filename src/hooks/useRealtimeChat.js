@@ -525,6 +525,18 @@ export const useRealtimeChat = (
 
     // Realtime Database Subscriptions for channel & DM tables
     const unsubChannel = dbService.subscribeToTable('channel_messages', (payload) => {
+      if (payload?.eventType === 'DELETE') {
+        const deletedId = payload.old?.id || payload.messageId;
+        if (deletedId) {
+          setMessagesByChannel((prevMap) => {
+            const list = prevMap[channelId] || [];
+            const filtered = list.filter((m) => m.id !== deletedId);
+            if (filtered.length === list.length) return prevMap;
+            return { ...prevMap, [channelId]: filtered };
+          });
+        }
+        return;
+      }
       if (!payload.new) return;
       const row = payload.new;
       if (row.channel_id === channelId) {
@@ -547,6 +559,18 @@ export const useRealtimeChat = (
     });
 
     const unsubDm = dbService.subscribeToTable('direct_messages', (payload) => {
+      if (payload?.eventType === 'DELETE') {
+        const deletedId = payload.old?.id || payload.messageId;
+        if (deletedId) {
+          setMessagesByChannel((prevMap) => {
+            const list = prevMap[channelId] || [];
+            const filtered = list.filter((m) => m.id !== deletedId);
+            if (filtered.length === list.length) return prevMap;
+            return { ...prevMap, [channelId]: filtered };
+          });
+        }
+        return;
+      }
       if (!payload.new || !isDmChannel) return;
       const row = payload.new;
 
@@ -632,6 +656,30 @@ export const useRealtimeChat = (
     };
     chatService.on('account_deleted', handleAccountDeleted);
 
+    const handleDeleteMessage = (payload) => {
+      const deletedId = payload?.messageId;
+      if (!deletedId) return;
+      const targetRoom = payload.roomId || payload.room;
+      setMessagesByChannel((prevMap) => {
+        let changed = false;
+        const next = { ...prevMap };
+        Object.keys(next).forEach((rId) => {
+          if (!targetRoom || rId === targetRoom || rId.includes(targetRoom) || targetRoom.includes(rId)) {
+            const list = next[rId];
+            if (Array.isArray(list)) {
+              const filtered = list.filter((m) => m.id !== deletedId);
+              if (filtered.length !== list.length) {
+                next[rId] = filtered;
+                changed = true;
+              }
+            }
+          }
+        });
+        return changed ? next : prevMap;
+      });
+    };
+    chatService.on('delete_message', handleDeleteMessage);
+
     return () => {
       isCancelled = true;
       clearInterval(pollInterval);
@@ -643,12 +691,32 @@ export const useRealtimeChat = (
       chatService.off('typing', handleTyping);
       chatService.off('connected', handleConnected);
       chatService.off('account_deleted', handleAccountDeleted);
+      chatService.off('delete_message', handleDeleteMessage);
       unsubChannel?.();
       unsubDm?.();
     };
   }, [channelId, isDmChannel, validCurrentUserId, otherUserId, appendMessage, updateMessageReactions]);
 
   const currentMessages = (channelId && messagesByChannel[channelId]) || [];
+
+  const deleteMessage = useCallback(async (messageId) => {
+    if (!messageId || !channelId) return false;
+
+    // 1. Optimistic removal from state
+    setMessagesByChannel((prevMap) => {
+      const list = prevMap[channelId] || [];
+      const filtered = list.filter((m) => m.id !== messageId);
+      return { ...prevMap, [channelId]: filtered };
+    });
+
+    // 2. Broadcast via chatService (Supabase broadcast + BroadcastChannel + Socket)
+    chatService.sendDeleteMessage(messageId, channelId, isDmChannel);
+
+    // 3. Delete from Supabase & localDb
+    await dbService.deleteMessage(messageId, channelId, isDmChannel);
+
+    return true;
+  }, [channelId, isDmChannel]);
 
   const clearMessages = useCallback((targetChannelId) => {
     const cid = targetChannelId || channelId;
@@ -680,5 +748,6 @@ export const useRealtimeChat = (
     isChatConnected: isConnected,
     clearMessages,
     purgeUserMessages,
+    deleteMessage,
   };
 };

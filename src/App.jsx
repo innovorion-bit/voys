@@ -1096,6 +1096,7 @@ function StanduppApp() {
     typingUsers,
     clearMessages,
     purgeUserMessages,
+    deleteMessage,
   } = useRealtimeChat(activeChannel, activeUserProfile);
 
   // Automatically send read receipt when viewing a DM
@@ -1954,6 +1955,7 @@ function StanduppApp() {
             messages={messages}
             onSendMessage={sendMessage}
             onToggleReaction={toggleReaction}
+            onDeleteMessage={deleteMessage}
             currentUser={activeUserProfile}
             channelMembers={liveChannelMembers}
             presences={presences}

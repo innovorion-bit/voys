@@ -539,6 +539,57 @@ class StanduppLocalEngine {
     this.notifyTable('channel_messages', { eventType: 'DELETE', channelId });
   }
 
+  deleteSingleDmMessage(roomId, messageId) {
+    if (!messageId) return;
+    const all = this.getItem('standupp_db_dm_msgs', {});
+    const pair = parseDmRoomPair(roomId);
+    const keysToCheck = new Set();
+    if (pair) {
+      const [u1, u2] = pair;
+      keysToCheck.add(getCanonicalDmRoomId(u1, u2));
+      keysToCheck.add(`dm-${u2}--${u1}`);
+      keysToCheck.add(`dm-${u1}`);
+      keysToCheck.add(`dm-${u2}`);
+    }
+    if (roomId) keysToCheck.add(roomId);
+
+    let changed = false;
+    keysToCheck.forEach((key) => {
+      if (Array.isArray(all[key])) {
+        const filtered = all[key].filter((m) => m?.id !== messageId);
+        if (filtered.length !== all[key].length) {
+          all[key] = filtered;
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      this.setItem('standupp_db_dm_msgs', all);
+      this.notifyTable('direct_messages', { eventType: 'DELETE', old: { id: messageId }, roomId });
+    }
+  }
+
+  deleteSingleChannelMessage(channelId, messageId) {
+    if (!messageId) return;
+    const all = this.getItem('standupp_db_channel_msgs', {});
+    const keysToCheck = [channelId, channelId?.replace?.(/^text-/, '')].filter(Boolean);
+    let changed = false;
+    keysToCheck.forEach((key) => {
+      if (Array.isArray(all[key])) {
+        const filtered = all[key].filter((m) => m?.id !== messageId);
+        if (filtered.length !== all[key].length) {
+          all[key] = filtered;
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      this.setItem('standupp_db_channel_msgs', all);
+      this.notifyTable('channel_messages', { eventType: 'DELETE', old: { id: messageId }, channelId });
+    }
+  }
+
   toggleReaction({ roomId, messageId, emoji, userId, userName: _userName, isDm }) {
     const storageKey = isDm ? 'standupp_db_dm_msgs' : 'standupp_db_channel_msgs';
     const all = this.getItem(storageKey, {});
@@ -1977,6 +2028,28 @@ export const dbService = {
     }
     if (channelId) {
       localDb.deleteChannelMessages(channelId);
+    }
+    return true;
+  },
+
+  // Delete a single message by ID
+  async deleteMessage(messageId, roomId, isDm = false) {
+    if (!messageId) return false;
+    if (isSupabaseConfigured) {
+      try {
+        const table = isDm ? 'direct_messages' : 'channel_messages';
+        const { error } = await supabase.from(table).delete().eq('id', messageId);
+        if (error) {
+          console.warn(`Supabase deleteMessage error (${table}):`, error);
+        }
+      } catch (err) {
+        console.warn('Supabase deleteMessage exception:', err);
+      }
+    }
+    if (isDm) {
+      localDb.deleteSingleDmMessage(roomId, messageId);
+    } else {
+      localDb.deleteSingleChannelMessage(roomId, messageId);
     }
     return true;
   },
