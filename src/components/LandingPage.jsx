@@ -25,7 +25,19 @@ import {
   Smile,
   Bell,
   Trash2,
-  Share2
+  Share2,
+  Phone,
+  MoreVertical,
+  Search,
+  Plus,
+  Send,
+  HelpCircle,
+  Minus,
+  Square,
+  X,
+  SlidersHorizontal,
+  ArrowLeft,
+  Crown
 } from 'lucide-react';
 
 const GithubIcon = ({ size = 16, className = '' }) => (
@@ -247,159 +259,352 @@ export const LandingPage = () => {
           <div className="absolute -inset-1 bg-gradient-to-r from-[#8B51FF]/30 via-indigo-500/20 to-purple-600/30 rounded-3xl blur-2xl opacity-70 -z-10" />
 
           {/* Mockup Frame */}
-          <div className="bg-[#0c0c10] border border-white/[0.12] rounded-2xl shadow-2xl overflow-hidden text-left relative">
-            {/* Top Mock Window Header */}
-            <div className="h-9 bg-[#08080a] border-b border-white/[0.08] px-4 flex items-center justify-between select-none">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-                <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                <span className="text-xs font-semibold text-gray-400 pl-3">Voys — Oyun & Sohbet Odası</span>
+          <div className="bg-[#0c0c10] border border-white/[0.12] rounded-2xl shadow-2xl overflow-hidden text-left relative font-sans">
+            {/* Top Windows Custom Window Header */}
+            <div className="h-9 bg-[#08080a] border-b border-white/[0.08] px-3 flex items-center justify-between select-none">
+              {/* Left: Voys Brand Logo */}
+              <div className="flex items-center space-x-2 pl-1">
+                <img
+                  src="/voys_logo.png"
+                  alt="Voys"
+                  className="h-4 w-auto object-contain pointer-events-none select-none"
+                />
               </div>
-              <div className="flex items-center space-x-2 text-xs text-emerald-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                <span>P2P Canlı Ses: 12 ms</span>
+
+              {/* Center: Window Title */}
+              <div className="text-xs font-semibold text-gray-300 tracking-wide">
+                Grup Sohbeti
+              </div>
+
+              {/* Right: Windows Controls & Help Button */}
+              <div className="flex items-center space-x-1">
+                <div
+                  className="w-7 h-6 flex items-center justify-center text-purple-400 hover:text-purple-300 hover:bg-[#8B51FF]/20 rounded transition cursor-pointer mr-1"
+                  title="Yardım (Rehber Videosu)"
+                >
+                  <HelpCircle size={14} />
+                </div>
+                <div className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded transition cursor-pointer">
+                  <Minus size={13} />
+                </div>
+                <div className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded transition cursor-pointer">
+                  <Square size={11} />
+                </div>
+                <div className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-rose-500 rounded transition cursor-pointer">
+                  <X size={13} />
+                </div>
               </div>
             </div>
 
-            {/* Inner App Window Preview */}
-            <div className="grid grid-cols-12 min-h-[420px] bg-[#0c0c10]">
-              {/* Left Mock Sidebar (3 cols) */}
-              <div className="col-span-12 sm:col-span-4 border-r border-white/[0.06] p-4 bg-[#09090c]/90 flex flex-col justify-between">
-                <div>
-                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">
-                    Ses Kanalları
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="p-2.5 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-between text-white">
-                      <div className="flex items-center space-x-2.5">
-                        <Volume2 size={16} className="text-[#a36eff]" />
-                        <span className="text-xs font-semibold">🎮 Oyun & Takım Odası</span>
-                      </div>
-                      <span className="text-[10px] bg-[#8B51FF]/40 text-purple-200 px-1.5 py-0.5 rounded font-mono">4</span>
+            {/* Inner Voys App 3-Column Interface */}
+            <div className="grid grid-cols-12 min-h-[480px] bg-[#0c0c10]">
+              {/* 1. Left Sidebar: Chats, Search, User Profile (3 cols desktop, hidden on tiny mobile) */}
+              <div className="hidden sm:flex sm:col-span-4 lg:col-span-3 border-r border-white/[0.08] bg-[#0e0e12] flex-col justify-between">
+                <div className="p-3">
+                  {/* Search and Action Buttons */}
+                  <div className="flex items-center space-x-2 mb-3">
+                    <div className="flex-1 bg-[#15151c] border border-white/[0.06] rounded-xl px-2.5 py-1.5 flex items-center space-x-2 text-xs text-gray-400">
+                      <Search size={14} className="text-gray-500 shrink-0" />
+                      <span className="truncate">Sohbet arayın...</span>
                     </div>
+                    <button
+                      type="button"
+                      className="w-8 h-8 rounded-xl bg-[#181822] border border-white/[0.06] hover:bg-white/[0.08] flex items-center justify-center text-gray-400 hover:text-white shrink-0 transition cursor-default"
+                      title="Kişiler"
+                    >
+                      <Users size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-8 h-8 rounded-xl bg-[#181822] border border-white/[0.06] hover:bg-white/[0.08] flex items-center justify-center text-gray-400 hover:text-white shrink-0 transition cursor-default"
+                      title="Yeni Sohbet"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </div>
 
-                    <div className="p-2.5 rounded-xl hover:bg-white/[0.04] text-gray-400 flex items-center space-x-2.5 transition">
-                      <Volume2 size={16} />
-                      <span className="text-xs font-medium">☕ Sohbet & Mola</span>
+                  {/* Filter Pills */}
+                  <div className="flex items-center space-x-1.5 mb-3">
+                    <span className="px-3 py-1 rounded-full bg-[#8B51FF] text-white text-xs font-semibold shadow-sm shadow-[#8B51FF]/30 cursor-pointer">
+                      Tümü
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-gray-400 hover:text-white text-xs font-medium cursor-pointer transition">
+                      Kişiler
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-gray-400 hover:text-white text-xs font-medium cursor-pointer transition">
+                      Gruplar
+                    </span>
+                  </div>
+
+                  {/* Active Chat Item: Game Fedaileri */}
+                  <div className="p-2.5 rounded-xl bg-white/[0.05] border border-[#8B51FF]/40 flex items-center space-x-3 cursor-pointer shadow-lg shadow-black/20">
+                    <div className="relative shrink-0">
+                      <img
+                        src="/mock/avatar_fedai.png"
+                        alt="Game Fedaileri"
+                        className="w-10 h-10 rounded-full object-cover border border-purple-500/30"
+                      />
                     </div>
-                  </div>
-
-                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-6 mb-3">
-                    Çevrimiçi Arkadaşlar
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2.5 text-xs">
-                      <div className="relative">
-                        <div className="w-7 h-7 rounded-full bg-purple-700/60 flex items-center justify-center font-bold text-white text-[10px]">
-                          EM
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs font-bold text-white truncate">Game Fedaileri</span>
+                        <div className="text-[10px] text-gray-500 text-right leading-none shrink-0 ml-1">
+                          <div>22:57</div>
+                          <div className="text-[9px] text-gray-600 mt-0.5">14.11.2026</div>
                         </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#09090c]" />
                       </div>
-                      <div>
-                        <div className="font-semibold text-gray-200">Emirhan</div>
-                        <div className="text-[10px] text-purple-400">CS2 Oynuyor</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2.5 text-xs">
-                      <div className="relative">
-                        <div className="w-7 h-7 rounded-full bg-indigo-700/60 flex items-center justify-center font-bold text-white text-[10px]">
-                          RN
-                        </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#09090c]" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-200">Rain</div>
-                        <div className="text-[10px] text-gray-400">Konuşuyor...</div>
-                      </div>
+                      <p className="text-[11px] text-gray-400 truncate">
+                        <span className="text-gray-300 font-medium">Trust:</span> ben de çıktım aga...
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom User Bar */}
-                <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-[#8B51FF]/30 border border-[#8B51FF]/50 flex items-center justify-center font-bold text-xs text-white">
-                      Sen
+                {/* Bottom User Profile Bar (Lyring) */}
+                <div className="border-t border-white/[0.08] p-3 flex items-center justify-between bg-[#0a0a0d]">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="relative shrink-0">
+                      <img
+                        src="/mock/avatar_lyring.png"
+                        alt="Lyring"
+                        className="w-9 h-9 rounded-full object-cover border border-white/10"
+                      />
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0a0a0d]" />
                     </div>
-                    <div>
-                      <div className="text-xs font-bold text-white leading-tight">Sen</div>
-                      <div className="text-[10px] text-emerald-400">Çevrimiçi</div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white leading-tight truncate">Lyring</div>
+                      <div className="text-[10px] text-gray-400">@lyring</div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1.5 text-gray-400">
-                    <Mic size={14} className="hover:text-white cursor-pointer" />
-                    <Headphones size={14} className="hover:text-white cursor-pointer" />
+                  <div className="flex items-center text-gray-400 hover:text-white cursor-pointer transition pl-1">
+                    <SlidersHorizontal size={15} />
                   </div>
                 </div>
               </div>
 
-              {/* Center Active Call & Chat Mock (8 cols) */}
-              <div className="col-span-12 sm:col-span-8 p-5 flex flex-col justify-between bg-gradient-to-br from-[#0c0c10] to-[#08080a]">
-                {/* Voice Call Avatar Grid */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-xs font-bold text-gray-300">
-                      Aktif Ses Kanalı: <span className="text-[#a36eff]">Oyun & Takım Odası</span>
+              {/* 2. Middle Main Chat Area (7 cols on desktop, 12 on mobile) */}
+              <div className="col-span-12 sm:col-span-8 lg:col-span-6 flex flex-col justify-between bg-[#0b0b0e]">
+                {/* Chat Top Header */}
+                <div className="h-12 border-b border-white/[0.08] px-3.5 flex items-center justify-between select-none bg-[#0c0c10]/70 backdrop-blur-sm">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <ArrowLeft size={16} className="text-gray-400 hover:text-white cursor-pointer shrink-0" />
+                    <img
+                      src="/mock/avatar_fedai.png"
+                      alt="Game Fedaileri"
+                      className="w-8 h-8 rounded-full object-cover border border-purple-500/20 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white leading-tight truncate">Game Fedaileri</div>
+                      <div className="text-[10px] text-gray-400 leading-tight">6 üye, 1 çevrimiçi</div>
                     </div>
-                    <span className="text-[11px] px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold flex items-center space-x-1.5">
-                      <Sparkles size={12} />
-                      <span>RNNoise AI Filtresi Aktif</span>
-                    </span>
                   </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                    <div className="p-3.5 rounded-xl bg-white/[0.04] border border-[#8B51FF] shadow-lg shadow-[#8B51FF]/20 flex flex-col items-center justify-center text-center relative">
-                      <div className="w-12 h-12 rounded-full bg-purple-600/40 border-2 border-[#8B51FF] flex items-center justify-center font-bold text-white text-sm mb-2 shadow-inner animate-pulse">
-                        RN
-                      </div>
-                      <span className="text-xs font-semibold text-white">Rain</span>
-                      <span className="text-[10px] text-purple-400 flex items-center space-x-1 mt-0.5">
-                        <Radio size={10} className="animate-spin" />
-                        <span>Konuşuyor</span>
-                      </span>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center justify-center text-center">
-                      <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-300 text-sm mb-2">
-                        EM
-                      </div>
-                      <span className="text-xs font-medium text-gray-300">Emirhan</span>
-                      <span className="text-[10px] text-gray-400 mt-0.5">Dinliyor</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center justify-center text-center">
-                      <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-300 text-sm mb-2">
-                        UD
-                      </div>
-                      <span className="text-xs font-medium text-gray-300">Udinese</span>
-                      <span className="text-[10px] text-gray-400 mt-0.5">Dinliyor</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center justify-center text-center">
-                      <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-300 text-sm mb-2">
-                        MF
-                      </div>
-                      <span className="text-xs font-medium text-gray-300">Mafik</span>
-                      <span className="text-[10px] text-gray-400 mt-0.5">Dinliyor</span>
-                    </div>
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      type="button"
+                      className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition"
+                      title="Sesli Arama Başlat"
+                    >
+                      <Phone size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition"
+                      title="Seçenekler"
+                    >
+                      <MoreVertical size={15} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Mini Chat Stream Mock */}
-                <div className="space-y-2 border-t border-white/[0.06] pt-4">
-                  <div className="flex items-start space-x-2 text-xs">
-                    <span className="font-bold text-[#a36eff]">Rain:</span>
-                    <span className="text-gray-300">Beyler CS2 lobisi hazır, gelin ses kanalındayız!</span>
+                {/* Messages Stream */}
+                <div className="p-3.5 sm:p-4 space-y-3 text-xs overflow-y-auto max-h-[380px]">
+                  {/* Msg 1: Lyring with link */}
+                  <div className="space-y-0.5">
+                    <div className="flex items-baseline space-x-1.5">
+                      <span className="font-bold text-[#b682ff]">Lyring</span>
+                      <span className="text-[10px] text-gray-500 font-mono">01:43</span>
+                    </div>
+                    <div className="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 break-all leading-relaxed flex items-start gap-1">
+                      <span>https://studio.tripo3d.ai/3d-model/mass-of-screaming-humanoid-heads-and-bodies-intertwined-stone-marble-41f36821-8d00-4ffa-9451-9eeda9029eae</span>
+                      <ExternalLink size={11} className="inline shrink-0 mt-0.5" />
+                    </div>
                   </div>
-                  <div className="flex items-start space-x-2 text-xs">
-                    <span className="font-bold text-indigo-400">Udinese:</span>
-                    <span className="text-gray-300">Geliyorum 2 dakikaya, Voys sesi aşırı net geliyor bu arada 🔥</span>
+
+                  {/* Msg 2: Lyring with link */}
+                  <div className="space-y-0.5">
+                    <div className="flex items-baseline space-x-1.5">
+                      <span className="font-bold text-[#b682ff]">Lyring</span>
+                      <span className="text-[10px] text-gray-500 font-mono">01:47</span>
+                    </div>
+                    <div className="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 break-all leading-relaxed flex items-start gap-1">
+                      <span>https://www.reddit.com/r/consoles/comments/1hpj1zw/ps5_custom_design_tlou/?tl=tr</span>
+                      <ExternalLink size={11} className="inline shrink-0 mt-0.5" />
+                    </div>
                   </div>
-                  <div className="flex items-start space-x-2 text-xs">
-                    <span className="font-bold text-emerald-400">Emirhan:</span>
-                    <span className="text-gray-300">RNNoise yapay zekası klavye sesini tamamen kesiyor, harika.</span>
+
+                  {/* Msg 3: Yedx */}
+                  <div className="space-y-0.5">
+                    <div className="flex items-baseline space-x-1.5">
+                      <span className="font-bold text-[#84cc16]">Yedx</span>
+                      <span className="text-[10px] text-gray-500 font-mono">01:55</span>
+                    </div>
+                    <p className="text-gray-200 text-xs">emoo</p>
+                  </div>
+
+                  {/* Date Separator */}
+                  <div className="flex items-center my-2.5">
+                    <div className="flex-1 h-px bg-white/[0.08]" />
+                    <span className="px-3 text-[10px] text-gray-500 font-medium">14 Kasım 2026 Cumartesi</span>
+                    <div className="flex-1 h-px bg-white/[0.08]" />
+                  </div>
+
+                  {/* Msg 4: Lyring */}
+                  <div className="space-y-0.5">
+                    <div className="flex items-baseline space-x-1.5">
+                      <span className="font-bold text-[#b682ff]">Lyring</span>
+                      <span className="text-[10px] text-gray-500 font-mono">01:39</span>
+                    </div>
+                    <p className="text-gray-200 text-xs">sa</p>
+                  </div>
+
+                  {/* Msg 5: Trust */}
+                  <div className="space-y-0.5">
+                    <div className="flex items-baseline space-x-1.5">
+                      <span className="font-bold text-[#a3e635]">Trust</span>
+                      <span className="text-[10px] text-gray-500 font-mono">22:57</span>
+                    </div>
+                    <p className="text-gray-200 text-xs">ben de çıktım agalar görüşürüz</p>
+                  </div>
+                </div>
+
+                {/* Bottom Chat Input Bar */}
+                <div className="p-3 pt-1.5 flex items-center space-x-2">
+                  <button
+                    type="button"
+                    className="w-9 h-9 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white shrink-0 transition"
+                  >
+                    <Plus size={16} />
+                  </button>
+                  <div className="flex-1 bg-[#14141a] border border-white/[0.08] rounded-xl px-3.5 py-2 flex items-center justify-between text-xs">
+                    <span className="text-gray-500 select-none">Mesaj gönder...</span>
+                    <div className="flex items-center space-x-2">
+                      <Smile size={16} className="text-amber-400 hover:scale-110 cursor-pointer transition shrink-0" />
+                      <Send size={15} className="text-gray-400 hover:text-white cursor-pointer transition shrink-0" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Right Sidebar: Group Members ("Grup Üyeleri") (3 cols desktop, hidden on small screens) */}
+              <div className="hidden lg:flex lg:col-span-3 border-l border-white/[0.08] bg-[#09090c] flex-col justify-start">
+                {/* Header */}
+                <div className="p-3.5 pb-2 border-b border-white/[0.06] flex items-center justify-between text-xs">
+                  <span className="font-bold text-gray-300 uppercase tracking-wider text-[11px]">
+                    GRUP ÜYELERİ
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs text-[#a36eff] hover:text-[#c084fc] font-semibold inline-flex items-center space-x-1 cursor-pointer transition"
+                  >
+                    <Plus size={13} />
+                    <span>Ekle</span>
+                  </button>
+                </div>
+
+                {/* Member List */}
+                <div className="p-3 space-y-2.5 text-xs overflow-y-auto">
+                  {/* Lyring (Sen, Crown) */}
+                  <div className="flex items-center space-x-2.5">
+                    <div className="relative shrink-0">
+                      <img
+                        src="/mock/avatar_lyring.png"
+                        alt="Lyring"
+                        className="w-8 h-8 rounded-full object-cover border border-white/10"
+                      />
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#09090c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-1">
+                        <span className="font-bold text-white text-xs truncate">Lyring</span>
+                        <Crown size={12} className="text-amber-400 shrink-0" />
+                        <span className="text-[9.5px] bg-[#8B51FF]/30 border border-[#8B51FF]/40 text-purple-200 px-1 py-0.2 rounded font-medium">
+                          Sen
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-gray-400">Çevrimiçi</div>
+                    </div>
+                  </div>
+
+                  {/* Rain */}
+                  <div className="flex items-center space-x-2.5 opacity-80">
+                    <div className="relative shrink-0">
+                      <img
+                        src="/mock/avatar_rain.png"
+                        alt="Rain"
+                        className="w-8 h-8 rounded-full object-cover border border-white/10 grayscale-[30%]"
+                      />
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-gray-300 text-xs truncate">Rain</div>
+                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
+                    </div>
+                  </div>
+
+                  {/* Mafik */}
+                  <div className="flex items-center space-x-2.5 opacity-80">
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                        M
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-gray-300 text-xs truncate">Mafik</div>
+                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
+                    </div>
+                  </div>
+
+                  {/* Trust */}
+                  <div className="flex items-center space-x-2.5 opacity-80">
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                        T
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-gray-300 text-xs truncate">Trust</div>
+                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
+                    </div>
+                  </div>
+
+                  {/* Hollie */}
+                  <div className="flex items-center space-x-2.5 opacity-80">
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                        H
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-gray-300 text-xs truncate">Hollie</div>
+                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
+                    </div>
+                  </div>
+
+                  {/* Yedx */}
+                  <div className="flex items-center space-x-2.5 opacity-80">
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                        Y
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-gray-300 text-xs truncate">Yedx</div>
+                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
+                    </div>
                   </div>
                 </div>
               </div>
