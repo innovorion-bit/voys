@@ -150,6 +150,15 @@ export async function closeWindow() {
   } catch (err) {
     console.warn('window.close fallback error:', err);
   }
+
+  // 6. Fallback for legacy 1.0.0 binaries without native exit_app command:
+  // Minimizes the window to the taskbar so it never stays stuck on the user's screen
+  if (isTauriEnvironment()) {
+    try {
+      const appWindow = getCurrentWindow();
+      await appWindow.minimize();
+    } catch {}
+  }
 }
 
 /**
