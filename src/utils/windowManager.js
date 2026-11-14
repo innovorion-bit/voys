@@ -100,17 +100,28 @@ export async function closeWindow() {
   }
 
   // Brief pause so the websocket departure broadcast packet flushes out
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await new Promise((resolve) => setTimeout(resolve, 60));
 
   if (isTauriEnvironment()) {
+    // 1. Primary: Custom native Rust exit_app command (terminates app process immediately)
     try {
-      const appWindow = getCurrentWindow();
-      await appWindow.close();
+      await invoke('exit_app');
       return;
     } catch (err) {
-      console.warn('Tauri close error, attempting destroy fallback:', err);
+      console.warn('Tauri exit_app error:', err);
     }
 
+    // 2. Tauri official app plugin exit
+    try {
+      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) {
+        await window.__TAURI_INTERNALS__.invoke('plugin:app|exit', { code: 0 });
+        return;
+      }
+    } catch (err) {
+      console.warn('Tauri plugin:app|exit error:', err);
+    }
+
+    // 3. Tauri window destroy
     try {
       const appWindow = getCurrentWindow();
       if (typeof appWindow.destroy === 'function') {
@@ -120,10 +131,24 @@ export async function closeWindow() {
     } catch (err) {
       console.warn('Tauri destroy error:', err);
     }
-  } else {
+
+    // 4. Tauri window close
     try {
+      const appWindow = getCurrentWindow();
+      await appWindow.close();
+    } catch (err) {
+      console.warn('Tauri close error:', err);
+    }
+  }
+
+  // 5. Native WebView2 / browser close fallback
+  // In WRY on Windows (Tauri WebView2), calling window.close() triggers Win32 DestroyWindow(hwnd)
+  try {
+    if (typeof window !== 'undefined' && typeof window.close === 'function') {
       window.close();
-    } catch {}
+    }
+  } catch (err) {
+    console.warn('window.close fallback error:', err);
   }
 }
 

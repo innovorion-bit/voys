@@ -202,11 +202,19 @@ export const AuthPage = ({ initialMode = 'login' }) => {
       {/* Window Controls (Minimize & Close) on top-right of the window */}
       <div
         data-tauri-drag-region="false"
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         className="absolute right-2.5 top-2.5 flex items-center space-x-1 z-30"
       >
         <button
           type="button"
-          onClick={minimizeWindow}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            minimizeWindow();
+          }}
           className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
           title="Simge Durumuna Küçült"
         >
@@ -214,7 +222,13 @@ export const AuthPage = ({ initialMode = 'login' }) => {
         </button>
         <button
           type="button"
-          onClick={closeWindow}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeWindow();
+          }}
           className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-rose-500 rounded-lg transition cursor-pointer"
           title="Kapat"
         >

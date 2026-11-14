@@ -24,6 +24,11 @@ fn stop_ptt_listener(state: tauri::State<'_, ptt::PttController>) {
 }
 
 #[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+  app.exit(0);
+}
+
+#[tauri::command]
 fn open_external_url(url: String) -> Result<bool, String> {
   let trimmed = url.trim();
   if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
@@ -66,7 +71,8 @@ pub fn run() {
       detect_running_game,
       start_ptt_listener,
       stop_ptt_listener,
-      open_external_url
+      open_external_url,
+      exit_app
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
