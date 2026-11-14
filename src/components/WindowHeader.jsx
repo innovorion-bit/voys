@@ -5,13 +5,20 @@ import {
   Square,
   HelpCircle
 } from 'lucide-react';
-import { minimizeWindow, toggleMaximizeWindow, closeWindow, openExternalUrl } from '../utils/windowManager';
+import {
+  minimizeWindow,
+  toggleMaximizeWindow,
+  closeWindow,
+  openExternalUrl,
+  isTauriEnvironment
+} from '../utils/windowManager';
 
 export const WindowHeader = ({
   pageTitle,
   groupName = 'Voys'
 }) => {
   const currentTitle = pageTitle || groupName || 'Voys';
+  const isTauri = isTauriEnvironment();
 
   const handleOpenHelp = (e) => {
     e?.stopPropagation?.();
@@ -66,49 +73,61 @@ export const WindowHeader = ({
           <HelpCircle size={14} />
         </button>
 
-        {/* Desktop Window Controls (Minimize, Maximize, Close) */}
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            minimizeWindow();
-          }}
-          className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded transition cursor-pointer"
-          title="Simge Durumuna Küçült"
-        >
-          <Minus size={13} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleMaximizeWindow();
-          }}
-          className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded transition cursor-pointer"
-          title="Ekranı Kapla / Geri Yükle"
-        >
-          <Square size={11} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeWindow();
-          }}
-          className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#ef4444] rounded transition cursor-pointer"
-          title="Kapat"
-        >
-          <X size={13} />
-        </button>
+        {/* Desktop Window Controls (Minimize, Maximize, Close) - Tauri Only */}
+        {isTauri ? (
+          <>
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                minimizeWindow();
+              }}
+              className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded transition cursor-pointer"
+              title="Simge Durumuna Küçült"
+            >
+              <Minus size={13} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMaximizeWindow();
+              }}
+              className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded transition cursor-pointer"
+              title="Ekranı Kapla / Geri Yükle"
+            >
+              <Square size={11} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeWindow();
+              }}
+              className="w-8 h-6 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#ef4444] rounded transition cursor-pointer"
+              title="Kapat"
+            >
+              <X size={13} />
+            </button>
+          </>
+        ) : (
+          <a
+            href="/download"
+            className="text-[11px] font-medium text-gray-300 hover:text-white px-2 py-0.5 rounded bg-white/[0.06] hover:bg-[#8B51FF]/20 border border-white/10 hover:border-[#8B51FF]/40 transition mr-1 cursor-pointer"
+            title="Masaüstü Uygulamasını İndir"
+          >
+            Uygulamayı İndir
+          </a>
+        )}
       </div>
     </header>
   );

@@ -1862,7 +1862,7 @@ function StanduppApp() {
   }, [activeChannel, isCurrentChannelCallConnected, voiceMembers, activeChannelCall?.members, activeUserProfile]);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#101214] voys-glass-app rounded-2xl border border-white/10 overflow-hidden select-none">
+    <div className={`flex flex-col h-screen w-full bg-[#101214] voys-glass-app ${isTauriEnvironment() ? 'rounded-2xl border border-white/10' : ''} overflow-hidden select-none`}>
       {/* Hidden remote <audio autoPlay> tags managed within React component */}
       <RemoteAudioPlayers
         remotePeers={remotePeers}

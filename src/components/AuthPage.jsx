@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Lock,
   Mail,
@@ -19,7 +19,13 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
-import { resizeToAuthWindow, resizeToMainWindow, minimizeWindow, closeWindow } from '../utils/windowManager';
+import {
+  resizeToAuthWindow,
+  resizeToMainWindow,
+  minimizeWindow,
+  closeWindow,
+  isTauriEnvironment
+} from '../utils/windowManager';
 
 export const AuthPage = ({ initialMode = 'login' }) => {
   const [mode, setMode] = useState(() => {
@@ -194,373 +200,462 @@ export const AuthPage = ({ initialMode = 'login' }) => {
     }
   };
 
-  return (
-    <div
-      data-tauri-drag-region
-      className="h-screen w-screen bg-[#0c0c0e] border border-white/10 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden relative select-none"
-    >
-      {/* Window Controls (Minimize & Close) on top-right of the window */}
-      <div
-        data-tauri-drag-region="false"
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="absolute right-2.5 top-2.5 flex items-center space-x-1 z-30"
-      >
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            minimizeWindow();
-          }}
-          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
-          title="Simge Durumuna Küçült"
-        >
-          <Minus size={13} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeWindow();
-          }}
-          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-rose-500 rounded-lg transition cursor-pointer"
-          title="Kapat"
-        >
-          <X size={13} />
-        </button>
-      </div>
+  const isTauri = isTauriEnvironment();
 
-      {/* Header Banner */}
-      <div
-        data-tauri-drag-region
-        className="pt-8 pb-1.5 text-center relative cursor-default flex-shrink-0"
-      >
-        <div className="flex justify-center">
-          {mode === 'reset' ? (
-            <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <KeyRound size={20} className="text-indigo-400" />
+  const renderFormContent = (isWeb = false) => (
+    <>
+      {/* Error Message Alert */}
+      {errorMsg && (
+        <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2 mb-3">
+          <div className="leading-relaxed flex items-start space-x-2">
+            <span className="flex-1">{errorMsg}</span>
+          </div>
+          {errorMsg.includes('bağlanılamadı') && (
+            <div className="pt-2 border-t border-rose-500/20 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="inline-flex items-center space-x-1.5 px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-[11px] font-semibold transition active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw size={11} className={isSubmitting ? 'animate-spin' : ''} />
+                <span>Tekrar Dene</span>
+              </button>
             </div>
-          ) : mode === 'forgot' ? (
-            <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Mail size={20} className="text-indigo-400" />
-            </div>
-          ) : (
-            <img
-              src="/voys_logo.png"
-              alt="Voys"
-              draggable={false}
-              className="w-11 h-11 object-contain select-none pointer-events-none"
-            />
           )}
         </div>
-        {(mode === 'forgot' || mode === 'reset') && (
-          <div className="mt-2 px-4">
-            <h1 className="text-xs font-bold text-white tracking-wider uppercase">
-              {mode === 'forgot' && 'Şifremi Sıfırla'}
-              {mode === 'reset' && 'Yeni Şifre Belirle'}
-            </h1>
-            <p className="text-[10.5px] text-gray-400 mt-0.5">
-              {mode === 'forgot' && 'E-posta adresinize sıfırlama linki göndereceğiz'}
-              {mode === 'reset' && 'Hesabınız için güçlü bir şifre belirleyin'}
-            </p>
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* Form Content */}
-      <div className="flex-1 px-4 py-3 flex flex-col justify-between overflow-y-auto custom-scrollbar">
-        {/* Error Message Alert */}
-        {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2">
-            <div className="leading-relaxed flex items-start space-x-2">
-              <span className="flex-1">{errorMsg}</span>
-            </div>
-            {errorMsg.includes('bağlanılamadı') && (
-              <div className="pt-2 border-t border-rose-500/20 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-[11px] font-semibold transition active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw size={11} className={isSubmitting ? 'animate-spin' : ''} />
-                  <span>Tekrar Dene</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+      {/* Success Message Alert */}
+      {successMsg && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-start space-x-2 mb-3">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+          <div className="leading-relaxed">{successMsg}</div>
+        </div>
+      )}
 
-        {/* Success Message Alert */}
-        {successMsg && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-start space-x-2">
-            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
-            <div className="leading-relaxed">{successMsg}</div>
-          </div>
-        )}
-
-        {emailConfirmationRequired ? (
-          <div className="pt-2 text-center space-y-3">
-            <p className="text-xs text-gray-300">
-              E-postanızı onayladıktan sonra hemen giriş yapabilirsiniz.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setEmailConfirmationRequired(false);
-                setSuccessMsg('');
-              }}
-              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition"
-            >
-              Giriş Ekranına Dön
-            </button>
-          </div>
-        ) : (
-          <form
-            onSubmit={handleSubmit}
-            className={`${
-              mode === 'login'
+      {emailConfirmationRequired ? (
+        <div className="pt-2 text-center space-y-3">
+          <p className="text-xs text-gray-300">
+            E-postanızı onayladıktan sonra hemen giriş yapabilirsiniz.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('login');
+              setEmailConfirmationRequired(false);
+              setSuccessMsg('');
+            }}
+            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+          >
+            Giriş Ekranına Dön
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className={`${
+            isWeb
+              ? 'space-y-3'
+              : mode === 'login'
                 ? 'pt-8 space-y-3'
                 : mode === 'register'
                   ? 'pt-7 space-y-2.5'
                   : 'pt-4 space-y-2.5'
-            }`}
-          >
-            {/* Register: Adınız & Kullanıcı adınız */}
-            {mode === 'register' && (
-              <>
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    Adınız
-                  </label>
-                  <div className="relative flex items-center">
-                    <User size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    Kullanıcı adınız
-                  </label>
-                  <div className="relative flex items-center">
-                    <AtSign size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Email Input (Login, Register, Forgot Password) */}
-            {mode !== 'reset' && (
+          }`}
+        >
+          {/* Register: Adınız & Kullanıcı adınız */}
+          {mode === 'register' && (
+            <>
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                  {mode === 'register' ? 'E-posta adresiniz' : 'E-Posta Adresi'}
+                  Adınız
                 </label>
                 <div className="relative flex items-center">
-                  <Mail size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                  <User size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Görünen isminiz"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition placeholder:text-gray-600"
                   />
                 </div>
               </div>
-            )}
 
-            {/* Password Input (Login, Register, Reset) */}
-            {mode !== 'forgot' && (
               <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    {mode === 'register' ? 'Şifreniz' : mode === 'reset' ? 'Yeni Şifre' : 'Şifre'}
-                  </label>
-                  {mode === 'login' && (
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => {
-                        setMode('forgot');
-                        setErrorMsg('');
-                        setSuccessMsg('');
-                        resizeToAuthWindow('forgot');
-                      }}
-                      className="text-[10px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
-                    >
-                      Şifremi Unuttum?
-                    </button>
-                  )}
-                </div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                  Kullanıcı adınız
+                </label>
                 <div className="relative flex items-center">
-                  <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                  <AtSign size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type="text"
                     required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="kullanici_adiniz"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition placeholder:text-gray-600"
                   />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Email Input (Login, Register, Forgot Password) */}
+          {mode !== 'reset' && (
+            <div className="space-y-1">
+              <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                {mode === 'register' ? 'E-posta adresiniz' : 'E-Posta Adresi'}
+              </label>
+              <div className="relative flex items-center">
+                <Mail size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ornek@email.com"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition placeholder:text-gray-600"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Password Input (Login, Register, Reset) */}
+          {mode !== 'forgot' && (
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                  {mode === 'register' ? 'Şifreniz' : mode === 'reset' ? 'Yeni Şifre' : 'Şifre'}
+                </label>
+                {mode === 'login' && (
                   <button
                     type="button"
                     tabIndex={-1}
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 text-gray-500 hover:text-gray-300 transition"
+                    onClick={() => {
+                      setMode('forgot');
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                      resizeToAuthWindow('forgot');
+                    }}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
                   >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    Şifremi Unuttum?
                   </button>
-                </div>
+                )}
               </div>
-            )}
-
-            {/* Confirm Password (Register and Reset mode) */}
-            {(mode === 'register' || mode === 'reset') && (
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                  {mode === 'register' ? 'Tekrar Şifreniz' : 'Şifreyi Doğrula'}
-                </label>
-                <div className="relative flex items-center">
-                  <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Remember Me Checkbox */}
-            {mode === 'login' && (
-              <div className="flex items-center space-x-2 pt-0.5">
+              <div className="relative flex items-center">
+                <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
                 <input
-                  type="checkbox"
-                  id="remember"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded bg-[#141418] border-white/10 text-indigo-500 focus:ring-0 cursor-pointer accent-indigo-500"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-10 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition placeholder:text-gray-600"
                 />
-                <label htmlFor="remember" className="text-xs text-gray-300 cursor-pointer select-none">
-                  Beni bu cihazda hatırla
-                </label>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full mt-3 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
-            >
-              {isSubmitting ? (
-                <span className="inline-flex items-center space-x-2">
-                  <Loader2 size={14} className="animate-spin" />
-                  <span>
-                    {mode === 'login' ? 'Giriş Yapılıyor...' : 'İşlem Yapılıyor...'}
-                  </span>
-                </span>
-              ) : (
-                <>
-                  <span>
-                    {mode === 'login'
-                      ? 'Giriş Yap'
-                      : mode === 'register'
-                        ? 'Kayıt Ol'
-                        : mode === 'forgot'
-                          ? 'Sıfırlama Bağlantısı Gönder'
-                          : 'Yeni Şifreyi Kaydet'}
-                  </span>
-                  <ArrowRight size={14} />
-                </>
-              )}
-            </button>
-            {slowNotice && isSubmitting && (
-              <p className="text-[10px] text-indigo-300/80 text-center pt-1">
-                Sunucu yanıtı bekleniyor, lütfen bekleyin...
-              </p>
-            )}
-          </form>
-        )}
-
-        {/* Mode Switchers / Footer Links */}
-        <div className="text-center pt-2 border-t border-white/5 text-xs text-gray-400">
-          {mode === 'login' && (
-            <div className="space-y-2">
-              <div>
-                Henüz bir hesabınız yok mu?{' '}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('register');
-                    setErrorMsg('');
-                    setSuccessMsg('');
-                    resizeToAuthWindow('register');
-                  }}
-                  className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 text-gray-500 hover:text-gray-300 transition cursor-pointer"
                 >
-                  Ücretsiz Kayıt Ol
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
           )}
 
-          {mode === 'register' && (
-            <div>
-              Zaten bir hesabınız var mı?{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('login');
-                  setErrorMsg('');
-                  setSuccessMsg('');
-                  resizeToAuthWindow('login');
-                }}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
-              >
-                Giriş Yap
-              </button>
+          {/* Confirm Password (Register and Reset mode) */}
+          {(mode === 'register' || mode === 'reset') && (
+            <div className="space-y-1">
+              <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+                {mode === 'register' ? 'Tekrar Şifreniz' : 'Şifreyi Doğrula'}
+              </label>
+              <div className="relative flex items-center">
+                <Lock size={15} className="absolute left-3.5 text-gray-500 pointer-events-none" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition placeholder:text-gray-600"
+                />
+              </div>
             </div>
           )}
 
-          {(mode === 'forgot' || mode === 'reset') && (
+          {/* Remember Me Checkbox */}
+          {mode === 'login' && (
+            <div className="flex items-center space-x-2 pt-0.5">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-3.5 h-3.5 rounded bg-[#141418] border-white/10 text-indigo-500 focus:ring-0 cursor-pointer accent-indigo-500"
+              />
+              <label htmlFor="remember" className="text-xs text-gray-300 cursor-pointer select-none">
+                Beni bu cihazda hatırla
+              </label>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full mt-3 py-2.5 px-4 ${
+              isWeb
+                ? 'bg-gradient-to-r from-[#8B51FF] to-[#6366f1] hover:brightness-110 shadow-lg shadow-[#8B51FF]/25'
+                : 'bg-indigo-600 hover:bg-indigo-500'
+            } text-white font-bold text-xs uppercase tracking-wider rounded-xl transition disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99]`}
+          >
+            {isSubmitting ? (
+              <span className="inline-flex items-center space-x-2">
+                <Loader2 size={14} className="animate-spin" />
+                <span>
+                  {mode === 'login' ? 'Giriş Yapılıyor...' : 'İşlem Yapılıyor...'}
+                </span>
+              </span>
+            ) : (
+              <>
+                <span>
+                  {mode === 'login'
+                    ? 'Giriş Yap'
+                    : mode === 'register'
+                      ? 'Kayıt Ol'
+                      : mode === 'forgot'
+                        ? 'Sıfırlama Bağlantısı Gönder'
+                        : 'Yeni Şifreyi Kaydet'}
+                </span>
+                <ArrowRight size={14} />
+              </>
+            )}
+          </button>
+          {slowNotice && isSubmitting && (
+            <p className="text-[10px] text-indigo-300/80 text-center pt-1">
+              Sunucu yanıtı bekleniyor, lütfen bekleyin...
+            </p>
+          )}
+        </form>
+      )}
+
+      {/* Mode Switchers / Footer Links */}
+      <div className={`text-center ${isWeb ? 'pt-4 mt-4' : 'pt-2'} border-t border-white/5 text-xs text-gray-400`}>
+        {mode === 'login' && (
+          <div className="space-y-2">
             <div>
+              Henüz bir hesabınız yok mu?{' '}
               <button
                 type="button"
                 onClick={() => {
-                  setMode('login');
+                  setMode('register');
                   setErrorMsg('');
                   setSuccessMsg('');
-                  resizeToAuthWindow('login');
+                  resizeToAuthWindow('register');
                 }}
-                className="text-indigo-400 hover:text-indigo-300 inline-flex items-center space-x-1 cursor-pointer"
+                className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
               >
-                <ArrowLeft size={12} />
-                <span>Giriş ekranına dön</span>
+                Ücretsiz Kayıt Ol
               </button>
             </div>
+          </div>
+        )}
+
+        {mode === 'register' && (
+          <div>
+            Zaten bir hesabınız var mı?{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setErrorMsg('');
+                setSuccessMsg('');
+                resizeToAuthWindow('login');
+              }}
+              className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1 cursor-pointer"
+            >
+              Giriş Yap
+            </button>
+          </div>
+        )}
+
+        {(mode === 'forgot' || mode === 'reset') && (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setErrorMsg('');
+                setSuccessMsg('');
+                resizeToAuthWindow('login');
+              }}
+              className="text-indigo-400 hover:text-indigo-300 inline-flex items-center space-x-1 cursor-pointer"
+            >
+              <ArrowLeft size={12} />
+              <span>Giriş ekranına dön</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  // 1. DESKTOP TAURI WINDOW LAYOUT (Preserves exact compact frameless window & drag-region)
+  if (isTauri) {
+    return (
+      <div
+        data-tauri-drag-region
+        className="h-screen w-screen bg-[#0c0c0e] border border-white/10 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden relative select-none"
+      >
+        {/* Window Controls (Minimize & Close) on top-right of the window */}
+        <div
+          data-tauri-drag-region="false"
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute right-2.5 top-2.5 flex items-center space-x-1 z-30"
+        >
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              minimizeWindow();
+            }}
+            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
+            title="Simge Durumuna Küçült"
+          >
+            <Minus size={13} />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              closeWindow();
+            }}
+            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-rose-500 rounded-lg transition cursor-pointer"
+            title="Kapat"
+          >
+            <X size={13} />
+          </button>
+        </div>
+
+        {/* Header Banner */}
+        <div
+          data-tauri-drag-region
+          className="pt-8 pb-1.5 text-center relative cursor-default flex-shrink-0"
+        >
+          <div className="flex justify-center">
+            {mode === 'reset' ? (
+              <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <KeyRound size={20} className="text-indigo-400" />
+              </div>
+            ) : mode === 'forgot' ? (
+              <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <Mail size={20} className="text-indigo-400" />
+              </div>
+            ) : (
+              <img
+                src="/voys_logo.png"
+                alt="Voys"
+                draggable={false}
+                className="w-11 h-11 object-contain select-none pointer-events-none"
+              />
+            )}
+          </div>
+          {(mode === 'forgot' || mode === 'reset') && (
+            <div className="mt-2 px-4">
+              <h1 className="text-xs font-bold text-white tracking-wider uppercase">
+                {mode === 'forgot' && 'Şifremi Sıfırla'}
+                {mode === 'reset' && 'Yeni Şifre Belirle'}
+              </h1>
+              <p className="text-[10.5px] text-gray-400 mt-0.5">
+                {mode === 'forgot' && 'E-posta adresinize sıfırlama linki göndereceğiz'}
+                {mode === 'reset' && 'Hesabınız için güçlü bir şifre belirleyin'}
+              </p>
+            </div>
           )}
+        </div>
+
+        {/* Form Content */}
+        <div className="flex-1 px-4 py-3 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+          {renderFormContent(false)}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. WEB BROWSER LAYOUT (Centered, responsive card with ambient glow, no desktop window controls)
+  return (
+    <div className="min-h-screen w-full bg-[#070709] flex flex-col items-center justify-center p-4 sm:p-6 relative select-none overflow-x-hidden">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[500px] bg-gradient-to-b from-[#8B51FF]/20 via-[#6366f1]/10 to-transparent blur-[140px] pointer-events-none -z-10" />
+
+      {/* Top bar with back to home link and Web badge */}
+      <div className="w-full max-w-[420px] mb-3 flex items-center justify-between text-xs text-gray-400 px-1">
+        <Link
+          to="/"
+          className="inline-flex items-center space-x-1.5 hover:text-white transition-colors cursor-pointer group"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          <span>Ana Sayfaya Dön</span>
+        </Link>
+        <div className="flex items-center space-x-1.5 text-xs text-gray-400 bg-white/[0.04] border border-white/10 px-2.5 py-1 rounded-full">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
+          <span>Web Sürümü</span>
+        </div>
+      </div>
+
+      {/* Centered Auth Card */}
+      <div className="w-full max-w-[420px] bg-[#0c0c10]/95 border border-white/10 rounded-3xl shadow-2xl p-6 sm:p-7 flex flex-col relative backdrop-blur-2xl">
+        {/* Header */}
+        <div className="pb-4 text-center relative cursor-default flex-shrink-0">
+          <div className="flex justify-center mb-3">
+            {mode === 'reset' ? (
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+                <KeyRound size={22} className="text-indigo-400" />
+              </div>
+            ) : mode === 'forgot' ? (
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+                <Mail size={22} className="text-indigo-400" />
+              </div>
+            ) : (
+              <img
+                src="/voys_logo.png"
+                alt="Voys"
+                draggable={false}
+                className="w-12 h-12 object-contain select-none pointer-events-none drop-shadow-[0_0_15px_rgba(139,81,255,0.35)]"
+              />
+            )}
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-white tracking-tight">
+              {mode === 'login' && 'Tekrar Hoş Geldiniz!'}
+              {mode === 'register' && 'Hesabınızı Oluşturun'}
+              {mode === 'forgot' && 'Şifrenizi mi Unuttunuz?'}
+              {mode === 'reset' && 'Yeni Şifre Belirleyin'}
+            </h1>
+            <p className="text-xs text-gray-400 mt-1">
+              {mode === 'login' && 'Sohbetlerinize ve arkadaşlarınıza hemen bağlanın.'}
+              {mode === 'register' && 'Voys dünyasına katılmak için bilgilerinizi girin.'}
+              {mode === 'forgot' && 'E-posta adresinize sıfırlama linki göndereceğiz.'}
+              {mode === 'reset' && 'Hesabınız için güçlü bir şifre belirleyin.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="flex flex-col">
+          {renderFormContent(true)}
         </div>
       </div>
     </div>
