@@ -25,6 +25,9 @@ const LogoutConfirmModal = lazy(() =>
 const AuthPage = lazy(() =>
   import('./components/AuthPage').then((m) => ({ default: m.AuthPage }))
 );
+const LandingPage = lazy(() =>
+  import('./components/LandingPage').then((m) => ({ default: m.LandingPage }))
+);
 import { useVoiceWebRTC } from './hooks/useVoiceWebRTC';
 import { useRealtimeChat } from './hooks/useRealtimeChat';
 import { useGameDetection } from './hooks/useGameDetection';
@@ -54,7 +57,7 @@ import {
   applyIncomingCallStatus,
 } from './utils/voiceCallState';
 import { normalizeUserId, removeCachedUserProfile } from './utils/userPurge';
-import { setupWindowCloseHandler } from './utils/windowManager';
+import { setupWindowCloseHandler, isTauriEnvironment } from './utils/windowManager';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
@@ -2047,12 +2050,46 @@ function StanduppApp() {
   );
 }
 
+function HomeRoute() {
+  const { isAuthenticated, loading } = useAuth();
+
+  // In native Tauri desktop app, always route directly to chat / auth
+  if (isTauriEnvironment()) {
+    return (
+      <ProtectedRoute>
+        <StanduppApp />
+      </ProtectedRoute>
+    );
+  }
+
+  if (loading) {
+    return <div className="min-h-screen w-full bg-[#070709]" />;
+  }
+
+  // If user is already authenticated in web browser, directly go to StanduppApp
+  if (isAuthenticated) {
+    return (
+      <ProtectedRoute>
+        <StanduppApp />
+      </ProtectedRoute>
+    );
+  }
+
+  // Web guests get the beautiful Discord-like landing page
+  return <LandingPage />;
+}
+
 function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
         <Suspense fallback={<div className="min-h-screen w-full bg-[#09090b]" />}>
           <Routes>
+            {/* Public Landing & Download Page Routes */}
+            <Route path="/download" element={<LandingPage />} />
+            <Route path="/downloads" element={<LandingPage />} />
+            <Route path="/landing" element={<LandingPage />} />
+
             {/* Public Auth Routes (Guest Only) */}
             <Route
               path="/login"
@@ -2102,11 +2139,7 @@ function App() {
             />
             <Route
               path="/"
-              element={
-                <ProtectedRoute>
-                  <StanduppApp />
-                </ProtectedRoute>
-              }
+              element={<HomeRoute />}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
