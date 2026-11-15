@@ -117,26 +117,35 @@ export const LandingPage = () => {
 
       {/* 1. Header / Navbar */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo & Brand */}
-          <Link to="/" className="flex items-center group" title="Voys">
+        <div className="w-full px-6 sm:px-10 lg:px-16 h-20 flex items-center justify-between relative">
+          {/* Logo & Brand (Far Left) */}
+          <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
             <div className="relative">
               <img
                 src="/voys_logo.png"
                 alt="Voys Logo"
-                className="w-8 h-8 object-contain transition-transform group-hover:scale-105"
+                className="w-9 h-9 object-contain transition-transform group-hover:scale-105"
               />
               <div className="absolute -inset-1 bg-[#8B51FF]/30 blur-sm rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </Link>
 
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
+          {/* Nav Links - Menüler (True Center) */}
+          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-300 absolute left-1/2 -translate-x-1/2">
+            <a href="#features" className="hover:text-white transition-colors">Özellikler</a>
+            <a href="#voice-ai" className="hover:text-white transition-colors">Ses & AI</a>
+            <a href="#performance" className="hover:text-white transition-colors">Performans</a>
+            <a href="#download" className="hover:text-white transition-colors">İndir</a>
+            <a href="#faq" className="hover:text-white transition-colors">SSS</a>
+          </nav>
+
+          {/* Action Buttons - Giriş Yap Only (Far Right) */}
+          <div className="flex items-center shrink-0 z-10">
             {isAuthenticated ? (
               <button
                 type="button"
                 onClick={() => navigate('/channel/home')}
-                className="text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/10 transition-all flex items-center space-x-1.5"
+                className="text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/10 transition-all flex items-center space-x-1.5 cursor-pointer"
               >
                 <span>Uygulamaya Git</span>
                 <ArrowRight size={14} />
@@ -145,21 +154,11 @@ export const LandingPage = () => {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="text-xs sm:text-sm font-medium px-3.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/[0.06] transition-all"
+                className="text-xs sm:text-sm font-semibold px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/10 hover:border-white/20 transition-all cursor-pointer"
               >
                 Giriş Yap
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => handleDownloadClick(directExeUrl)}
-              className="text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl bg-gradient-to-r from-[#8B51FF] to-[#7033ea] hover:from-[#9b66ff] hover:to-[#7e40f5] text-white shadow-lg shadow-[#8B51FF]/25 hover:shadow-[#8B51FF]/40 transition-all flex items-center space-x-2 cursor-pointer"
-            >
-              <Download size={14} />
-              <span className="hidden sm:inline">Windows için</span>
-              <span>İndir</span>
-            </button>
           </div>
         </div>
       </header>
@@ -175,29 +174,24 @@ export const LandingPage = () => {
         </div>
       )}
 
-      {/* 2. Hero Section */}
-      <section className="relative pt-16 sm:pt-24 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 text-center max-w-6xl mx-auto">
-        {/* Pill Badge */}
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/30 text-[#c299ff] text-xs font-semibold mb-6 shadow-sm">
-          <span>Voys v1.0.0 Yayında</span>
-        </div>
-
-        {/* Hero Title */}
-        <h1 className="max-w-4xl lg:max-w-5xl mx-auto text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white mb-6 leading-[1.12]">
+      {/* 2. Hero Section (Left-aligned title, text and buttons) */}
+      <section className="relative pt-12 sm:pt-20 pb-20 sm:pb-28 px-6 sm:px-10 lg:px-16 w-full text-left">
+        {/* Hero Title (Left-aligned) */}
+        <h1 className="max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-[72px] font-extrabold tracking-tight text-white mb-6 leading-[1.1] text-left">
           Birlikte Konuşmak ve Paylaşmak İçin{' '}
           <span className="inline-block bg-gradient-to-r from-[#a36eff] via-[#c084fc] to-[#e879f9] bg-clip-text text-transparent">
             Yepyeni Bir Boyut.
           </span>
         </h1>
 
-        {/* Hero Subtitle */}
-        <p className="max-w-3xl mx-auto text-base sm:text-lg md:text-xl text-gray-300 font-normal leading-relaxed mb-10">
+        {/* Hero Subtitle (Left-aligned) */}
+        <p className="max-w-2xl text-base sm:text-lg md:text-xl text-gray-300 font-normal leading-relaxed mb-10 text-left">
           Düşük gecikmeli ses kanalları, yapay zeka destekli arka plan gürültü filtresi,
           60 FPS ekran paylaşımı ve kesintisiz grup sohbetleri. Arkadaşların ve topluluğun için özel alanın.
         </p>
 
-        {/* Hero CTA Buttons - Identical Dimensions & No Text Wrap */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 max-w-2xl mx-auto mb-14">
+        {/* Hero CTA Buttons - Left Aligned & Matching Dimensions */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-start gap-4 sm:gap-5 mb-16">
           {/* Main Direct Download CTA */}
           <button
             type="button"
@@ -220,24 +214,8 @@ export const LandingPage = () => {
           </button>
         </div>
 
-        {/* Small trust badges */}
-        <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400 font-medium">
-          <div className="flex items-center space-x-1.5">
-            <CheckCircle2 size={14} className="text-emerald-400" />
-            <span>Windows 10 / 11 Uyumlu</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <CheckCircle2 size={14} className="text-emerald-400" />
-            <span>Reklamsız & Tamamen Ücretsiz</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <CheckCircle2 size={14} className="text-emerald-400" />
-            <span>Hızlı Kurulum (3.2 MB)</span>
-          </div>
-        </div>
-
         {/* 3. Hero App Mockup / Visualizer */}
-        <div className="mt-16 sm:mt-20 relative max-w-5xl mx-auto">
+        <div className="mt-8 relative max-w-6xl mx-auto">
           {/* Ambient Window Glow */}
           <div className="absolute -inset-1 bg-gradient-to-r from-[#8B51FF]/30 via-indigo-500/20 to-purple-600/30 rounded-3xl blur-2xl opacity-70 -z-10" />
 
