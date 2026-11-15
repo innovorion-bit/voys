@@ -27,13 +27,24 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070709] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between">
-      {/* Full Size Background Image (Tam Boyut) */}
+    <div
+      className="min-h-screen text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between"
+      style={{
+        backgroundImage: "url('/voys_backgraund.png')",
+        backgroundColor: '#070709',
+        backgroundSize: '100% 100%',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      {/* Fixed Full-Size Background Layer */}
       <div
-        className="fixed inset-0 w-full h-full pointer-events-none -z-10 bg-no-repeat bg-center"
+        className="fixed inset-0 w-full h-full pointer-events-none z-0"
         style={{
           backgroundImage: "url('/voys_backgraund.png')",
           backgroundSize: '100% 100%',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
         }}
       />
 
@@ -105,7 +116,7 @@ export const LandingPage = () => {
       )}
 
       {/* 2. Hero Section (Centered headline, subtitle and buttons) */}
-      <section className="relative flex-1 flex flex-col items-center justify-center pt-16 sm:pt-24 pb-24 sm:pb-36 px-6 sm:px-10 lg:px-16 max-w-5xl mx-auto text-center">
+      <section className="relative z-10 flex-1 flex flex-col items-center justify-center pt-16 sm:pt-24 pb-24 sm:pb-36 px-6 sm:px-10 lg:px-16 max-w-5xl mx-auto text-center">
         {/* Hero Title */}
         <h1 className="max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white mb-6 leading-[1.12] text-center">
           Birlikte Konuşmak ve Paylaşmak İçin{' '}
