@@ -33,8 +33,8 @@ export const LandingPage = () => {
       <div className="absolute top-[350px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#8B51FF]/10 blur-[140px] pointer-events-none -z-10" />
 
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80">
-        <div className="w-full px-6 sm:px-10 lg:px-16 h-20 flex items-center justify-between relative">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80 pt-4 sm:pt-6 pb-2">
+        <div className="w-full px-6 sm:px-10 lg:px-16 h-16 sm:h-20 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
             <div className="relative">
@@ -47,10 +47,13 @@ export const LandingPage = () => {
             </div>
           </Link>
 
-          {/* Nav Links - Menüler (True Center) */}
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-300 absolute left-1/2 -translate-x-1/2">
+          {/* Nav Links - Yeni Menüler (True Center) */}
+          <nav className="hidden md:flex items-center space-x-3.5 lg:space-x-6 xl:space-x-8 text-sm font-medium text-gray-300 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <a href="#discover" className="hover:text-white transition-colors">Keşfedin</a>
+            <a href="#security" className="hover:text-white transition-colors">Güvenlik</a>
             <a href="#features" className="hover:text-white transition-colors">Özellikler</a>
-            <a href="#voice-ai" className="hover:text-white transition-colors">Ses & AI</a>
+            <a href="#support" className="hover:text-white transition-colors">Destek</a>
+            <a href="#developers" className="hover:text-white transition-colors">Geliştiriciler</a>
             <a href="#performance" className="hover:text-white transition-colors">Performans</a>
             <button
               type="button"
@@ -59,7 +62,6 @@ export const LandingPage = () => {
             >
               İndir
             </button>
-            <a href="#faq" className="hover:text-white transition-colors">SSS</a>
           </nav>
 
           {/* Action Buttons - Giriş Yap Only (Far Right) */}
