@@ -114,10 +114,10 @@ export const LandingPage = () => {
       <div className="absolute top-[1600px] -right-40 w-[700px] h-[700px] bg-[#6366f1]/10 blur-[150px] pointer-events-none -z-10" />
 
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80 border-b border-white/[0.06]">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Brand */}
-          <Link to="/" className="flex items-center space-x-3 group">
+          <Link to="/" className="flex items-center group" title="Voys">
             <div className="relative">
               <img
                 src="/voys_logo.png"
@@ -126,22 +126,7 @@ export const LandingPage = () => {
               />
               <div className="absolute -inset-1 bg-[#8B51FF]/30 blur-sm rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-xl tracking-tight text-white">Voys</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#8B51FF]/20 text-[#a36eff] border border-[#8B51FF]/30">
-                v1.0.0
-              </span>
-            </div>
           </Link>
-
-          {/* Nav Links (Desktop) */}
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-300">
-            <a href="#features" className="hover:text-white transition-colors">Özellikler</a>
-            <a href="#voice-ai" className="hover:text-white transition-colors">Ses & AI</a>
-            <a href="#performance" className="hover:text-white transition-colors">Performans</a>
-            <a href="#download" className="hover:text-white transition-colors">İndir</a>
-            <a href="#faq" className="hover:text-white transition-colors">SSS</a>
-          </nav>
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-3">
@@ -193,12 +178,12 @@ export const LandingPage = () => {
         {/* Pill Badge */}
         <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/30 text-[#c299ff] text-xs font-semibold mb-6 shadow-sm">
           <Sparkles size={13} className="text-[#a36eff] animate-pulse" />
-          <span>Voys Masaüstü v1.0.0 Yayında — Ücretsiz ve Hızlı</span>
+          <span>Voys v1.0.0 Yayında</span>
         </div>
 
         {/* Hero Title */}
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.1]">
-          Birlikte Konuşmak, Oynamak ve Paylaşmak İçin{' '}
+          Birlikte Konuşmak ve Paylaşmak İçin{' '}
           <span className="bg-gradient-to-r from-[#a36eff] via-[#c084fc] to-[#e879f9] bg-clip-text text-transparent">
             Yepyeni Bir Boyut.
           </span>
@@ -206,7 +191,7 @@ export const LandingPage = () => {
 
         {/* Hero Subtitle */}
         <p className="max-w-2xl mx-auto text-base sm:text-lg text-gray-300 font-normal leading-relaxed mb-10">
-          Düşük gecikmeli WebRTC ses kanalları, yapay zeka destekli arka plan gürültü filtresi, 
+          Düşük gecikmeli ses kanalları, yapay zeka destekli arka plan gürültü filtresi,
           60 FPS ekran paylaşımı ve kesintisiz grup sohbetleri. Arkadaşların ve topluluğun için özel alanın.
         </p>
 
@@ -216,13 +201,10 @@ export const LandingPage = () => {
           <button
             type="button"
             onClick={() => handleDownloadClick(directExeUrl)}
-            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#8B51FF] via-[#8144ff] to-[#6d28d9] hover:from-[#9b66ff] hover:to-[#7c3aed] text-white font-bold text-base shadow-xl shadow-[#8B51FF]/30 hover:shadow-[#8B51FF]/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-3 cursor-pointer group"
+            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#8B51FF] via-[#8144ff] to-[#6d28d9] hover:from-[#9b66ff] hover:to-[#7c3aed] text-white font-bold text-base shadow-xl shadow-[#8B51FF]/30 hover:shadow-[#8B51FF]/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 cursor-pointer group"
           >
             <Download size={19} className="group-hover:-translate-y-0.5 transition-transform" />
-            <div className="text-left">
-              <div className="leading-tight">Windows için İndir</div>
-              <div className="text-[11px] font-normal text-purple-200/80">64-bit .exe • 3.2 MB</div>
-            </div>
+            <span>Windows için İndir</span>
           </button>
 
           {/* Open in Browser CTA */}
@@ -241,7 +223,7 @@ export const LandingPage = () => {
         <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400 font-medium">
           <div className="flex items-center space-x-1.5">
             <CheckCircle2 size={14} className="text-emerald-400" />
-            <span>Windows 10 / 11 64-Bit Uyumlu</span>
+            <span>Windows 10 / 11 Uyumlu</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <CheckCircle2 size={14} className="text-emerald-400" />
@@ -249,7 +231,7 @@ export const LandingPage = () => {
           </div>
           <div className="flex items-center space-x-1.5">
             <CheckCircle2 size={14} className="text-emerald-400" />
-            <span>Hafif Kurulum (3.2 MB)</span>
+            <span>Hızlı Kurulum (3.2 MB)</span>
           </div>
         </div>
 
@@ -759,7 +741,7 @@ export const LandingPage = () => {
             Voys'u Hemen İndirin.
           </h2>
           <p className="max-w-xl mx-auto text-sm sm:text-base text-gray-300 mb-8 leading-relaxed">
-            Windows 10 ve 11 için optimize edilmiş en son kurulum paketini indirin, 
+            Windows 10 ve 11 için optimize edilmiş en son kurulum paketini indirin,
             arkadaşlarınızla anında sesli ve yazılı iletişimin tadını çıkarın.
           </p>
 
