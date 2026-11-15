@@ -174,36 +174,35 @@ export const LandingPage = () => {
       )}
 
       {/* 2. Hero Section */}
-      <section className="relative pt-16 sm:pt-24 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto">
+      <section className="relative pt-16 sm:pt-24 pb-20 sm:pb-28 px-4 sm:px-6 lg:px-8 text-center max-w-6xl mx-auto">
         {/* Pill Badge */}
         <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/30 text-[#c299ff] text-xs font-semibold mb-6 shadow-sm">
-          <Sparkles size={13} className="text-[#a36eff] animate-pulse" />
           <span>Voys v1.0.0 Yayında</span>
         </div>
 
         {/* Hero Title */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.1]">
+        <h1 className="max-w-4xl lg:max-w-5xl mx-auto text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white mb-6 leading-[1.12]">
           Birlikte Konuşmak ve Paylaşmak İçin{' '}
-          <span className="bg-gradient-to-r from-[#a36eff] via-[#c084fc] to-[#e879f9] bg-clip-text text-transparent">
+          <span className="inline-block bg-gradient-to-r from-[#a36eff] via-[#c084fc] to-[#e879f9] bg-clip-text text-transparent">
             Yepyeni Bir Boyut.
           </span>
         </h1>
 
         {/* Hero Subtitle */}
-        <p className="max-w-2xl mx-auto text-base sm:text-lg text-gray-300 font-normal leading-relaxed mb-10">
+        <p className="max-w-3xl mx-auto text-base sm:text-lg md:text-xl text-gray-300 font-normal leading-relaxed mb-10">
           Düşük gecikmeli ses kanalları, yapay zeka destekli arka plan gürültü filtresi,
           60 FPS ekran paylaşımı ve kesintisiz grup sohbetleri. Arkadaşların ve topluluğun için özel alanın.
         </p>
 
-        {/* Hero CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-14">
+        {/* Hero CTA Buttons - Identical Dimensions & No Text Wrap */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 max-w-2xl mx-auto mb-14">
           {/* Main Direct Download CTA */}
           <button
             type="button"
             onClick={() => handleDownloadClick(directExeUrl)}
-            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#8B51FF] via-[#8144ff] to-[#6d28d9] hover:from-[#9b66ff] hover:to-[#7c3aed] text-white font-bold text-base shadow-xl shadow-[#8B51FF]/30 hover:shadow-[#8B51FF]/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 cursor-pointer group"
+            className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-gradient-to-r from-[#8B51FF] via-[#8144ff] to-[#6d28d9] hover:from-[#9b66ff] hover:to-[#7c3aed] text-white font-bold text-sm sm:text-base shadow-xl shadow-[#8B51FF]/30 hover:shadow-[#8B51FF]/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 cursor-pointer group whitespace-nowrap"
           >
-            <Download size={19} className="group-hover:-translate-y-0.5 transition-transform" />
+            <Download size={19} className="group-hover:-translate-y-0.5 transition-transform shrink-0" />
             <span>Windows için İndir</span>
           </button>
 
@@ -211,11 +210,11 @@ export const LandingPage = () => {
           <button
             type="button"
             onClick={() => navigate(isAuthenticated ? '/channel/home' : '/login')}
-            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-[#121217] hover:bg-[#1a1a22] border border-white/10 hover:border-white/20 text-white font-bold text-base shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-[#121217] hover:bg-[#1a1a22] border border-white/10 hover:border-white/20 text-white font-bold text-sm sm:text-base shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
           >
-            <Monitor size={18} className="text-gray-400" />
+            <Monitor size={18} className="text-gray-400 shrink-0" />
             <span>Voys'u Tarayıcında Aç</span>
-            <ArrowRight size={16} className="text-gray-400 ml-1" />
+            <ArrowRight size={16} className="text-gray-400 ml-0.5 shrink-0" />
           </button>
         </div>
 
