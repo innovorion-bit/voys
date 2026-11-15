@@ -3,29 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Download,
   Monitor,
-  Mic,
-  Volume2,
   Users,
-  MessageSquare,
-  Radio,
-  Sparkles,
-  Zap,
-  Shield,
   ArrowRight,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Play,
-  Headphones,
-  Check,
-  Flame,
-  Layers,
-  Cpu,
   Smile,
-  Bell,
-  Trash2,
-  Share2,
   Phone,
   MoreVertical,
   Search,
@@ -41,38 +22,14 @@ import {
   FileText,
   CheckCheck
 } from 'lucide-react';
-
-const GithubIcon = ({ size = 16, className = '' }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-    <path d="M9 18c-4.51 2-5-2-7-2" />
-  </svg>
-);
 import { useAuth } from '../context/useAuth';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [openFaq, setOpenFaq] = useState(null);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  const toggleFaq = (idx) => {
-    setOpenFaq(openFaq === idx ? null : idx);
-  };
-
   const directExeUrl = 'https://github.com/innovorion-bit/voys/releases/download/v1.0.0/Voys_1.0.0_x64-setup.exe';
-  const directMsiUrl = 'https://github.com/innovorion-bit/voys/releases/download/v1.0.0/Voys_1.0.0_x64_en-US.msi';
-  const githubReleaseUrl = 'https://github.com/innovorion-bit/voys/releases/tag/v1.0.0';
 
   const handleDownloadClick = (url) => {
     setDownloadSuccess(true);
@@ -85,35 +42,11 @@ export const LandingPage = () => {
     document.body.removeChild(link);
   };
 
-  const faqs = [
-    {
-      q: 'Voys tamamen ücretsiz mi?',
-      a: 'Evet! Voys tamamen ücretsiz ve reklamsızdır. Ses kanalları, grup sohbetleri, ekran paylaşımı ve yapay zeka destekli gürültü engelleme dahil tüm özellikler herhangi bir kısıtlama olmadan kullanılabilir.'
-    },
-    {
-      q: 'Web sürümü ile masaüstü uygulaması arasındaki fark nedir?',
-      a: 'Web sürümü indirme gerektirmeden modern tarayıcılarda anında çalışır. Windows masaüstü uygulaması ise oyun oynarken bas-konuş (Push-to-Talk) kısayollarını sistem genelinde dinleme, oynadığınız oyunu otomatik algılama ve arka planda minimum RAM tüketimi avantajı sağlar.'
-    },
-    {
-      q: 'Masaüstü uygulaması neden bu kadar hızlı ve hafif?',
-      a: 'Voys, Electron yerine modern Rust tabanlı Tauri mimarisi kullanır. Bu sayede Discord gibi 300-500 MB RAM harcamak yerine yalnızca 60-80 MB bellek kullanır ve saniyeler içinde başlatılır.'
-    },
-    {
-      q: 'RNNoise Yapay Zeka Gürültü Engelleme nasıl çalışır?',
-      a: 'Ses iletimi sırasında mikrofonunuzdan gelen ses gerçek zamanlı olarak RNNoise nöral ağ filtresinden geçirilir. Klavye mekanik sesleri, arka plandaki fan gürültüleri ve ortam yankıları sıfıra indirilerek yalnızca berrak insan sesi iletilir.'
-    },
-    {
-      q: 'Hangi işletim sistemlerini destekliyor?',
-      a: 'Masaüstü uygulamamız şu anda Windows 10 ve Windows 11 (64-bit) sistemlerle tam uyumludur. Web sürümümüz ise Windows, macOS, Linux ve tüm mobil tarayıcılardan doğrudan erişilebilir.'
-    }
-  ];
-
   return (
     <div className="min-h-screen bg-[#070709] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative">
       {/* Dynamic Background Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[550px] bg-gradient-to-b from-[#8B51FF]/15 via-[#6366f1]/5 to-transparent blur-[120px] pointer-events-none -z-10" />
-      <div className="absolute top-[800px] -left-40 w-[600px] h-[600px] bg-[#8B51FF]/10 blur-[140px] pointer-events-none -z-10" />
-      <div className="absolute top-[1600px] -right-40 w-[700px] h-[700px] bg-[#6366f1]/10 blur-[150px] pointer-events-none -z-10" />
+      <div className="absolute top-[400px] -left-40 w-[600px] h-[600px] bg-[#8B51FF]/10 blur-[140px] pointer-events-none -z-10" />
 
       {/* 1. Header / Navbar */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80">
@@ -178,7 +111,7 @@ export const LandingPage = () => {
       <section className="relative pt-12 sm:pt-20 pb-20 sm:pb-28 px-6 sm:px-10 lg:px-16 w-full text-left">
         {/* Hero Title (Left-aligned) */}
         <h1 className="max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-[72px] font-extrabold tracking-tight text-white mb-6 leading-[1.1] text-left">
-          Birlikte Konuşmak ve Paylaşmak İçin{' '}
+          Paylaşmak İçin{' '}
           <span className="inline-block bg-gradient-to-r from-[#a36eff] via-[#c084fc] to-[#e879f9] bg-clip-text text-transparent">
             Yepyeni Bir Boyut.
           </span>
@@ -704,295 +637,6 @@ export const LandingPage = () => {
           </div>
         </div>
       </section>
-
-      {/* 4. Core Features Showcase Grid */}
-      <section id="features" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-bold tracking-widest text-[#a36eff] uppercase mb-3">
-            Gelişmiş Özellikler
-          </h2>
-          <h3 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-5">
-            İletişiminizi Güçlendiren Her Şey Tek Bir Yerde.
-          </h3>
-          <p className="text-gray-400 text-base sm:text-lg">
-            Gereksiz karmaşıklıktan uzak, performansa ve berrak sese odaklanmış modern iletişim platformu.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Card 1 */}
-          <div className="p-8 rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] hover:border-[#8B51FF]/40 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-[#8B51FF]/20 border border-[#8B51FF]/40 flex items-center justify-center text-[#a36eff] mb-6 group-hover:scale-110 transition-transform">
-              <Mic size={24} />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-3">RNNoise AI Gürültü Engelleme</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Mekanik klavye tıklamaları, kasa fanları ve arka plan gürültüsü WebAssembly nöral ağ filtresi ile anında temizlenir.
-            </p>
-          </div>
-
-          {/* Card 2 */}
-          <div className="p-8 rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] hover:border-[#8B51FF]/40 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
-              <Zap size={24} />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-3">Ultra Düşük Gecikmeli P2P</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              WebRTC teknolojisi sayesinde ses paketleri doğrudan peer-to-peer iletilir; gecikme sıfıra yakın seviyede kalır.
-            </p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="p-8 rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] hover:border-[#8B51FF]/40 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
-              <Share2 size={24} />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-3">60 FPS Ekran & Ses Paylaşımı</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Oyunlarınızı veya masaüstünüzü sistem sesiyle birlikte yüksek kare hızında arkadaşlarınızla canlı paylaşın.
-            </p>
-          </div>
-
-          {/* Card 4 */}
-          <div className="p-8 rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] hover:border-[#8B51FF]/40 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-6 group-hover:scale-110 transition-transform">
-              <Radio size={24} />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-3">Sistem Geneli Bas-Konuş</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Masaüstü uygulaması ile arka plandayken veya tam ekran oyun oynarken bile tanımladığınız tuşla rahatça konuşun.
-            </p>
-          </div>
-
-          {/* Card 5 */}
-          <div className="p-8 rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] hover:border-[#8B51FF]/40 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
-              <MessageSquare size={24} />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-3">Zengin Sohbet & Okundu Tikleri</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Tek tık (iletildi), mor çift tık (okundu) bildirimleri, zengin emoji seçici, dosya yükleme ve mesaj silme özellikleri.
-            </p>
-          </div>
-
-          {/* Card 6 */}
-          <div className="p-8 rounded-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] hover:border-[#8B51FF]/40 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mb-6 group-hover:scale-110 transition-transform">
-              <Cpu size={24} />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-3">Ultra Hafif Rust Motoru</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Electron hantallığına son. Tauri ile inşa edilmiş Voys, yalnızca 60-80 MB RAM harcar ve bilgisayarınızı yormaz.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Performance Comparison Section */}
-      <section id="performance" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center mb-14">
-          <h2 className="text-xs font-bold tracking-widest text-[#a36eff] uppercase mb-3">
-            Hafiflik & Performans
-          </h2>
-          <h3 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Neden Voys Tercih Edilmeli?
-          </h3>
-        </div>
-
-        <div className="bg-[#0e0e13] border border-white/[0.1] rounded-2xl overflow-hidden shadow-2xl">
-          <div className="grid grid-cols-3 bg-[#14141c] p-4 sm:p-5 border-b border-white/[0.08] text-xs sm:text-sm font-bold text-gray-300">
-            <div>Özellik</div>
-            <div className="text-center text-[#a36eff] font-extrabold">Voys Masaüstü</div>
-            <div className="text-center text-gray-400">Geleneksel Uygulamalar (Discord vb.)</div>
-          </div>
-
-          <div className="divide-y divide-white/[0.06] text-xs sm:text-sm">
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-medium text-gray-300">RAM (Bellek) Tüketimi</span>
-              <span className="text-center font-bold text-emerald-400">~60 - 80 MB ⚡</span>
-              <span className="text-center text-rose-400/90 font-medium">350 - 650 MB</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-medium text-gray-300">Kurulum Dosya Boyutu</span>
-              <span className="text-center font-bold text-emerald-400">3.2 MB (Hızlı Kurulum)</span>
-              <span className="text-center text-gray-400 font-medium">90 - 150 MB</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-medium text-gray-300">AI Gürültü Engelleme</span>
-              <span className="text-center font-bold text-emerald-400">Yerleşik RNNoise AI</span>
-              <span className="text-center text-gray-300 font-medium">Üçüncü Parti Eklenti</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-medium text-gray-300">Oyun Algılama (Rich Presence)</span>
-              <span className="text-center font-bold text-emerald-400">Var (Otomatik)</span>
-              <span className="text-center text-gray-300 font-medium">Var</span>
-            </div>
-
-            <div className="grid grid-cols-3 p-4 sm:p-5 items-center">
-              <span className="font-medium text-gray-300">Tarayıcıda Çalışma Desteği</span>
-              <span className="text-center font-bold text-emerald-400">Tek Tıkla Tarayıcıda Aç</span>
-              <span className="text-center text-gray-300 font-medium">Sınırlı Web İstemcisi</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Dedicated Download Center Section */}
-      <section id="download" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto border-t border-white/[0.06] text-center">
-        <div className="relative p-8 sm:p-14 rounded-3xl bg-gradient-to-b from-[#141224] to-[#0c0a14] border border-[#8B51FF]/40 shadow-2xl overflow-hidden">
-          {/* Ambient Glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-[#8B51FF]/20 rounded-full blur-[90px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/20 rounded-full blur-[90px] pointer-events-none" />
-
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
-            Voys'u Hemen İndirin.
-          </h2>
-          <p className="max-w-xl mx-auto text-sm sm:text-base text-gray-300 mb-8 leading-relaxed">
-            Windows 10 ve 11 için optimize edilmiş en son kurulum paketini indirin,
-            arkadaşlarınızla anında sesli ve yazılı iletişimin tadını çıkarın.
-          </p>
-
-          {/* Download Action Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto mb-8">
-            {/* Primary EXE Card */}
-            <div className="p-6 rounded-2xl bg-[#19162e] border border-[#8B51FF]/50 text-left hover:border-[#a36eff] transition-all flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#8B51FF]/30 text-[#c299ff]">
-                    Önerilen
-                  </span>
-                  <span className="text-xs text-gray-400 font-mono">v1.0.0</span>
-                </div>
-                <h4 className="text-lg font-bold text-white mb-1">Windows (.exe Kurulumu)</h4>
-                <p className="text-xs text-gray-400 mb-5">Standart kurulum sihirbazı. 64-bit Windows 10 & 11.</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleDownloadClick(directExeUrl)}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#8B51FF] to-[#7033ea] hover:from-[#9b66ff] hover:to-[#7e40f5] text-white font-bold text-sm shadow-lg shadow-[#8B51FF]/25 flex items-center justify-center space-x-2 transition cursor-pointer"
-              >
-                <Download size={16} />
-                <span>Hemen İndir (.exe)</span>
-              </button>
-            </div>
-
-            {/* MSI Card */}
-            <div className="p-6 rounded-2xl bg-[#12111d] border border-white/[0.08] text-left hover:border-white/20 transition-all flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white/[0.08] text-gray-300">
-                    Alternatif
-                  </span>
-                  <span className="text-xs text-gray-400 font-mono">v1.0.0</span>
-                </div>
-                <h4 className="text-lg font-bold text-white mb-1">Windows MSI Paketi</h4>
-                <p className="text-xs text-gray-400 mb-5">Kurumsal ve doğrudan Windows Installer (.msi) paketi.</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleDownloadClick(directMsiUrl)}
-                className="w-full py-3 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white font-bold text-sm border border-white/10 flex items-center justify-center space-x-2 transition cursor-pointer"
-              >
-                <Download size={16} />
-                <span>MSI İndir (.msi)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* GitHub Source & Releases link */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-400">
-            <span>Kurulum yapmak istemiyor musunuz?</span>
-            <Link
-              to={isAuthenticated ? '/channel/home' : '/login'}
-              className="text-[#a36eff] hover:underline font-semibold flex items-center space-x-1"
-            >
-              <span>Voys Web Sürümünü Kullanın</span>
-              <ArrowRight size={13} />
-            </Link>
-            <span className="text-gray-600">•</span>
-            <a
-              href={githubReleaseUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white flex items-center space-x-1 hover:underline"
-            >
-              <GithubIcon size={13} />
-              <span>GitHub Releases</span>
-              <ExternalLink size={11} />
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. FAQ Section */}
-      <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto border-t border-white/[0.06]">
-        <div className="text-center mb-14">
-          <h2 className="text-xs font-bold tracking-widest text-[#a36eff] uppercase mb-3">
-            Merak Edilenler
-          </h2>
-          <h3 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Sıkça Sorulan Sorular
-          </h3>
-        </div>
-
-        <div className="space-y-3">
-          {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl bg-white/[0.02] border border-white/[0.08] overflow-hidden transition-colors"
-            >
-              <button
-                type="button"
-                onClick={() => toggleFaq(idx)}
-                className="w-full p-5 text-left font-semibold text-gray-200 flex items-center justify-between hover:text-white transition cursor-pointer"
-              >
-                <span className="text-sm sm:text-base">{faq.q}</span>
-                {openFaq === idx ? (
-                  <ChevronUp size={18} className="text-[#a36eff] flex-shrink-0 ml-3" />
-                ) : (
-                  <ChevronDown size={18} className="text-gray-400 flex-shrink-0 ml-3" />
-                )}
-              </button>
-              {openFaq === idx && (
-                <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-gray-400 leading-relaxed border-t border-white/[0.04]">
-                  {faq.a}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 8. Footer */}
-      <footer className="border-t border-white/[0.08] bg-[#050507] py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center space-x-3">
-            <img src="/voys_logo.png" alt="Voys Logo" className="w-6 h-6 object-contain" />
-            <span className="font-extrabold text-base text-white">Voys</span>
-            <span className="text-xs text-gray-400">© 2026 Voys Inc. Tüm hakları saklıdır.</span>
-          </div>
-
-          <div className="flex items-center space-x-6 text-xs text-gray-400 font-medium">
-            <a href="#features" className="hover:text-white transition">Özellikler</a>
-            <a href="#download" className="hover:text-white transition">İndir</a>
-            <Link to="/login" className="hover:text-white transition">Giriş Yap</Link>
-            <a
-              href="https://github.com/innovorion-bit/voys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-white transition flex items-center space-x-1"
-            >
-              <GithubIcon size={14} />
-              <span>GitHub</span>
-            </a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
