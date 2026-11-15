@@ -28,12 +28,17 @@ export const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#070709] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between">
-      {/* Dynamic Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[550px] bg-gradient-to-b from-[#8B51FF]/15 via-[#6366f1]/5 to-transparent blur-[120px] pointer-events-none -z-10" />
-      <div className="absolute top-[350px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#8B51FF]/10 blur-[140px] pointer-events-none -z-10" />
+      {/* Full Size Background Image (Tam Boyut) */}
+      <div
+        className="fixed inset-0 w-full h-full pointer-events-none -z-10 bg-no-repeat bg-center"
+        style={{
+          backgroundImage: "url('/voys_backgraund.png')",
+          backgroundSize: '100% 100%',
+        }}
+      />
 
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/80 pt-4 sm:pt-6 pb-2">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/50 pt-4 sm:pt-6 pb-2">
         <div className="w-full px-6 sm:px-10 lg:px-16 h-16 sm:h-20 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
