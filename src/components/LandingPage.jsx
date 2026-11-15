@@ -37,7 +37,9 @@ import {
   X,
   SlidersHorizontal,
   ArrowLeft,
-  Crown
+  Crown,
+  FileText,
+  CheckCheck
 } from 'lucide-react';
 
 const GithubIcon = ({ size = 16, className = '' }) => (
@@ -317,26 +319,88 @@ export const LandingPage = () => {
                     </span>
                   </div>
 
-                  {/* Active Chat Item: Game Fedaileri */}
-                  <div className="p-2.5 rounded-xl bg-white/[0.05] border border-[#8B51FF]/40 flex items-center space-x-3 cursor-pointer shadow-lg shadow-black/20">
-                    <div className="relative shrink-0">
-                      <img
-                        src="/mock/avatar_fedai.png"
-                        alt="Game Fedaileri"
-                        className="w-10 h-10 rounded-full object-cover border border-purple-500/30"
-                      />
+                  {/* Chat List - Both Groups and Direct Chats (DMs) */}
+                  <div className="space-y-1.5">
+                    {/* Active Group Chat: Game Fedaileri */}
+                    <div className="p-2.5 rounded-xl bg-white/[0.06] border border-[#8B51FF]/40 flex items-center space-x-3 cursor-pointer shadow-lg shadow-black/20">
+                      <div className="relative shrink-0">
+                        <img
+                          src="/mock/avatar_fedai.png"
+                          alt="Game Fedaileri"
+                          className="w-10 h-10 rounded-full object-cover border border-purple-500/40"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-white truncate">Game Fedaileri</span>
+                          <span className="text-[10px] text-gray-500 font-mono shrink-0 ml-1">21:15</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate">
+                          <span className="text-gray-300 font-medium">Emirhan:</span> Akşam turnuva maçımız var 🔥
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-bold text-white truncate">Game Fedaileri</span>
-                        <div className="text-[10px] text-gray-500 text-right leading-none shrink-0 ml-1">
-                          <div>22:57</div>
-                          <div className="text-[9px] text-gray-600 mt-0.5">14.11.2026</div>
+
+                    {/* Direct Message (DM): Emirhan */}
+                    <div className="p-2.5 rounded-xl hover:bg-white/[0.03] border border-transparent hover:border-white/[0.05] flex items-center space-x-3 cursor-pointer transition">
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-inner">
+                          EM
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0e0e12]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-semibold text-gray-200 truncate">Emirhan</span>
+                          <span className="text-[10px] text-gray-500 font-mono shrink-0 ml-1">20:42</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate flex items-center gap-1">
+                          <CheckCheck size={13} className="text-[#a36eff] shrink-0" />
+                          <span>Ses kalitesi gerçekten çok netti 👌</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Community Group Chat: Voys Topluluk */}
+                    <div className="p-2.5 rounded-xl hover:bg-white/[0.03] border border-transparent hover:border-white/[0.05] flex items-center space-x-3 cursor-pointer transition">
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-[#8B51FF]/20 border border-[#8B51FF]/40 flex items-center justify-center p-1.5 shadow-inner">
+                          <img src="/voys_logo.png" alt="Voys" className="w-full h-full object-contain" />
                         </div>
                       </div>
-                      <p className="text-[11px] text-gray-400 truncate">
-                        <span className="text-gray-300 font-medium">Trust:</span> ben de çıktım aga...
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-semibold text-gray-200 truncate">Voys Duyurular & Sohbet</span>
+                          <span className="text-[10px] text-gray-500 font-mono shrink-0 ml-1">18:30</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate">
+                          <span className="text-gray-300 font-medium">Rain:</span> Yeni gürültü filtresi yayında!
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Direct Message (DM): Udinese */}
+                    <div className="p-2.5 rounded-xl hover:bg-white/[0.03] border border-transparent hover:border-white/[0.05] flex items-center space-x-3 cursor-pointer transition">
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-indigo-800 flex items-center justify-center font-bold text-white text-xs shadow-inner">
+                          UD
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0e0e12]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-semibold text-gray-200 truncate">Udinese</span>
+                          <span className="text-[10px] text-gray-500 font-mono shrink-0 ml-1">Dün</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] text-gray-400 truncate">
+                            Yarın ekran paylaşımıyla yayını açalım.
+                          </p>
+                          <span className="text-[10px] bg-[#8B51FF] text-white font-bold px-1.5 py-0.2 rounded-full shrink-0 ml-1">
+                            1
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -376,7 +440,10 @@ export const LandingPage = () => {
                     />
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-white leading-tight truncate">Game Fedaileri</div>
-                      <div className="text-[10px] text-gray-400 leading-tight">6 üye, 1 çevrimiçi</div>
+                      <div className="text-[10px] text-gray-400 leading-tight flex items-center space-x-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                        <span>8 üye, 4 çevrimiçi</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 shrink-0">
@@ -397,64 +464,86 @@ export const LandingPage = () => {
                   </div>
                 </div>
 
-                {/* Messages Stream */}
-                <div className="p-3.5 sm:p-4 space-y-3 text-xs overflow-y-auto max-h-[380px]">
-                  {/* Msg 1: Lyring with link */}
+                {/* Messages Stream - Rich Demo Turkish Conversations */}
+                <div className="p-3.5 sm:p-4 space-y-3.5 text-xs overflow-y-auto max-h-[390px]">
+                  {/* Msg 1: Rain */}
                   <div className="space-y-0.5">
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="font-bold text-[#b682ff]">Lyring</span>
-                      <span className="text-[10px] text-gray-500 font-mono">01:43</span>
+                      <span className="font-bold text-[#b682ff]">Rain</span>
+                      <span className="text-[10px] text-gray-500 font-mono">20:55</span>
                     </div>
-                    <div className="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 break-all leading-relaxed flex items-start gap-1">
-                      <span>https://studio.tripo3d.ai/3d-model/mass-of-screaming-humanoid-heads-and-bodies-intertwined-stone-marble-41f36821-8d00-4ffa-9451-9eeda9029eae</span>
-                      <ExternalLink size={11} className="inline shrink-0 mt-0.5" />
-                    </div>
+                    <p className="text-gray-200 text-xs leading-relaxed">
+                      Beyler bu akşam turnuva maçı için toplanıyoruz değil mi? Lobi hazır, ses kanalına geçelim 🎮
+                    </p>
                   </div>
 
-                  {/* Msg 2: Lyring with link */}
+                  {/* Msg 2: Udinese */}
                   <div className="space-y-0.5">
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="font-bold text-[#b682ff]">Lyring</span>
-                      <span className="text-[10px] text-gray-500 font-mono">01:47</span>
+                      <span className="font-bold text-indigo-400">Udinese</span>
+                      <span className="text-[10px] text-gray-500 font-mono">20:58</span>
                     </div>
-                    <div className="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 break-all leading-relaxed flex items-start gap-1">
-                      <span>https://www.reddit.com/r/consoles/comments/1hpj1zw/ps5_custom_design_tlou/?tl=tr</span>
-                      <ExternalLink size={11} className="inline shrink-0 mt-0.5" />
-                    </div>
+                    <p className="text-gray-200 text-xs leading-relaxed">
+                      Geliyorum 5 dakikaya! Bu arada Voys'un arka plan gürültü filtresi aşırı iyi çalışıyor, mekanik klavye sesim geliyor mu hiç?
+                    </p>
                   </div>
 
-                  {/* Msg 3: Yedx */}
+                  {/* Msg 3: Emirhan */}
                   <div className="space-y-0.5">
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="font-bold text-[#84cc16]">Yedx</span>
-                      <span className="text-[10px] text-gray-500 font-mono">01:55</span>
+                      <span className="font-bold text-emerald-400">Emirhan</span>
+                      <span className="text-[10px] text-gray-500 font-mono">21:02</span>
                     </div>
-                    <p className="text-gray-200 text-xs">emoo</p>
+                    <p className="text-gray-200 text-xs leading-relaxed">
+                      Sıfır ses kanka, RNNoise arkadaki tüm fan ve tuş seslerini kesmiş, sesin stüdyo mikrofonu gibi tertemiz geliyor 👌
+                    </p>
                   </div>
 
                   {/* Date Separator */}
                   <div className="flex items-center my-2.5">
                     <div className="flex-1 h-px bg-white/[0.08]" />
-                    <span className="px-3 text-[10px] text-gray-500 font-medium">14 Kasım 2026 Cumartesi</span>
+                    <span className="px-3 text-[10px] text-gray-500 font-medium">Bugün</span>
                     <div className="flex-1 h-px bg-white/[0.08]" />
                   </div>
 
-                  {/* Msg 4: Lyring */}
-                  <div className="space-y-0.5">
+                  {/* Msg 4: Lyring (You / Sen) + File Attachment */}
+                  <div className="space-y-1.5">
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="font-bold text-[#b682ff]">Lyring</span>
-                      <span className="text-[10px] text-gray-500 font-mono">01:39</span>
+                      <span className="font-bold text-[#c084fc]">Lyring</span>
+                      <span className="text-[9.5px] bg-[#8B51FF]/30 border border-[#8B51FF]/40 text-purple-200 px-1 rounded font-medium">
+                        Sen
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-mono">21:08</span>
                     </div>
-                    <p className="text-gray-200 text-xs">sa</p>
+                    <p className="text-gray-200 text-xs leading-relaxed">
+                      P2P WebRTC mimarisi sayesinde ses gecikmesi neredeyse sıfır. Akşamki Mirage taktik şemasını da şuraya bırakıyorum, herkes baksın:
+                    </p>
+                    {/* Modern File Attachment Card */}
+                    <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 hover:border-[#8B51FF]/40 transition max-w-sm flex items-center justify-between shadow-sm">
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-[#8B51FF]/20 border border-[#8B51FF]/30 flex items-center justify-center text-[#a36eff] shrink-0">
+                          <FileText size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white truncate">CS2_Mirage_Taktik_Plani.png</div>
+                          <div className="text-[10px] text-gray-400">4.2 MB • Görsel Dosyası</div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-[#a36eff] hover:underline font-semibold cursor-pointer shrink-0 ml-2">
+                        İndir
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Msg 5: Trust */}
+                  {/* Msg 5: Mafik */}
                   <div className="space-y-0.5">
                     <div className="flex items-baseline space-x-1.5">
-                      <span className="font-bold text-[#a3e635]">Trust</span>
-                      <span className="text-[10px] text-gray-500 font-mono">22:57</span>
+                      <span className="font-bold text-amber-400">Mafik</span>
+                      <span className="text-[10px] text-gray-500 font-mono">21:12</span>
                     </div>
-                    <p className="text-gray-200 text-xs">ben de çıktım agalar görüşürüz</p>
+                    <p className="text-gray-200 text-xs leading-relaxed">
+                      Taktik şeması çok iyi olmuş, herkes toplandıysa sesli odaya geçelim başlayalım 🚀
+                    </p>
                   </div>
                 </div>
 
@@ -467,8 +556,8 @@ export const LandingPage = () => {
                     <Plus size={16} />
                   </button>
                   <div className="flex-1 bg-[#14141a] border border-white/[0.08] rounded-xl px-3.5 py-2 flex items-center justify-between text-xs">
-                    <span className="text-gray-500 select-none">Mesaj gönder...</span>
-                    <div className="flex items-center space-x-2">
+                    <span className="text-gray-500 select-none truncate">Game Fedaileri grubuna mesaj gönder...</span>
+                    <div className="flex items-center space-x-2 ml-2">
                       <Smile size={16} className="text-amber-400 hover:scale-110 cursor-pointer transition shrink-0" />
                       <Send size={15} className="text-gray-400 hover:text-white cursor-pointer transition shrink-0" />
                     </div>
@@ -481,7 +570,7 @@ export const LandingPage = () => {
                 {/* Header */}
                 <div className="p-3.5 pb-2 border-b border-white/[0.06] flex items-center justify-between text-xs">
                   <span className="font-bold text-gray-300 uppercase tracking-wider text-[11px]">
-                    GRUP ÜYELERİ
+                    GRUP ÜYELERİ (8)
                   </span>
                   <button
                     type="button"
@@ -492,99 +581,143 @@ export const LandingPage = () => {
                   </button>
                 </div>
 
-                {/* Member List */}
-                <div className="p-3 space-y-2.5 text-xs overflow-y-auto">
-                  {/* Lyring (Sen, Crown) */}
-                  <div className="flex items-center space-x-2.5">
-                    <div className="relative shrink-0">
-                      <img
-                        src="/mock/avatar_lyring.png"
-                        alt="Lyring"
-                        className="w-8 h-8 rounded-full object-cover border border-white/10"
-                      />
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#09090c]" />
+                {/* Member List with Status Sections */}
+                <div className="p-3 space-y-3 text-xs overflow-y-auto">
+                  {/* Category: ÇEVRİMİÇİ */}
+                  <div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Çevrimiçi — 4
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center space-x-1">
-                        <span className="font-bold text-white text-xs truncate">Lyring</span>
-                        <Crown size={12} className="text-amber-400 shrink-0" />
-                        <span className="text-[9.5px] bg-[#8B51FF]/30 border border-[#8B51FF]/40 text-purple-200 px-1 py-0.2 rounded font-medium">
-                          Sen
-                        </span>
+                    <div className="space-y-2">
+                      {/* Lyring (Sen, Crown) */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <img
+                            src="/mock/avatar_lyring.png"
+                            alt="Lyring"
+                            className="w-8 h-8 rounded-full object-cover border border-white/10"
+                          />
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-1">
+                            <span className="font-bold text-white text-xs truncate">Lyring</span>
+                            <Crown size={12} className="text-amber-400 shrink-0" />
+                            <span className="text-[9px] bg-[#8B51FF]/30 border border-[#8B51FF]/40 text-purple-200 px-1 rounded font-medium">
+                              Sen
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-emerald-400">Çevrimiçi</div>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-400">Çevrimiçi</div>
+
+                      {/* Rain */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <img
+                            src="/mock/avatar_rain.png"
+                            alt="Rain"
+                            className="w-8 h-8 rounded-full object-cover border border-white/10"
+                          />
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-200 text-xs truncate">Rain</div>
+                          <div className="text-[10px] text-purple-400">🎮 CS2 Oynuyor</div>
+                        </div>
+                      </div>
+
+                      {/* Emirhan */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-inner">
+                            EM
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-200 text-xs truncate">Emirhan</div>
+                          <div className="text-[10px] text-gray-400">☕ Sohbet & Mola</div>
+                        </div>
+                      </div>
+
+                      {/* Udinese */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-800 flex items-center justify-center font-bold text-white text-xs shadow-inner">
+                            UD
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-200 text-xs truncate">Udinese</div>
+                          <div className="text-[10px] text-indigo-300">🎧 Ses Kanalında</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Rain */}
-                  <div className="flex items-center space-x-2.5 opacity-80">
-                    <div className="relative shrink-0">
-                      <img
-                        src="/mock/avatar_rain.png"
-                        alt="Rain"
-                        className="w-8 h-8 rounded-full object-cover border border-white/10 grayscale-[30%]"
-                      />
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                  {/* Category: ÇEVRİMDAŞI */}
+                  <div className="pt-2 border-t border-white/[0.04]">
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Çevrimdışı — 4
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-300 text-xs truncate">Rain</div>
-                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
-                    </div>
-                  </div>
-
-                  {/* Mafik */}
-                  <div className="flex items-center space-x-2.5 opacity-80">
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
-                        M
+                    <div className="space-y-2 opacity-75">
+                      {/* Mafik */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                            M
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-400 text-xs truncate">Mafik</div>
+                          <div className="text-[10px] text-gray-600">15 dk önce</div>
+                        </div>
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-300 text-xs truncate">Mafik</div>
-                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
-                    </div>
-                  </div>
 
-                  {/* Trust */}
-                  <div className="flex items-center space-x-2.5 opacity-80">
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
-                        T
+                      {/* Trust */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                            T
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-400 text-xs truncate">Trust</div>
+                          <div className="text-[10px] text-gray-600">1 saat önce</div>
+                        </div>
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-300 text-xs truncate">Trust</div>
-                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
-                    </div>
-                  </div>
 
-                  {/* Hollie */}
-                  <div className="flex items-center space-x-2.5 opacity-80">
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
-                        H
+                      {/* Hollie */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                            H
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-400 text-xs truncate">Hollie</div>
+                          <div className="text-[10px] text-gray-600">Dün</div>
+                        </div>
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-300 text-xs truncate">Hollie</div>
-                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
-                    </div>
-                  </div>
 
-                  {/* Yedx */}
-                  <div className="flex items-center space-x-2.5 opacity-80">
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
-                        Y
+                      {/* Yedx */}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center font-bold text-gray-400 text-xs">
+                            Y
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-400 text-xs truncate">Yedx</div>
+                          <div className="text-[10px] text-gray-600">Dün</div>
+                        </div>
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-500 border border-[#09090c]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-gray-300 text-xs truncate">Yedx</div>
-                      <div className="text-[10px] text-gray-500">Çevrimdışı</div>
                     </div>
                   </div>
                 </div>
