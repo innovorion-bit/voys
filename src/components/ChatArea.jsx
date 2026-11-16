@@ -1325,48 +1325,10 @@ export const ChatArea = ({
         </div>
       )}
 
-      {/* Top Header Bar (Channel or Direct Message) */}
-      <div className="min-h-[50px] px-2 sm:px-3 py-2 border-b border-white/5 flex items-center justify-between bg-[#0c0c0e] voys-chat-header select-none z-30 relative flex-shrink-0">
-        {chatInnerView !== 'messages' ? (
-          /* Header when showing Kişi Bilgisi or Tema Ayarları */
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-2.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => setChatInnerView('messages')}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition border border-white/10 text-xs font-semibold cursor-pointer"
-                title="Sohbete Geri Dön"
-              >
-                <ArrowLeft size={15} />
-                <span>Sohbete Dön</span>
-              </button>
-              <div className="h-4 w-px bg-white/10 mx-1" />
-              <div className="flex items-center space-x-2 truncate">
-                {isDmMode ? (
-                  <User size={16} className="text-indigo-400 shrink-0" />
-                ) : (
-                  <Users size={16} className="text-indigo-400 shrink-0" />
-                )}
-                <span className="text-xs font-bold text-white tracking-wide truncate">
-                  {isDmMode && activeDmFriend
-                    ? `${activeDmFriend.name} • Kişi Bilgisi`
-                    : `${channelData?.name || (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Grup')} • Grup Bilgisi`}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setChatInnerView('messages')}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/5 cursor-pointer"
-              title="Kapat (ESC)"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center min-w-0">
+      {/* Top Header Bar (Channel or Direct Message) - Sadece normal mesajlaşma görünümünde gösterilir */}
+      {chatInnerView === 'messages' && (
+        <div className="min-h-[50px] px-2 sm:px-3 py-2 border-b border-white/5 flex items-center justify-between bg-[#0c0c0e] voys-chat-header select-none z-30 relative flex-shrink-0">
+          <div className="flex items-center min-w-0">
               {isDmMode && activeDmFriend ? (
                 /* Direct Message User Profile Header */
                 <div className="flex items-center space-x-2 min-w-0">
@@ -1631,15 +1593,25 @@ export const ChatArea = ({
           </div>
         </div>
         )}
-          </>
-        )}
       </div>
+      )}
 
       {/* Main Content Area OR Inline User/Group Info */}
       {chatInnerView === 'userInfo' && hasActiveChat ? (
-        /* Inline Kişi Bilgisi / Kanal Bilgisi (Hesap Ayarları Düzeni) */
-        <div className="flex-1 flex flex-col h-full min-h-0 overflow-y-auto bg-[#08080a] custom-scrollbar px-6 md:px-10 py-8 select-none">
-          <div className="max-w-2xl mx-auto w-full space-y-6">
+        /* Inline Kişi Bilgisi / Kanal Bilgisi (Hesap Ayarları Düzeni) - Üst bar tamamen kaldırıldı, sadece sağ üstte kapat butonu */
+        <div className="relative flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#08080a]">
+          {/* Sadece sağ üstte çarpı butonu */}
+          <button
+            type="button"
+            onClick={() => setChatInnerView('messages')}
+            className="absolute top-4 right-4 sm:top-5 sm:right-6 z-40 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-md"
+            title="Kapat (ESC)"
+          >
+            <X size={16} />
+          </button>
+
+          <div className="flex-1 flex flex-col h-full min-h-0 overflow-y-auto custom-scrollbar px-6 md:px-10 py-8 select-none">
+            <div className="max-w-2xl mx-auto w-full space-y-6">
             {/* Header: Kişi Bilgisi veya Grup Bilgisi */}
             <div className="pb-4 border-b border-white/[0.08] flex items-center justify-between">
               <div>
@@ -1983,6 +1955,7 @@ export const ChatArea = ({
             )}
           </div>
         </div>
+      </div>
       ) : (
         /* Main Content Area: Left = Chat messages & input; Right = Channel Members */
         <div className="flex-1 flex min-h-0 relative overflow-hidden">
