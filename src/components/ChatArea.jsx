@@ -3179,8 +3179,6 @@ export const ChatArea = ({
                           ? isPttActive
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                             : 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 hover:bg-indigo-500/25'
-                          : isMuted
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
                           : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
                       }`}
                       title={
@@ -3193,9 +3191,9 @@ export const ChatArea = ({
                       aria-label={isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
                     >
                       {isMuted ? (
-                        <MicOff size={16} className={inputMode === 'ptt' ? 'text-indigo-300' : 'text-rose-400'} />
+                        <MicOff size={16} className={inputMode === 'ptt' ? 'text-indigo-300' : 'text-rose-500'} />
                       ) : (
-                        <Mic size={16} className={isPttActive ? 'text-emerald-400' : ''} />
+                        <Mic size={16} className={isPttActive ? 'text-emerald-400' : 'text-white'} />
                       )}
                     </button>
 
@@ -3214,9 +3212,7 @@ export const ChatArea = ({
                           ? 'w-9 h-8 flex items-center justify-center'
                           : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl transition cursor-pointer border ${
-                        isScreenSharing
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
-                          : isScreenShareModalOpen
+                        isScreenShareModalOpen
                           ? 'bg-white/20 text-white border-white/25 shadow-sm'
                           : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
                       }`}
@@ -3230,7 +3226,7 @@ export const ChatArea = ({
                       aria-label={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
                     >
                       {isScreenSharing ? (
-                        <MonitorX size={16} className="text-rose-400" />
+                        <MonitorX size={16} className="text-rose-500" />
                       ) : (
                         <Monitor size={16} className="text-white" />
                       )}
