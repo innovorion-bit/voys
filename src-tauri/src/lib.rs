@@ -102,6 +102,7 @@ pub fn run() {
   let app_res = tauri::Builder::default()
     .manage(ptt::PttController::default())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+    .plugin(tauri_plugin_opener::init())
     .invoke_handler(tauri::generate_handler![
       detect_running_game,
       start_ptt_listener,

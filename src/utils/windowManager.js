@@ -157,7 +157,7 @@ export async function closeWindow() {
     try {
       const appWindow = getCurrentWindow();
       await appWindow.minimize();
-    } catch {}
+    } catch { }
   }
 }
 
@@ -170,7 +170,7 @@ export async function setupWindowCloseHandler() {
       if (chatService && typeof chatService.leavePresence === 'function') {
         chatService.leavePresence();
       }
-    } catch {}
+    } catch { }
   };
 
   if (typeof window !== 'undefined') {
@@ -198,7 +198,7 @@ export async function applyWindowTransparency(opacityPercent = 100) {
   try {
     const appWindow = getCurrentWindow();
     if (typeof appWindow.clearEffects === 'function') {
-      await appWindow.clearEffects().catch(() => {});
+      await appWindow.clearEffects().catch(() => { });
     }
   } catch (err) {
     console.warn('Tauri applyWindowTransparency warning:', err);
@@ -239,8 +239,16 @@ export async function openExternalUrl(rawUrl) {
     ? trimmed
     : `https://${trimmed}`;
 
-  // 1. Try Tauri native opener command if in Tauri desktop environment
+  // 1. Primary for Tauri: Official Tauri v2 Opener plugin + native fallback
   if (isTauriEnvironment()) {
+    try {
+      const { openUrl } = await import('@tauri-apps/plugin-opener');
+      await openUrl(targetUrl);
+      return;
+    } catch (err) {
+      console.warn('Tauri plugin-opener warning, trying fallback:', err);
+    }
+
     try {
       const invokeFn =
         (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) ||
