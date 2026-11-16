@@ -28,6 +28,7 @@ dist-ssr
 # Tauri Build Outputs
 src-tauri/target
 *.exe
+!public/*.exe
 *.msi
 
 # Environment variables

@@ -13,7 +13,7 @@ export const LandingPage = () => {
   const { isAuthenticated } = useAuth();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  const directExeUrl = 'https://github.com/innovorion-bit/voys/releases/download/v1.0.0/Voys_1.0.0_x64-setup.exe';
+  const directExeUrl = '/Voys_1.0.0_x64-setup.exe';
 
   const handleDownloadClick = (url) => {
     setDownloadSuccess(true);
