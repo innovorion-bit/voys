@@ -2805,14 +2805,7 @@ export const ChatArea = ({
                   isRightPanelCompact ? 'flex flex-col items-center space-y-2' : 'space-y-1.5'
                 }`}
               >
-                {isRightPanelCompact ? (
-                  <span
-                    className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider"
-                    title="Sesli Sohbet"
-                  >
-                    Sesli
-                  </span>
-                ) : (
+                {!isRightPanelCompact && (
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
                       SESLİ SOHBET
@@ -3187,24 +3180,7 @@ export const ChatArea = ({
             ) : sidebarGroupMembers.length > 0 ? (
               <>
                 {/* Header: GRUP ÜYELERİ / SOHBET KATILIMCILARI */}
-                {isRightPanelCompact ? (
-                  !isDmMode && (
-                    <div className="flex flex-col items-center w-full">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateRightPanelCompact(false);
-                          setIsAddingMember(true);
-                        }}
-                        className="w-9 h-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 flex items-center justify-center transition cursor-pointer"
-                        title="Yeni Üye Ekle"
-                        aria-label="Yeni Üye Ekle"
-                      >
-                        <UserPlus size={14} />
-                      </button>
-                    </div>
-                  )
-                ) : (
+                {!isRightPanelCompact && (
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                       {isDmMode ? 'SOHBET KATILIMCILARI' : 'Grup Üyeleri'}
