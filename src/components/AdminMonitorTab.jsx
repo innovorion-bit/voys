@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Copy,
   X,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { dbService } from '../lib/supabase';
@@ -111,7 +112,9 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [userSearch, setUserSearch] = useState('');
-  const [subTab, setSubTab] = useState('users'); // 'users' | 'events' | 'storage' | 'tables'
+  const [groupSearch, setGroupSearch] = useState('');
+  const [groupsList, setGroupsList] = useState([]);
+  const [subTab, setSubTab] = useState('users'); // 'users' | 'groups' | 'events' | 'storage' | 'tables'
   const [realtimeHealth, setRealtimeHealth] = useState(() => dbService.getRealtimeHealth?.() || { status: 'CONNECTING' });
   const [contextMenu, setContextMenu] = useState(null); // { x, y, user }
   const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
@@ -123,8 +126,20 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
     setRefreshing(true);
     setErrorMsg('');
     try {
-      const res = await dbService.fetchAdminTelemetry();
-      setData(res);
+      const [res, directGroups] = await Promise.all([
+        dbService.fetchAdminTelemetry().catch((err) => {
+          console.warn('fetchAdminTelemetry error:', err);
+          return null;
+        }),
+        dbService.fetchAllGroupsForAdmin().catch(() => []),
+      ]);
+      if (res) setData(res);
+      const groupsFromRes = res?.telemetry?.groups;
+      if (Array.isArray(groupsFromRes) && groupsFromRes.length > 0) {
+        setGroupsList(groupsFromRes);
+      } else if (Array.isArray(directGroups)) {
+        setGroupsList(directGroups);
+      }
     } catch (err) {
       const msg = err?.message || 'Sistem verileri yüklenemedi.';
       setErrorMsg(msg);
@@ -297,6 +312,23 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
     );
   }, [data?.users, userSearch]);
 
+  const effectiveGroups = useMemo(() => {
+    const fromState = Array.isArray(groupsList) ? groupsList : [];
+    if (fromState.length > 0) return fromState;
+    const fromTelemetry = Array.isArray(data?.telemetry?.groups) ? data.telemetry.groups : [];
+    return fromTelemetry;
+  }, [groupsList, data?.telemetry?.groups]);
+
+  const filteredGroups = useMemo(() => {
+    const q = groupSearch.trim().toLowerCase();
+    if (!q) return effectiveGroups;
+    return effectiveGroups.filter((g) =>
+      [g.name, g.id, g.creator_name, g.creator_username]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q))
+    );
+  }, [effectiveGroups, groupSearch]);
+
   const telemetry = data?.telemetry || {};
   const dbInfo = telemetry.database || {};
   const authInfo = telemetry.auth || {};
@@ -314,7 +346,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
       {/* Üst Başlık ve Kontroller */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
         <div>
-          <h3 className="text-base font-bold text-white">Sistem, Üye ve Supabase İzleme</h3>
+          <h3 className="text-base font-bold text-white">Sistem & İzleme</h3>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -405,7 +437,7 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
               usedText={String(dbInfo.active_connections ?? 0)}
               limitText={String(dbInfo.max_connections || 60)}
               percent={getPercent(dbInfo.active_connections, dbInfo.max_connections || 60)}
-              subText={`${counts.channels_total || 0} grup • ${counts.friendships_accepted || 0} arkadaşlık (+${counts.friendships_pending || 0} bekleyen)`}
+              subText={`${effectiveGroups.length || counts.channels_total || 0} grup • ${counts.friendships_accepted || 0} arkadaşlık (+${counts.friendships_pending || 0} bekleyen)`}
               accent="purple"
             />
           </div>
@@ -466,10 +498,11 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
             </div>
           </div>
 
-          {/* Alt Sekmeler: Üyeler / Canlı Akış / Dosyalar / Tablolar */}
+          {/* Alt Sekmeler: Üyeler / Gruplar / Canlı Akış / Dosyalar / Tablolar */}
           <div className="flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-2">
             {[
               { id: 'users', label: 'Kayıtlı Üyeler' },
+              { id: 'groups', label: 'Kurulan Gruplar' },
               { id: 'events', label: 'Canlı İşlemler' },
               { id: 'storage', label: 'Depolama Dosyaları' },
               { id: 'tables', label: 'Tablo Performansı' },
@@ -478,11 +511,10 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                 key={tab.id}
                 type="button"
                 onClick={() => setSubTab(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  subTab === tab.id
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${subTab === tab.id
                     ? 'bg-indigo-600/30 text-white border border-indigo-500/40'
                     : 'text-gray-400 hover:text-white bg-white/[0.03] border border-transparent'
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -521,13 +553,12 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                           key={u.id}
                           onContextMenu={(e) => handleRowContextMenu(e, u)}
                           title="Sağ tıklayarak kullanıcı işlemleri menüsünü açın"
-                          className={`cursor-context-menu transition-colors select-none ${
-                            isBeingDeleted
+                          className={`cursor-context-menu transition-colors select-none ${isBeingDeleted
                               ? 'opacity-50 bg-rose-500/10'
                               : isContextTarget
                                 ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/30'
                                 : 'hover:bg-white/[0.03]'
-                          }`}
+                            }`}
                         >
                           <td className="py-2.5 px-3">
                             <div className="flex items-center space-x-2">
@@ -565,6 +596,109 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SEKME: Kurulan Gruplar */}
+          {subTab === 'groups' && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    value={groupSearch}
+                    onChange={(e) => setGroupSearch(e.target.value)}
+                    placeholder="Grup adı veya ID ara..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111115] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
+                  />
+                </div>
+                <div className="text-xs text-gray-400 px-3 py-2 rounded-xl bg-[#111115] border border-white/10 flex items-center space-x-1.5">
+                  <Users size={13} className="text-indigo-400" />
+                  <span>Toplam <strong className="text-white font-semibold">{effectiveGroups.length}</strong> grup kurulu</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 overflow-x-auto bg-[#0e0e12]">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-400 bg-white/[0.02]">
+                      <th className="py-2.5 px-3">Grup Adı</th>
+                      <th className="py-2.5 px-3">Oluşturan</th>
+                      <th className="py-2.5 px-3">Üye Sayısı</th>
+                      <th className="py-2.5 px-3">Kurulma Tarihi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredGroups.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-gray-500 text-xs">
+                          {groupSearch ? 'Aramaya uygun grup bulunamadı.' : 'Henüz kurulmuş bir grup bulunmuyor.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredGroups.map((g) => (
+                        <tr key={g.id} className="hover:bg-white/[0.03] transition-colors select-none">
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center space-x-2.5">
+                              {g.avatar_url ? (
+                                <img
+                                  src={g.avatar_url}
+                                  alt={g.name}
+                                  className="w-8 h-8 rounded-full object-cover border border-white/10 flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 text-indigo-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                  <Users size={14} className="text-indigo-400" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="font-semibold text-white truncate max-w-[200px]">{g.name}</div>
+                                <div className="text-[10px] text-gray-500 font-mono truncate max-w-[200px]">{g.id}</div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center space-x-2">
+                              {g.creator_avatar_url ? (
+                                <img
+                                  src={g.creator_avatar_url}
+                                  alt={g.creator_name || 'Kullanıcı'}
+                                  className="w-6 h-6 rounded-full object-cover border border-white/10 flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                                  {(g.creator_name || g.creator_username || '?')[0].toLocaleUpperCase('tr-TR')}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="text-gray-200 font-medium truncate max-w-[140px]">
+                                  {g.creator_name || 'Bilinmiyor'}
+                                </div>
+                                {g.creator_username && (
+                                  <div className="text-[10px] text-gray-500 font-mono">@{g.creator_username}</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-2.5 px-3 text-gray-300">
+                            <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[11px] font-medium">
+                              <Users size={11} className="text-indigo-400" />
+                              <span>{g.member_count ?? 1} üye</span>
+                            </span>
+                          </td>
+
+                          <td className="py-2.5 px-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">
+                            {formatDateTr(g.created_at)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

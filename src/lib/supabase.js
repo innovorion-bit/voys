@@ -1276,6 +1276,66 @@ export const dbService = {
     return localDb.getChannels(userId);
   },
 
+  async fetchAllGroupsForAdmin() {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: channels, error } = await supabase
+          .from('channels')
+          .select('id, name, type, is_home, created_by, created_at, avatar_url')
+          .neq('id', 'home')
+          .neq('id', 'voice-sesli-sohbet')
+          .neq('is_home', true)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.warn('fetchAllGroupsForAdmin channels error:', error);
+          return [];
+        }
+
+        const { data: members } = await supabase
+          .from('channel_members')
+          .select('channel_id');
+
+        const memberCountByChannel = {};
+        (members || []).forEach((m) => {
+          if (m?.channel_id) {
+            memberCountByChannel[m.channel_id] = (memberCountByChannel[m.channel_id] || 0) + 1;
+          }
+        });
+
+        const creatorIds = Array.from(new Set((channels || []).map((c) => c.created_by).filter(Boolean)));
+        let profilesById = {};
+        if (creatorIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url')
+            .in('id', creatorIds);
+          (profiles || []).forEach((p) => {
+            profilesById[p.id] = p;
+          });
+        }
+
+        return (channels || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          avatar_url: c.avatar_url || '',
+          created_by: c.created_by,
+          created_at: c.created_at,
+          creator_name: profilesById[c.created_by]?.display_name || profilesById[c.created_by]?.username || 'Bilinmiyor',
+          creator_username: profilesById[c.created_by]?.username || '',
+          creator_avatar_url: profilesById[c.created_by]?.avatar_url || '',
+          member_count: memberCountByChannel[c.id] || 0,
+        }));
+      } catch (err) {
+        console.warn('fetchAllGroupsForAdmin error:', err);
+        return [];
+      }
+    }
+    const allChannels = localDb.getChannels?.() || [];
+    return allChannels.filter((c) => c && c.id !== 'home' && c.id !== 'voice-sesli-sohbet' && !c.is_home);
+  },
+
   async createChannel(channel) {
     let createdChannel = channel;
     if (isSupabaseConfigured) {
