@@ -87,7 +87,7 @@ export const ScreenShareStage = ({
               {isLocal ? 'Ekranını Paylaşıyorsun' : `${streamerName} Ekranı`}
             </span>
             <span className="text-[10px] text-gray-400 font-mono hidden sm:inline bg-white/5 px-1.5 py-0.5 rounded">
-              1080p HD
+              {activeScreenShare?.qualityLabel || '1080p HD'}
             </span>
           </div>
         </div>

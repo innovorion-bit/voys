@@ -684,6 +684,9 @@ export class MeshVoiceService {
                 isLocal: false,
                 peerId: incomingPeerId,
                 userName: call.metadata?.userName || 'Kullanıcı',
+                qualityLabel: call.metadata?.qualityLabel || 'Canlı Yayın',
+                resolution: call.metadata?.resolution,
+                fps: call.metadata?.fps,
                 stream: remoteScreenStream,
               };
               this.activeScreenShare = screenShareInfo;
@@ -1109,32 +1112,95 @@ export class MeshVoiceService {
       throw new Error('Tarayıcınız ekran paylaşımını desteklemiyor.');
     }
 
-    const preset =
-      SCREEN_SHARE_PRESETS[presetOverride || this.screenSharePreset] ||
-      SCREEN_SHARE_PRESETS.balanced;
+    // Parse options or preset override
+    let maxWidth = 1920;
+    let maxHeight = 1080;
+    let maxFrameRate = 30;
+    let maxBitrate = 3_500_000;
+    let qualityLabel = '1080p · 30 FPS';
+    let includeAudio = true;
+
+    if (typeof presetOverride === 'object' && presetOverride !== null) {
+      const res = presetOverride.resolution || '1080p';
+      const fps = Number(presetOverride.fps) || 30;
+      includeAudio = presetOverride.includeAudio !== false;
+
+      if (res === '720p') {
+        maxWidth = 1280;
+        maxHeight = 720;
+        maxBitrate = fps >= 60 ? 2_500_000 : (fps === 15 ? 1_000_000 : 1_800_000);
+        qualityLabel = `720p · ${fps} FPS`;
+      } else if (res === '1080p') {
+        maxWidth = 1920;
+        maxHeight = 1080;
+        maxBitrate = fps >= 60 ? 5_000_000 : (fps === 15 ? 2_000_000 : 3_500_000);
+        qualityLabel = `1080p · ${fps} FPS`;
+      } else if (res === '1440p') {
+        maxWidth = 2560;
+        maxHeight = 1440;
+        maxBitrate = fps >= 60 ? 8_000_000 : 6_000_000;
+        qualityLabel = `1440p 2K · ${fps} FPS`;
+      } else if (res === 'source') {
+        maxWidth = null;
+        maxHeight = null;
+        maxBitrate = fps >= 60 ? 8_000_000 : 6_000_000;
+        qualityLabel = `Kaynak · ${fps} FPS`;
+      }
+      maxFrameRate = fps;
+    } else if (typeof presetOverride === 'string' && SCREEN_SHARE_PRESETS[presetOverride]) {
+      const p = SCREEN_SHARE_PRESETS[presetOverride];
+      maxWidth = p.maxWidth;
+      maxHeight = p.maxHeight;
+      maxFrameRate = p.maxFrameRate;
+      maxBitrate = p.maxBitrate;
+      qualityLabel = p.label;
+    } else {
+      const p = SCREEN_SHARE_PRESETS[this.screenSharePreset] || SCREEN_SHARE_PRESETS.balanced;
+      maxWidth = p.maxWidth;
+      maxHeight = p.maxHeight;
+      maxFrameRate = p.maxFrameRate;
+      maxBitrate = p.maxBitrate;
+      qualityLabel = p.label;
+    }
+
+    const currentConfig = {
+      maxWidth,
+      maxHeight,
+      maxFrameRate,
+      maxBitrate,
+      qualityLabel,
+    };
+    this.currentScreenConfig = currentConfig;
 
     try {
+      const videoConstraints = {
+        cursor: 'always',
+        frameRate: { ideal: maxFrameRate, max: maxFrameRate },
+      };
+      if (maxWidth && maxHeight) {
+        videoConstraints.width = { ideal: maxWidth, max: maxWidth };
+        videoConstraints.height = { ideal: maxHeight, max: maxHeight };
+      }
+
       let stream;
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            cursor: 'always',
-            width: { ideal: preset.maxWidth, max: preset.maxWidth },
-            height: { ideal: preset.maxHeight, max: preset.maxHeight },
-            frameRate: { ideal: preset.maxFrameRate, max: preset.maxFrameRate },
-          },
-          audio: true,
+          video: videoConstraints,
+          audio: includeAudio,
         });
       } catch (constraintErr) {
         if (constraintErr?.name === 'OverconstrainedError' || constraintErr?.name === 'TypeError') {
+          const fallbackConstraints = {
+            cursor: 'always',
+            frameRate: { ideal: maxFrameRate },
+          };
+          if (maxWidth && maxHeight) {
+            fallbackConstraints.width = { ideal: maxWidth };
+            fallbackConstraints.height = { ideal: maxHeight };
+          }
           stream = await navigator.mediaDevices.getDisplayMedia({
-            video: {
-              cursor: 'always',
-              width: { ideal: preset.maxWidth },
-              height: { ideal: preset.maxHeight },
-              frameRate: { ideal: preset.maxFrameRate },
-            },
-            audio: true,
+            video: fallbackConstraints,
+            audio: includeAudio,
           });
         } else {
           throw constraintErr;
@@ -1146,13 +1212,14 @@ export class MeshVoiceService {
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         if (typeof videoTrack.applyConstraints === 'function') {
-          videoTrack
-            .applyConstraints({
-              width: { max: preset.maxWidth },
-              height: { max: preset.maxHeight },
-              frameRate: { max: preset.maxFrameRate },
-            })
-            .catch(() => {});
+          const trackConstraints = {
+            frameRate: { max: maxFrameRate },
+          };
+          if (maxWidth && maxHeight) {
+            trackConstraints.width = { max: maxWidth };
+            trackConstraints.height = { max: maxHeight };
+          }
+          videoTrack.applyConstraints(trackConstraints).catch(() => {});
         }
         videoTrack.onended = () => {
           this.stopScreenShare();
@@ -1161,7 +1228,7 @@ export class MeshVoiceService {
 
       // Send screen stream to all current mesh peers
       this.activeCalls.forEach((_, peerId) => {
-        this.sendScreenShareToPeer(peerId, stream);
+        this.sendScreenShareToPeer(peerId, stream, currentConfig);
       });
 
       if (this.broadcastChannel) {
@@ -1169,6 +1236,7 @@ export class MeshVoiceService {
           type: 'SCREEN_SHARE_STARTED',
           peerId: this.myPeerId,
           userName: this.userName,
+          qualityLabel,
         });
       }
 
@@ -1176,6 +1244,7 @@ export class MeshVoiceService {
         isLocal: true,
         peerId: this.myPeerId,
         userName: this.userName,
+        qualityLabel,
         stream,
       };
       this.activeScreenShare = screenShareInfo;
@@ -1191,25 +1260,29 @@ export class MeshVoiceService {
     }
   }
 
-  sendScreenShareToPeer(peerId, stream) {
+  sendScreenShareToPeer(peerId, stream, customConfig = null) {
     if (!this.peer || !peerId || peerId === this.myPeerId) return;
     if (!stream || !stream.active) return;
+
+    const cfg = customConfig || this.currentScreenConfig || SCREEN_SHARE_PRESETS.balanced;
 
     try {
       const screenCall = this.peer.call(peerId, stream, {
         metadata: {
           type: 'screen-share',
           userName: this.userName,
+          qualityLabel: cfg.qualityLabel || 'Canlı Yayın',
+          maxFrameRate: cfg.maxFrameRate,
+          maxWidth: cfg.maxWidth,
         },
       });
 
       if (screenCall) {
         this.activeScreenCalls.set(peerId, screenCall);
 
-        const preset = SCREEN_SHARE_PRESETS[this.screenSharePreset] || SCREEN_SHARE_PRESETS.balanced;
         if (screenCall.peerConnection) {
           setTimeout(() => {
-            this.applyScreenShareSenderLimits(screenCall.peerConnection, preset);
+            this.applyScreenShareSenderLimits(screenCall.peerConnection, cfg);
           }, 0);
         }
 
@@ -1228,6 +1301,7 @@ export class MeshVoiceService {
   }
 
   stopScreenShare() {
+    this.currentScreenConfig = null;
     if (this.screenStream) {
       this.screenStream.getTracks().forEach((track) => track.stop());
       this.screenStream = null;

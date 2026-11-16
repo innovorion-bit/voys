@@ -864,6 +864,7 @@ function StanduppApp() {
     setMuted,
     toggleDeafen,
     switchVoiceRoom,
+    startScreenShare,
     stopScreenShare,
     toggleScreenShare,
   } = useVoiceWebRTC();
@@ -1971,6 +1972,7 @@ function StanduppApp() {
             onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
             // Screen Sharing
             activeScreenShare={activeScreenShare}
+            onStartScreenShare={startScreenShare}
             onStopScreenShare={stopScreenShare}
             isScreenSharing={isScreenSharing}
             onToggleScreenShare={toggleScreenShare}

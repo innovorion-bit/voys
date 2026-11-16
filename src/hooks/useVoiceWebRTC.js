@@ -578,20 +578,26 @@ export const useVoiceWebRTC = () => {
   }, [attachRemoteAnalyser, setupLocalVAD]);
 
   // Screen Sharing Actions
-  const startScreenShare = useCallback(async () => {
+  const startScreenShare = useCallback(async (options = null) => {
     try {
-      const stream = await peerService.startScreenShare();
+      const stream = await peerService.startScreenShare(options);
       if (stream) {
         setIsScreenSharing(true);
+        const qualityLabel =
+          options?.label ||
+          (options?.resolution
+            ? `${options.resolution === 'source' ? 'Kaynak' : options.resolution} · ${options.fps || 30} FPS`
+            : '1080p · 30 FPS');
         setActiveScreenShare({
           isLocal: true,
           peerId: myPeerId,
           userName: 'Sen (You)',
+          qualityLabel,
           stream,
         });
         sounds.playJoin();
         toast.success('Ekran Paylaşımı Başlatıldı', {
-          description: 'Ekranınız odadaki diğer kullanıcılara canlı yayınlanıyor.',
+          description: `${qualityLabel} kalitesinde canlı yayınlanıyor.`,
         });
       }
     } catch (err) {

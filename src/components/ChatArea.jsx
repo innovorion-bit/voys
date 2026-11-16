@@ -47,6 +47,8 @@ import {
   PhoneOff,
   Mic,
   MicOff,
+  Monitor,
+  MonitorX,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -117,6 +119,7 @@ function formatFullDateTime(rawDate) {
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
 import { ScreenShareStage } from './ScreenShareStage';
+import { ScreenShareModal } from './ScreenShareModal';
 import { dbService, getDmRoomId } from '../lib/supabase';
 import {
   pickDisplayName,
@@ -269,6 +272,7 @@ export const ChatArea = ({
   onOpenMobileSidebar,
   // Screen Sharing props
   activeScreenShare = null,
+  onStartScreenShare,
   onStopScreenShare,
   isScreenSharing = false,
   onToggleScreenShare,
@@ -291,6 +295,7 @@ export const ChatArea = ({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
+  const [isScreenShareModalOpen, setIsScreenShareModalOpen] = useState(false);
 
   // Right sidebar inline add-member state (declared early to prevent TDZ in updateRightPanelCompact)
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -1958,7 +1963,7 @@ export const ChatArea = ({
 
 
           {/* Screen Share Stage (Top Banner or PiP Video Component) */}
-          {activeScreenShare && !isInCall && (
+          {activeScreenShare && (
             <ScreenShareStage
               activeScreenShare={activeScreenShare}
               onStopScreenShare={onStopScreenShare}
@@ -2940,7 +2945,7 @@ export const ChatArea = ({
                       className={`${
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
-                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 text-xs font-semibold'
+                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 text-xs font-semibold'
                       } rounded-xl transition cursor-pointer border ${
                         inputMode === 'ptt'
                           ? isPttActive
@@ -2976,6 +2981,39 @@ export const ChatArea = ({
                       )}
                     </button>
 
+                    {/* Ekran Paylaşımı Butonu (Sustur ve Ayrıl Ortasında - Eşit Oranda) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isScreenSharing) {
+                          onStopScreenShare?.();
+                        } else {
+                          setIsScreenShareModalOpen(true);
+                        }
+                      }}
+                      className={`${
+                        isRightPanelCompact
+                          ? 'w-9 h-8 flex items-center justify-center'
+                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 text-xs font-semibold'
+                      } rounded-xl transition cursor-pointer border ${
+                        isScreenSharing
+                          ? 'bg-[#8B51FF]/25 text-[#c084fc] border-[#8B51FF]/50 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
+                          : 'bg-white/10 text-white border-white/10 hover:bg-[#8B51FF]/20 hover:border-[#8B51FF]/30 hover:text-white'
+                      }`}
+                      title={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
+                    >
+                      {isScreenSharing ? (
+                        <MonitorX size={14} className="text-rose-400" />
+                      ) : (
+                        <Monitor size={14} className="text-[#c084fc]" />
+                      )}
+                      {!isRightPanelCompact && (
+                        <span className="truncate">
+                          {isScreenSharing ? 'Durdur' : 'Yayınla'}
+                        </span>
+                      )}
+                    </button>
+
                     {/* Ayrıl Butonu */}
                     <button
                       type="button"
@@ -2983,8 +3021,8 @@ export const ChatArea = ({
                       className={`${
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
-                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2.5 text-xs font-semibold'
-                      } rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer`}
+                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 text-xs font-semibold'
+                      } rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer border border-rose-600 hover:border-rose-500`}
                       title="Sesli Sohbetten Ayrıl"
                     >
                       <PhoneOff size={14} />
@@ -4053,6 +4091,18 @@ export const ChatArea = ({
           </div>
         </div>
       )}
+      {/* 5. Ekran Paylaşımı Çözünürlük & FPS Seçim Modalı */}
+      <ScreenShareModal
+        isOpen={isScreenShareModalOpen}
+        onClose={() => setIsScreenShareModalOpen(false)}
+        onStartShare={(options) => {
+          if (onStartScreenShare) {
+            onStartScreenShare(options);
+          } else if (onToggleScreenShare) {
+            onToggleScreenShare();
+          }
+        }}
+      />
     </div>
   );
 };
