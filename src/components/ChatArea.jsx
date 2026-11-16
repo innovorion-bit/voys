@@ -909,6 +909,41 @@ export const ChatArea = ({
     }
   }, [messages]);
 
+  // Check if messages overflow the container to show/hide scrollbar
+  const [hasScrollableMessages, setHasScrollableMessages] = useState(false);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const checkScrollable = () => {
+      if (!scrollContainerRef.current) return;
+      const { scrollHeight, clientHeight } = scrollContainerRef.current;
+      const canScroll = scrollHeight > clientHeight + 2;
+      setHasScrollableMessages(canScroll);
+      if (!canScroll) {
+        setShowScrollBottom(false);
+      }
+    };
+
+    checkScrollable();
+
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        checkScrollable();
+      });
+      resizeObserver.observe(el);
+    }
+
+    const timer = setTimeout(checkScrollable, 60);
+
+    return () => {
+      clearTimeout(timer);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [filteredMessages, activeChannel, isDmMode, activeDmFriend, isRightPanelCompact]);
+
   // Window-level Drag & Drop detection for smooth Windows desktop UX without flicker
   const [isWindowDragging, setIsWindowDragging] = useState(false);
   const dragCounterRef = useRef(0);
@@ -2021,10 +2056,14 @@ export const ChatArea = ({
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              className={`flex-1 overflow-y-auto px-2 md:px-4 py-3 space-y-0.5 select-text scroll-smooth ${isFullChatScreenShare ? 'hidden' : ''}`}
+              className={`flex-1 px-2 md:px-4 py-3 space-y-0.5 select-text scroll-smooth ${
+                isFullChatScreenShare ? 'hidden' : ''
+              } ${hasScrollableMessages ? 'overflow-y-auto' : 'overflow-y-hidden'} ${
+                filteredMessages.length === 0 ? 'flex flex-col' : ''
+              }`}
             >
               {filteredMessages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center py-16 px-4 text-center select-none space-y-2">
+                <div className="flex-1 my-auto flex flex-col items-center justify-center py-8 px-4 text-center select-none space-y-2">
                   <div className="space-y-1 max-w-sm">
                     <h3 className="text-sm font-bold text-gray-200 tracking-wide">
                       {searchTerm
