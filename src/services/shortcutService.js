@@ -88,6 +88,9 @@ const KEY_ALIASES = {
   mouse3: 'Mouse3',
   mouse4: 'Mouse4',
   mouse5: 'Mouse5',
+  xbutton1: 'Mouse4',
+  xbutton2: 'Mouse5',
+  xbutton3: 'Mouse3',
 };
 
 const FRIENDLY_KEY_LABELS = {
@@ -662,14 +665,14 @@ export async function registerPttShortcut(shortcutKey, onStateChange) {
         return { success: false, cancelled: true };
       }
 
-      const started = await invoke('start_ptt_listener', {
+      const started = await invokeFn('start_ptt_listener', {
         shortcutKey: parsed.normalized,
         generation: seq,
       });
 
       if (seq !== registrationSeq) {
         tempUnlisten();
-        await invoke('stop_ptt_listener').catch(() => {});
+        await invokeFn('stop_ptt_listener').catch(() => {});
         return { success: false, cancelled: true };
       }
 
@@ -677,6 +680,7 @@ export async function registerPttShortcut(shortcutKey, onStateChange) {
         unlistenNativePtt = tempUnlisten;
         usingNativeTauriPtt = true;
         cleanupWindowListeners = attachFocusedUiPreventDefaults(parsed);
+        console.log('[PTT] Native background listener active for:', parsed.normalized);
         return {
           success: true,
           shortcut: parsed.normalized,
@@ -687,7 +691,9 @@ export async function registerPttShortcut(shortcutKey, onStateChange) {
 
       tempUnlisten();
       tempUnlisten = null;
-    } catch {
+    } catch (err) {
+      tauriFailureReason = err?.message || String(err);
+      console.warn('[PTT] Native PTT registration error, falling back:', err);
       if (tempUnlisten) {
         try {
           tempUnlisten();
@@ -814,7 +820,8 @@ export async function unregisterPttShortcut() {
 
   if (wasNative && isTauriEnvironment()) {
     try {
-      await invoke('stop_ptt_listener').catch(() => {});
+      const invokeFn = (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) || invoke;
+      await invokeFn('stop_ptt_listener').catch(() => {});
     } catch {}
   }
 

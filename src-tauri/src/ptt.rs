@@ -114,9 +114,9 @@ mod win {
             "Alt" => Some(vec![0xA4, 0xA5, 0x12]),     // VK_LMENU, VK_RMENU, VK_MENU
             "Shift" => Some(vec![0xA0, 0xA1, 0x10]),   // VK_LSHIFT, VK_RSHIFT, VK_SHIFT
             "Super" => Some(vec![0x5B, 0x5C]),         // VK_LWIN, VK_RWIN
-            "Mouse3" => Some(vec![0x04]),              // VK_MBUTTON
-            "Mouse4" => Some(vec![0x05]),              // VK_XBUTTON1
-            "Mouse5" => Some(vec![0x06]),              // VK_XBUTTON2
+            "Mouse3" | "XButton3" => Some(vec![0x04]),              // VK_MBUTTON
+            "Mouse4" | "XButton1" => Some(vec![0x05]),              // VK_XBUTTON1
+            "Mouse5" | "XButton2" => Some(vec![0x06]),              // VK_XBUTTON2
             "Space" => Some(vec![0x20]),
             "Backspace" => Some(vec![0x08]),
             "Tab" => Some(vec![0x09]),
@@ -240,7 +240,7 @@ mod win {
                     if stop_flag.load(Ordering::SeqCst) {
                         break;
                     }
-                    thread::park_timeout(Duration::from_millis(16));
+                    thread::sleep(Duration::from_millis(15));
                 }
             })
             .map_err(|e| format!("Failed to spawn PTT listener thread: {}", e))?;
