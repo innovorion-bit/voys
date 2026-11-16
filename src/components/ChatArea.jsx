@@ -2847,17 +2847,32 @@ export const ChatArea = ({
                         ? (!isMuted && !isDeafened && isSpeaking)
                         : (!isDeafened && !isLocallyMuted && m.isSpeaking)
                     );
-                    const voiceStatusLabel = isMe && isDeafened
-                      ? 'Sağırlaştırıldı'
-                      : isMe && isMuted
-                        ? 'Mikrofon Kapalı'
-                        : !isMe && isLocallyMuted
-                          ? 'Sesi Kapatıldı'
-                          : !isMe && typeof pref?.volume === 'number' && pref.volume !== 100
-                            ? `Seste • %${pref.volume}`
-                            : 'Seste';
-                    const voiceStatusColorClass =
-                      (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
+                    const isSharingScreen = Boolean(
+                      (isMe && isScreenSharing) ||
+                      (activeScreenShare && (
+                        (isMe && activeScreenShare.isLocal) ||
+                        (!isMe && !activeScreenShare.isLocal && (
+                          activeScreenShare.peerId === m.peerId ||
+                          activeScreenShare.peerId === m.id ||
+                          activeScreenShare.userId === m.id ||
+                          (activeScreenShare.userName && m.name && activeScreenShare.userName.toLowerCase() === m.name.toLowerCase())
+                        ))
+                      ))
+                    );
+                    const voiceStatusLabel = isSharingScreen
+                      ? 'Ekran paylaşıyor'
+                      : isMe && isDeafened
+                        ? 'Sağırlaştırıldı'
+                        : isMe && isMuted
+                          ? 'Mikrofon Kapalı'
+                          : !isMe && isLocallyMuted
+                            ? 'Sesi Kapatıldı'
+                            : !isMe && typeof pref?.volume === 'number' && pref.volume !== 100
+                              ? `Seste • %${pref.volume}`
+                              : 'Seste';
+                    const voiceStatusColorClass = isSharingScreen
+                      ? 'text-[#c084fc] font-medium'
+                      : (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
                         ? 'text-rose-400/90'
                         : !isMe && typeof pref?.volume === 'number' && pref.volume > 100
                           ? 'text-amber-400/90'
@@ -2886,14 +2901,21 @@ export const ChatArea = ({
                             showStatus={false}
                             isSpeaking={memberSpeaking}
                           />
-                          {voiceBadgeIcon && (
+                          {voiceBadgeIcon ? (
                             <span
                               className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#13141a] border border-rose-500/40 text-rose-400 flex items-center justify-center shadow"
                               title={voiceBadgeTitle}
                             >
                               {voiceBadgeIcon}
                             </span>
-                          )}
+                          ) : isSharingScreen ? (
+                            <span
+                              className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#13141a] border border-[#8B51FF]/50 text-[#c084fc] flex items-center justify-center shadow"
+                              title="Ekran paylaşıyor"
+                            >
+                              <Monitor size={9} />
+                            </span>
+                          ) : null}
                         </div>
                       );
                     }
@@ -2932,9 +2954,14 @@ export const ChatArea = ({
                               <span className="truncate">{m.game} • {voiceStatusLabel}</span>
                             </div>
                           ) : (
-                            <span className={`text-[10px] font-medium block truncate ${voiceStatusColorClass}`}>
-                              {voiceStatusLabel}
-                            </span>
+                            <div className="flex items-center space-x-1 truncate mt-0.5">
+                              {isSharingScreen && (
+                                <Monitor size={11} className="text-[#c084fc] flex-shrink-0" />
+                              )}
+                              <span className={`text-[10px] block truncate ${voiceStatusColorClass}`}>
+                                {voiceStatusLabel}
+                              </span>
+                            </div>
                           )}
                         </div>
 

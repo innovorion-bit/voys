@@ -3,9 +3,7 @@ import {
   Maximize2, 
   Minimize2, 
   PictureInPicture2, 
-  Monitor, 
   MonitorX, 
-  Radio, 
   Volume2, 
   VolumeX
 } from 'lucide-react';
@@ -65,7 +63,6 @@ export const ScreenShareStage = ({
   if (!activeScreenShare || !activeScreenShare.stream) return null;
 
   const isLocal = !!activeScreenShare.isLocal;
-  const streamerName = activeScreenShare.userName || (isLocal ? 'Sen (You)' : 'Kullanıcı');
 
   return (
     <div
@@ -90,102 +87,78 @@ export const ScreenShareStage = ({
           className="w-full h-full object-contain bg-black"
         />
 
-        {/* Discreet Watermark */}
-        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md text-[9px] font-mono text-gray-400 pointer-events-none border border-white/10">
-          Voys Screen Link
-        </div>
+        {/* Quality Badge (Moved to top-left of video stage as requested) */}
+        {activeScreenShare?.qualityLabel && (
+          <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 text-[10px] sm:text-[11px] font-mono text-gray-300 pointer-events-none select-none z-10 flex items-center space-x-1.5 shadow-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{activeScreenShare.qualityLabel}</span>
+          </div>
+        )}
       </div>
 
-      {/* Stage Bottom Controls Bar */}
+      {/* Stage Bottom Controls Bar (Cleaned up: CANLI and Streamer Name removed, right-aligned controls) */}
       <div
         className={`${
           pip ? 'h-11 px-2.5' : 'h-14 px-4'
-        } bg-[#0a0a0d] border-t border-white/10 flex items-center justify-between z-10 flex-shrink-0 select-none`}
+        } bg-[#0a0a0d] border-t border-white/10 flex items-center justify-end z-10 flex-shrink-0 select-none space-x-1.5 sm:space-x-2`}
       >
-        {/* Left Side: Live badge & Streamer info */}
-        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-          {/* Live indicator badge */}
-          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25 text-[10px] sm:text-[11px] font-bold tracking-wider flex-shrink-0">
-            <Radio size={11} className="animate-pulse" />
-            <span>CANLI</span>
-          </div>
-
-          {/* Streamer name */}
-          <div className="flex items-center space-x-1.5 min-w-0">
-            <Monitor size={15} className="text-[#a855f7] flex-shrink-0" />
-            <span className="font-semibold text-gray-200 text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[200px]">
-              {isLocal ? 'Ekran Paylaşımın' : streamerName}
-            </span>
-          </div>
-
-          {/* Quality Badge (hidden in PiP or on small screen) */}
-          {!pip && (
-            <div className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[10px] text-gray-400 font-mono">
-              {activeScreenShare?.qualityLabel || '1080p · 30 FPS'}
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: Action Controls */}
-        <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
-          {/* Audio Mute/Unmute for remote stream */}
-          {!isLocal && (
-            <button
-              type="button"
-              onClick={() => {
-                if (videoRef.current) {
-                  videoRef.current.muted = !isMuted;
-                  setIsMuted(!isMuted);
-                }
-              }}
-              className={`${
-                pip ? 'w-7 h-7' : 'w-9 h-9'
-              } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
-              title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
-            >
-              {isMuted ? <VolumeX size={pip ? 13 : 16} /> : <Volume2 size={pip ? 13 : 16} className="text-emerald-400" />}
-            </button>
-          )}
-
-          {/* Picture-in-Picture / Floating Mode Toggle */}
+        {/* Audio Mute/Unmute for remote stream */}
+        {!isLocal && (
           <button
             type="button"
-            onClick={() => setPip(!pip)}
-            className={`${
-              pip ? 'w-7 h-7 text-[#c084fc] bg-[#8B51FF]/20 border border-[#8B51FF]/40' : 'w-9 h-9 text-gray-300 hover:text-white bg-white/5 hover:bg-white/10'
-            } rounded-xl flex items-center justify-center transition cursor-pointer`}
-            title={pip ? "Sohbet Alanına Genişlet" : "Kayan Pencere (PiP) Yap"}
-          >
-            <PictureInPicture2 size={pip ? 13 : 16} />
-          </button>
-
-          {/* Fullscreen Button */}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
+            onClick={() => {
+              if (videoRef.current) {
+                videoRef.current.muted = !isMuted;
+                setIsMuted(!isMuted);
+              }
+            }}
             className={`${
               pip ? 'w-7 h-7' : 'w-9 h-9'
             } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
-            title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran Yap"}
+            title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
           >
-            {isFullscreen ? <Minimize2 size={pip ? 13 : 16} /> : <Maximize2 size={pip ? 13 : 16} />}
+            {isMuted ? <VolumeX size={pip ? 13 : 16} /> : <Volume2 size={pip ? 13 : 16} className="text-emerald-400" />}
           </button>
+        )}
 
-          {/* Stop Stream Button (If local user) */}
-          {isLocal && onStopScreenShare && (
-            <button
-              type="button"
-              onClick={onStopScreenShare}
-              className={`${
-                pip ? 'h-7 px-2 text-[11px]' : 'h-9 px-3.5 text-xs'
-              } bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ml-1`}
-              title="Ekran Paylaşımını Sonlandır"
-            >
-              <MonitorX size={pip ? 12 : 14} />
-              <span>Durdur</span>
-            </button>
-          )}
-        </div>
+        {/* Picture-in-Picture / Floating Mode Toggle */}
+        <button
+          type="button"
+          onClick={() => setPip(!pip)}
+          className={`${
+            pip ? 'w-7 h-7 text-[#c084fc] bg-[#8B51FF]/20 border border-[#8B51FF]/40' : 'w-9 h-9 text-gray-300 hover:text-white bg-white/5 hover:bg-white/10'
+          } rounded-xl flex items-center justify-center transition cursor-pointer`}
+          title={pip ? "Sohbet Alanına Genişlet" : "Kayan Pencere (PiP) Yap"}
+        >
+          <PictureInPicture2 size={pip ? 13 : 16} />
+        </button>
+
+        {/* Fullscreen Button */}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className={`${
+            pip ? 'w-7 h-7' : 'w-9 h-9'
+          } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
+          title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran Yap"}
+        >
+          {isFullscreen ? <Minimize2 size={pip ? 13 : 16} /> : <Maximize2 size={pip ? 13 : 16} />}
+        </button>
+
+        {/* Stop Stream Button (If local user) */}
+        {isLocal && onStopScreenShare && (
+          <button
+            type="button"
+            onClick={onStopScreenShare}
+            className={`${
+              pip ? 'h-7 px-2 text-[11px]' : 'h-9 px-3.5 text-xs'
+            } bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ml-1`}
+            title="Ekran Paylaşımını Sonlandır"
+          >
+            <MonitorX size={pip ? 12 : 14} />
+            <span>Durdur</span>
+          </button>
+        )}
       </div>
     </div>
   );
