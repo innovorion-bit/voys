@@ -1559,32 +1559,13 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
 
               {/* Giriş Modu & Bas-Konuş (Push-to-Talk) */}
               <div className="pt-6 border-t border-white/[0.08] space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                      GİRİŞ MODU
-                    </label>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Sesinizin karşı tarafa ne zaman iletileceğini seçin.
-                    </p>
-                  </div>
-
-                  {inputMode === 'ptt' && (
-                    <span
-                      className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
-                        isPttActive
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25'
-                      }`}
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          isPttActive ? 'bg-emerald-400' : 'bg-indigo-400'
-                        }`}
-                      />
-                      <span>{isPttActive ? 'Konuşma Aktif (İletiliyor)' : `Bas-Konuş Hazır [${formatShortcutLabel(pttKey)}]`}</span>
-                    </span>
-                  )}
+                <div>
+                  <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                    GİRİŞ MODU
+                  </label>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Sesinizin karşı tarafa ne zaman iletileceğini seçin.
+                  </p>
                 </div>
 
                 {/* Mod Seçim Kartları */}
