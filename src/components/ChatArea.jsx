@@ -132,6 +132,7 @@ import {
 } from '../utils/userDisplay';
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 import { MessageTextWithLinks } from './MessageTextWithLinks';
+import { openExternalUrl, isTauriEnvironment } from '../utils/windowManager';
 
 // Helper for Turkish and case-insensitive search matching
 function normalizeForSearch(str) {
@@ -4024,6 +4025,12 @@ export const ChatArea = ({
                   </button>
                   <a
                     href={activeMediaModal.url}
+                    onClick={(e) => {
+                      if (isTauriEnvironment()) {
+                        e.preventDefault();
+                        openExternalUrl(activeMediaModal.url);
+                      }
+                    }}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/5 cursor-pointer"

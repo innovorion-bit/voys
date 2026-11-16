@@ -37,17 +37,52 @@ fn open_external_url(url: String) -> Result<bool, String> {
 
   #[cfg(target_os = "windows")]
   {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
-    std::process::Command::new("cmd")
-      .args(["/C", "start", "", trimmed])
-      .creation_flags(CREATE_NO_WINDOW)
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+
+    #[link(name = "shell32")]
+    unsafe extern "system" {
+      fn ShellExecuteW(
+        hwnd: isize,
+        lpOperation: *const u16,
+        lpFile: *const u16,
+        lpParameters: *const u16,
+        lpDirectory: *const u16,
+        nShowCmd: i32,
+      ) -> isize;
+    }
+
+    let operation: Vec<u16> = OsStr::new("open").encode_wide().chain(std::iter::once(0)).collect();
+    let file: Vec<u16> = OsStr::new(trimmed).encode_wide().chain(std::iter::once(0)).collect();
+
+    let res = unsafe {
+      ShellExecuteW(
+        0,
+        operation.as_ptr(),
+        file.as_ptr(),
+        std::ptr::null(),
+        std::ptr::null(),
+        1, // SW_SHOWNORMAL
+      )
+    };
+
+    if res > 32 {
+      Ok(true)
+    } else {
+      Err(format!("ShellExecuteW failed with error code: {}", res))
+    }
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    std::process::Command::new("open")
+      .arg(trimmed)
       .spawn()
       .map_err(|e| e.to_string())?;
     Ok(true)
   }
 
-  #[cfg(not(target_os = "windows"))]
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
   {
     std::process::Command::new("xdg-open")
       .arg(trimmed)

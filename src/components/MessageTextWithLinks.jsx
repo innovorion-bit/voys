@@ -1,7 +1,7 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { tokenizeTextWithLinks } from '../utils/linkify';
-import { openExternalUrl } from '../utils/windowManager';
+import { openExternalUrl, isTauriEnvironment } from '../utils/windowManager';
 
 /**
  * Renders message text lines with clickable, styled external hyperlinks.
@@ -36,9 +36,11 @@ export const MessageTextWithLinks = ({ text, className = '', highlightText = '' 
         }
 
         const handleClick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openExternalUrl(token.href);
+          if (isTauriEnvironment()) {
+            e.preventDefault();
+            e.stopPropagation();
+            openExternalUrl(token.href);
+          }
         };
 
         return (

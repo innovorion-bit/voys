@@ -242,11 +242,12 @@ export async function openExternalUrl(rawUrl) {
   // 1. Try Tauri native opener command if in Tauri desktop environment
   if (isTauriEnvironment()) {
     try {
-      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) {
-        await window.__TAURI_INTERNALS__.invoke('open_external_url', { url: targetUrl });
-        return;
-      }
-      await invoke('open_external_url', { url: targetUrl });
+      const invokeFn =
+        (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) ||
+        (typeof window !== 'undefined' && window.__TAURI__?.core?.invoke) ||
+        invoke;
+
+      await invokeFn('open_external_url', { url: targetUrl });
       return;
     } catch (err) {
       console.warn('Tauri open_external_url fallback:', err);
