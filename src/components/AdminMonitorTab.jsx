@@ -315,9 +315,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
         <div>
           <h3 className="text-base font-bold text-white">Sistem, Üye ve Supabase İzleme</h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Anlık kotalar, kayıtlı kullanıcılar, veritabanı işlemleri ve 2 günlük otomatik dosya temizliği
-          </p>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -361,17 +358,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            dbService.reconnectRealtime?.('admin_manual_reset');
-            toast.info('Realtime kanalları tazeleniyor...');
-          }}
-          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition"
-        >
-          Realtime Yeniden Bağla
-        </button>
       </div>
 
       {errorMsg && (
@@ -483,10 +469,10 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           {/* Alt Sekmeler: Üyeler / Canlı Akış / Dosyalar / Tablolar */}
           <div className="flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-2">
             {[
-              { id: 'users', label: `Kayıtlı Üyeler (${users.length})` },
-              { id: 'events', label: `Canlı İşlemler (${recentEvents.length})` },
-              { id: 'storage', label: `Depolama Dosyaları (${recentObjects.length})` },
-              { id: 'tables', label: `Tablo Performansı (${tableStats.length})` },
+              { id: 'users', label: 'Kayıtlı Üyeler' },
+              { id: 'events', label: 'Canlı İşlemler' },
+              { id: 'storage', label: 'Depolama Dosyaları' },
+              { id: 'tables', label: 'Tablo Performansı' },
             ].map((tab) => (
               <button
                 key={tab.id}
