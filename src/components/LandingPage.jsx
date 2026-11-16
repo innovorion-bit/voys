@@ -63,30 +63,60 @@ export const LandingPage = () => {
             </div>
           </Link>
 
-          {/* Nav Links - Yeni Menüler (True Center) */}
-          <nav className="hidden md:flex items-center space-x-3.5 lg:space-x-6 xl:space-x-8 text-sm font-medium text-gray-300 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
-            <a href="#discover" className="hover:text-white transition-colors">Keşfedin</a>
-            <a href="#security" className="hover:text-white transition-colors">Güvenlik</a>
-            <a href="#features" className="hover:text-white transition-colors">Özellikler</a>
-            <a href="#support" className="hover:text-white transition-colors">Destek</a>
-            <a href="#developers" className="hover:text-white transition-colors">Geliştiriciler</a>
-            <a href="#performance" className="hover:text-white transition-colors">Performans</a>
+          {/* Nav Links - Yeni Menüler (True Center with Purple Button Hover Animation) */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 xl:space-x-2.5 text-sm font-medium absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <a
+              href="#discover"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+            >
+              Keşfedin
+            </a>
+            <a
+              href="#security"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+            >
+              Güvenlik
+            </a>
+            <a
+              href="#features"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+            >
+              Özellikler
+            </a>
+            <a
+              href="#support"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+            >
+              Destek
+            </a>
+            <a
+              href="#developers"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+            >
+              Geliştiriciler
+            </a>
+            <a
+              href="#performance"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+            >
+              Performans
+            </a>
             <button
               type="button"
               onClick={() => handleDownloadClick(directExeUrl)}
-              className="hover:text-white transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out cursor-pointer"
             >
               İndir
             </button>
           </nav>
 
-          {/* Action Buttons - Giriş Yap Only (Far Right) */}
+          {/* Action Buttons - Beyaz Buton Siyah Yazı (Far Right) */}
           <div className="flex items-center shrink-0 z-10">
             {isAuthenticated ? (
               <button
                 type="button"
                 onClick={() => navigate('/channel/home')}
-                className="text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/10 transition-all flex items-center space-x-1.5 cursor-pointer"
+                className="text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-gray-100 text-gray-900 shadow-md hover:shadow-lg transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
               >
                 <span>Uygulamaya Git</span>
                 <ArrowRight size={14} />
@@ -95,7 +125,7 @@ export const LandingPage = () => {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="text-xs sm:text-sm font-semibold px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/10 hover:border-white/20 transition-all cursor-pointer"
+                className="text-xs sm:text-sm font-bold px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-gray-100 text-gray-900 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
               >
                 Giriş Yap
               </button>
