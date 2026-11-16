@@ -133,6 +133,7 @@ import {
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 import { MessageTextWithLinks } from './MessageTextWithLinks';
 import { openExternalUrl, isTauriEnvironment } from '../utils/windowManager';
+import { ImageCropModal } from './ImageCropModal';
 
 // Helper for Turkish and case-insensitive search matching
 function normalizeForSearch(str) {
@@ -552,9 +553,11 @@ export const ChatArea = ({
   // Group Avatar Upload & State
   const groupFileInputRef = useRef(null);
   const [isUploadingGroupAvatar, setIsUploadingGroupAvatar] = useState(false);
+  const [groupCropImageSrc, setGroupCropImageSrc] = useState(null);
+  const [isGroupCropModalOpen, setIsGroupCropModalOpen] = useState(false);
   const currentGroupAvatar = channelData?.avatar_url || channelData?.avatar || '';
 
-  const handleGroupAvatarFileChange = async (e) => {
+  const handleGroupAvatarFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -562,17 +565,23 @@ export const ChatArea = ({
       toast.error('Lütfen geçerli bir görsel dosyası seçin.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Fotoğraf boyutu 5MB\'dan küçük olmalıdır.');
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Fotoğraf boyutu 15MB\'dan küçük olmalıdır.');
       return;
     }
 
+    const objectUrl = URL.createObjectURL(file);
+    setGroupCropImageSrc(objectUrl);
+    setIsGroupCropModalOpen(true);
+    if (groupFileInputRef.current) groupFileInputRef.current.value = '';
+  };
+
+  const handleApplyCroppedGroupAvatar = async (croppedBlob) => {
     setIsUploadingGroupAvatar(true);
     const previousAvatarUrl = channelData?.avatar_url || channelData?.avatar || '';
 
     try {
-      const uploadedUrl = await dbService.uploadAvatar(file, activeChannel || 'group');
-      // Dismiss spinner as soon as avatar URL is ready
+      const uploadedUrl = await dbService.uploadAvatar(croppedBlob, activeChannel || 'group');
       setIsUploadingGroupAvatar(false);
       if (onUpdateChannel && activeChannel) {
         onUpdateChannel(activeChannel, { avatar_url: uploadedUrl, avatar: uploadedUrl })
@@ -591,7 +600,18 @@ export const ChatArea = ({
       toast.error('Grup fotoğrafı güncellenemedi');
     } finally {
       setIsUploadingGroupAvatar(false);
-      if (groupFileInputRef.current) groupFileInputRef.current.value = '';
+      if (groupCropImageSrc) {
+        URL.revokeObjectURL(groupCropImageSrc);
+        setGroupCropImageSrc(null);
+      }
+    }
+  };
+
+  const handleCloseGroupCropModal = () => {
+    setIsGroupCropModalOpen(false);
+    if (groupCropImageSrc) {
+      URL.revokeObjectURL(groupCropImageSrc);
+      setGroupCropImageSrc(null);
     }
   };
 
@@ -4220,6 +4240,16 @@ export const ChatArea = ({
           </div>
         </div>
       )}
+
+      {/* Grup Fotoğrafı Dairesel Kırpma Modalı */}
+      <ImageCropModal
+        isOpen={isGroupCropModalOpen}
+        imageSrc={groupCropImageSrc}
+        onClose={handleCloseGroupCropModal}
+        onApply={handleApplyCroppedGroupAvatar}
+        title="Grup Fotoğrafını Kırp"
+        subtitle="Daire içerisindeki alan grup fotoğrafı olarak ayarlanacaktır."
+      />
 
     </div>
   );

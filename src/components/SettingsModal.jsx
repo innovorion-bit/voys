@@ -43,6 +43,7 @@ import { useAuth } from '../context/useAuth';
 import { sounds } from '../utils/audio';
 import { dbService, isAuthorizedAdminUser } from '../lib/supabase';
 import { AdminMonitorTab } from './AdminMonitorTab';
+import { ImageCropModal } from './ImageCropModal';
 import {
   DEFAULT_PTT_KEY,
   formatShortcutLabel,
@@ -154,6 +155,8 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   const [prevAuthUserAvatar, setPrevAuthUserAvatar] = useState(authUserAvatar);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const avatarFileInputRef = useRef(null);
 
   // Field editing states for Account Settings (locked by default)
@@ -456,8 +459,8 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
     }
   };
 
-  // Avatar File Upload via Supabase Storage
-  const handleAvatarFileChange = async (e) => {
+  // Avatar File Selection: Opens circular crop modal
+  const handleAvatarFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -468,23 +471,31 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 15 * 1024 * 1024) {
       toast.error('Dosya çok büyük', {
-        description: 'Profil fotoğrafı boyutu en fazla 10MB olmalıdır.',
+        description: 'Profil fotoğrafı boyutu en fazla 15MB olmalıdır.',
       });
       return;
     }
 
+    const objectUrl = URL.createObjectURL(file);
+    setCropImageSrc(objectUrl);
+    setIsCropModalOpen(true);
+    if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+  };
+
+  // Uploads and saves the circular-cropped avatar Blob
+  const handleApplyCroppedAvatar = async (croppedBlob) => {
     let toastId = null;
     try {
       setIsUploadingAvatar(true);
-      toastId = toast.loading('Profil fotoğrafı yükleniyor...');
+      toastId = toast.loading('Profil fotoğrafı güncelleniyor...');
       const targetUserId = authUser?.id || (profile.id !== 'you' ? profile.id : null);
       if (!targetUserId) {
         throw new Error('Oturum açmış kullanıcı kimliği bulunamadı.');
       }
       const prevAvatarUrl = profile?.avatar_url || profile?.avatar || avatarInput || '';
-      const uploadedUrl = await uploadAvatarFile(file, targetUserId);
+      const uploadedUrl = await uploadAvatarFile(croppedBlob, targetUserId);
       setAvatarInput(uploadedUrl);
       await updateProfile({ avatar: uploadedUrl, avatar_url: uploadedUrl }, targetUserId);
       if (prevAvatarUrl && prevAvatarUrl !== uploadedUrl) {
@@ -502,7 +513,18 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
     } finally {
       if (toastId) toast.dismiss(toastId);
       setIsUploadingAvatar(false);
-      if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+      if (cropImageSrc) {
+        URL.revokeObjectURL(cropImageSrc);
+        setCropImageSrc(null);
+      }
+    }
+  };
+
+  const handleCloseCropModal = () => {
+    setIsCropModalOpen(false);
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc(null);
     }
   };
 
@@ -1939,6 +1961,16 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
           )}
         </div>
       </div>
+
+      {/* Profil Fotoğrafı Dairesel Kırpma Modalı */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        imageSrc={cropImageSrc}
+        onClose={handleCloseCropModal}
+        onApply={handleApplyCroppedAvatar}
+        title="Profil Fotoğrafını Kırp"
+        subtitle="Daire içerisindeki alan profil resminiz olarak kaydedilecektir."
+      />
     </div>
   );
 };
