@@ -522,6 +522,64 @@ html.theme-light .voys-glass-settings input[type="range"].voice-slider::-webkit-
   background: #8B51FF !important;
 }
 
+/* Protect Dark Theme Mock Preview Card from Light Mode overrides */
+html.theme-light .voys-glass-settings .voys-dark-theme-mock,
+html.theme-light .voys-glass-settings .voys-dark-theme-mock.bg-\[\#0e0e12\] {
+  background-color: #0e0e12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-header-line,
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .border-b {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-sidebar,
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .bg-\[\#16171b\] {
+  background-color: #16171b !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-chat,
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .bg-\[\#121317\] {
+  background-color: #121317 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-input,
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .bg-\[\#1b1c22\] {
+  background-color: #1b1c22 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-line-title {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-line-sub {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-line-header {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-bubble-left {
+  background-color: #252730 !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock .mock-bubble-right {
+  background-color: rgba(139, 81, 255, 0.45) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock [class*="border-white/"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.theme-light .voys-glass-settings .voys-dark-theme-mock [class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
 /* Modals & Dialogs (Create Channel, Add Friend, Logout Confirm, Peer Connect, Delete Chat) */
 html.theme-light .bg-black\/75,
 html.theme-light .bg-black\/80,

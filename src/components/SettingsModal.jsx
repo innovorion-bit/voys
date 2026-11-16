@@ -1122,37 +1122,37 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     }`}
                   >
                     {/* Mock UI Preview - Dark Mode */}
-                    <div className="w-full h-32 rounded-xl bg-[#0e0e12] border border-white/10 p-2.5 flex flex-col justify-between overflow-hidden shadow-inner mb-4 select-none">
+                    <div className="voys-dark-theme-mock w-full h-32 rounded-xl bg-[#0e0e12] border border-white/10 p-2.5 flex flex-col justify-between overflow-hidden shadow-inner mb-4 select-none">
                       {/* Window title dots */}
-                      <div className="flex items-center space-x-1.5 pb-2 border-b border-white/5">
+                      <div className="mock-header-line flex items-center space-x-1.5 pb-2 border-b border-white/5">
                         <div className="w-2 h-2 rounded-full bg-rose-500/80" />
                         <div className="w-2 h-2 rounded-full bg-amber-500/80" />
                         <div className="w-2 h-2 rounded-full bg-emerald-500/80" />
-                        <div className="h-1.5 w-16 bg-white/10 rounded-full ml-2" />
+                        <div className="mock-line-header h-1.5 w-16 bg-white/10 rounded-full ml-2" />
                       </div>
 
                       {/* Mock client body */}
                       <div className="flex-1 flex space-x-2 pt-2 min-h-0">
                         {/* Mini sidebar */}
-                        <div className="w-1/3 bg-[#16171b] rounded-lg p-1.5 space-y-1.5 border border-white/5">
-                          <div className="h-2 w-12 bg-white/20 rounded-full" />
-                          <div className="h-1.5 w-full bg-white/10 rounded-full" />
-                          <div className="h-1.5 w-3/4 bg-white/10 rounded-full" />
+                        <div className="mock-sidebar w-1/3 bg-[#16171b] rounded-lg p-1.5 space-y-1.5 border border-white/5">
+                          <div className="mock-line-title h-2 w-12 bg-white/20 rounded-full" />
+                          <div className="mock-line-sub h-1.5 w-full bg-white/10 rounded-full" />
+                          <div className="mock-line-sub h-1.5 w-3/4 bg-white/10 rounded-full" />
                           <div className="h-1.5 w-4/5 bg-indigo-500/40 rounded-full" />
                         </div>
 
                         {/* Mini chat area */}
-                        <div className="flex-1 bg-[#121317] rounded-lg p-1.5 flex flex-col justify-between border border-white/5">
+                        <div className="mock-chat flex-1 bg-[#121317] rounded-lg p-1.5 flex flex-col justify-between border border-white/5">
                           <div className="space-y-1.5">
                             <div className="flex items-center space-x-1">
                               <div className="w-3 h-3 rounded-full bg-indigo-500/60" />
-                              <div className="h-1.5 w-10 bg-white/30 rounded-full" />
+                              <div className="mock-line-title h-1.5 w-10 bg-white/30 rounded-full" />
                             </div>
-                            <div className="h-2 w-4/5 bg-[#252730] rounded-md" />
-                            <div className="h-2 w-3/5 bg-[#8B51FF]/40 rounded-md ml-auto" />
+                            <div className="mock-bubble-left h-2 w-4/5 bg-[#252730] rounded-md" />
+                            <div className="mock-bubble-right h-2 w-3/5 bg-[#8B51FF]/40 rounded-md ml-auto" />
                           </div>
-                          <div className="h-3 w-full bg-[#1b1c22] rounded border border-white/5 flex items-center px-1">
-                            <div className="h-1 w-12 bg-white/20 rounded-full" />
+                          <div className="mock-input h-3 w-full bg-[#1b1c22] rounded border border-white/5 flex items-center px-1">
+                            <div className="mock-line-sub h-1 w-12 bg-white/20 rounded-full" />
                           </div>
                         </div>
                       </div>
