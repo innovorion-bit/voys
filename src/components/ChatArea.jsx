@@ -822,10 +822,8 @@ export const ChatArea = ({
   const [replyingTo, setReplyingTo] = useState(null); // { id, user, color, text }
   const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState(null);
 
-  // Message 3-dots action menu and delete state
+  // Message 3-dots action menu
   const [activeMsgMenuId, setActiveMsgMenuId] = useState(null);
-  const [msgToDelete, setMsgToDelete] = useState(null);
-  const [isDeletingMsg, setIsDeletingMsg] = useState(false);
 
   // File attachments state
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -858,9 +856,6 @@ export const ChatArea = ({
       if (e.key === 'Escape') {
         setActiveMsgMenuId(null);
         setActiveReactionPickerMsgId(null);
-        if (!isDeletingMsg) {
-          setMsgToDelete(null);
-        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -869,7 +864,7 @@ export const ChatArea = ({
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isDeletingMsg]);
+  }, []);
 
   // Reset pending state on channel switch (render-time state sync)
   if (prevChannel !== activeChannel) {
@@ -877,7 +872,6 @@ export const ChatArea = ({
     setPendingFiles([]); // clear pending files on channel switch
     setReplyingTo(null); // reset reply state
     setActiveMsgMenuId(null);
-    setMsgToDelete(null);
   }
 
   // Smooth scroll to bottom
@@ -2236,9 +2230,15 @@ export const ChatArea = ({
                               <div className="w-full h-px bg-white/10 my-1" />
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   setActiveMsgMenuId(null);
-                                  setMsgToDelete(msg);
+                                  try {
+                                    if (onDeleteMessage) {
+                                      await onDeleteMessage(msg.id);
+                                    }
+                                  } catch (err) {
+                                    console.error('Mesaj silinirken hata oluştu:', err);
+                                  }
                                 }}
                                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-200 hover:bg-rose-500/20 transition cursor-pointer text-left group/del"
                               >
@@ -4017,89 +4017,6 @@ export const ChatArea = ({
         </div>
       )}
 
-      {/* 4. Tekil Mesajı / Dosyayı Sil Onay Modalı */}
-      {msgToDelete && (
-        <div 
-          onClick={() => !isDeletingMsg && setMsgToDelete(null)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-150"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-150"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
-              <Trash2 size={24} />
-            </div>
-
-            <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-white">Mesajı Sil</h3>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Bu mesajı silmek istediğinize emin misiniz?
-                <br />
-                <span className="text-rose-400/90 font-medium">Bu işlem geri alınamaz.</span>
-              </p>
-            </div>
-
-            {/* Message preview snippet */}
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/5 text-xs text-gray-300 max-h-32 overflow-y-auto space-y-1.5 text-left select-none">
-              {msgToDelete.lines && msgToDelete.lines.length > 0 && (
-                <p className="line-clamp-3 text-gray-200 whitespace-pre-wrap break-words">{msgToDelete.lines.join('\n')}</p>
-              )}
-              {msgToDelete.attachments && msgToDelete.attachments.length > 0 && (
-                <div className="space-y-1 pt-0.5">
-                  {msgToDelete.attachments.map((att, aIdx) => (
-                    <div key={att.id || aIdx} className="flex items-center gap-1.5 text-xs text-gray-300">
-                      <File size={13} className="text-[#a36eff] flex-shrink-0" />
-                      <span className="truncate">{att.name || 'Ekli dosya'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center space-x-3 pt-2">
-              <button
-                type="button"
-                disabled={isDeletingMsg}
-                onClick={() => setMsgToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-xs transition border border-white/10 cursor-pointer disabled:opacity-50"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                disabled={isDeletingMsg}
-                onClick={async () => {
-                  setIsDeletingMsg(true);
-                  try {
-                    if (onDeleteMessage) {
-                      await onDeleteMessage(msgToDelete.id);
-                    }
-                    setMsgToDelete(null);
-                  } catch (err) {
-                    console.error('Mesaj silinirken hata oluştu:', err);
-                  } finally {
-                    setIsDeletingMsg(false);
-                  }
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50 shadow-lg shadow-rose-900/30"
-              >
-                {isDeletingMsg ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span>Siliniyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 size={14} />
-                    <span>Sil</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
