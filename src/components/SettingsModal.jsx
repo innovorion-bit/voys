@@ -35,7 +35,8 @@ import {
   Radio,
   RotateCcw,
   VolumeX,
-  Layers
+  Layers,
+  Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
@@ -158,6 +159,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [isPreviewAvatarOpen, setIsPreviewAvatarOpen] = useState(false);
   const avatarFileInputRef = useRef(null);
 
   // Field editing states for Account Settings (locked by default)
@@ -647,12 +649,20 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
     if (!isSettingsOpen || isPttRecordingActive) return undefined;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
+        if (isPreviewAvatarOpen) {
+          setIsPreviewAvatarOpen(false);
+          return;
+        }
+        if (isCropModalOpen) {
+          handleCloseCropModal();
+          return;
+        }
         handleClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSettingsOpen, isPttRecordingActive, handleClose]);
+  }, [isSettingsOpen, isPttRecordingActive, isPreviewAvatarOpen, isCropModalOpen, handleCloseCropModal, handleClose]);
 
   if (!isSettingsOpen) return null;
 
@@ -785,17 +795,13 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                   <div 
                     onClick={() => {
                       if (avatarInput) {
-                        handleRemoveAvatar();
+                        setIsPreviewAvatarOpen(true);
                       } else {
                         avatarFileInputRef.current?.click();
                       }
                     }}
-                    className={`relative group w-20 h-20 rounded-full overflow-hidden border-2 bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 ${
-                      avatarInput
-                        ? 'border-white/10 hover:border-rose-500'
-                        : 'border-white/10 hover:border-[#8B51FF]'
-                    }`}
-                    title={avatarInput ? 'Profil fotoğrafını sil' : 'Fotoğraf yüklemek için tıklayın'}
+                    className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
+                    title={avatarInput ? 'Profil fotoğrafını görüntüle' : 'Fotoğraf yüklemek için tıklayın'}
                   >
                     {avatarInput ? (
                       <>
@@ -804,9 +810,9 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           alt="Avatar Önizleme" 
                           className="w-full h-full object-cover group-hover:opacity-30 transition" 
                         />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-rose-950/85 transition text-rose-300 text-[10px] font-semibold">
-                          <Trash2 size={16} className="text-rose-400 mb-0.5 group-hover:scale-110 transition" />
-                          <span>Sil</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-full transition text-white text-[10px] font-semibold">
+                          <Eye size={16} className="mb-0.5 text-white" />
+                          <span>Görüntüle</span>
                         </div>
                       </>
                     ) : (
@@ -836,7 +842,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     <p className="text-[11px] text-gray-400">
                       Önerilen formatlar: PNG, JPG, WebP veya GIF (Maks. 5MB).
                     </p>
-                    <div className="pt-1">
+                    <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                       <button
                         type="button"
                         disabled={isUploadingAvatar}
@@ -855,6 +861,17 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                           </>
                         )}
                       </button>
+                      {avatarInput && (
+                        <button
+                          type="button"
+                          disabled={isUploadingAvatar}
+                          onClick={handleRemoveAvatar}
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg text-xs font-medium border border-rose-500/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          <span>Fotoğrafı Kaldır</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1981,6 +1998,30 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
         title="Profil Fotoğrafını Kırp"
         subtitle="Daire içerisindeki alan profil resminiz olarak kaydedilecektir."
       />
+
+      {/* Profil Fotoğrafı Büyütme (Görüntüle) Modalı */}
+      {isPreviewAvatarOpen && avatarInput && (
+        <div
+          onClick={() => setIsPreviewAvatarOpen(false)}
+          className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
+        >
+          <button
+            type="button"
+            onClick={() => setIsPreviewAvatarOpen(false)}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-lg"
+            title="Kapat (ESC)"
+          >
+            <X size={18} />
+          </button>
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-center">
+            <img
+              src={avatarInput}
+              alt="Profil Fotoğrafı"
+              className="w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square object-cover shadow-2xl border border-white/15"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
