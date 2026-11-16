@@ -133,6 +133,19 @@ import {
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 import { MessageTextWithLinks } from './MessageTextWithLinks';
 
+// Helper for Turkish and case-insensitive search matching
+function normalizeForSearch(str) {
+  if (!str) return '';
+  return String(str)
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+}
+
 // Helper to format file sizes nicely
 function formatFileSize(bytes) {
   if (!bytes || bytes === 0) return '0 B';
@@ -266,7 +279,7 @@ export const ChatArea = ({
   onTyping,
   typingUsers = [],
   searchTerm = '',
-  _onSearchChange,
+  onSearchChange: propOnSearchChange,
   isSidebarCollapsed = false,
   onToggleSidebar,
   onOpenMobileSidebar,
@@ -437,6 +450,30 @@ export const ChatArea = ({
   const [isConfirmDeleteGroupOpen, setIsConfirmDeleteGroupOpen] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const optionsMenuRef = useRef(null);
+
+  // In-chat search state
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef(null);
+
+  const activeSearch = searchTerm || localSearchTerm || '';
+
+  const handleSearchChange = (val) => {
+    setLocalSearchTerm(val);
+    if (propOnSearchChange) {
+      propOnSearchChange(val);
+    }
+  };
+
+  const handleCloseSearch = () => {
+    handleSearchChange('');
+    setIsSearchOpen(false);
+  };
+
+  // Reset search when changing active channel or DM
+  useEffect(() => {
+    handleCloseSearch();
+  }, [activeChannel, rawActiveDmFriend?.id]);
 
   useEffect(() => {
     if (!isOptionsMenuOpen) return;
@@ -1219,13 +1256,16 @@ export const ChatArea = ({
     }
   };
 
-  // Filter messages if search is active
-  const filteredMessages = searchTerm.trim()
-    ? messages.filter((m) =>
-      m.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.lines?.some((l) => l.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      m.attachments?.some((a) => a.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+  // Filter messages if search is active (supports Turkish diacritics & ASCII)
+  const filteredMessages = activeSearch.trim()
+    ? (() => {
+        const qNorm = normalizeForSearch(activeSearch.trim());
+        return messages.filter((m) =>
+          normalizeForSearch(m.user).includes(qNorm) ||
+          m.lines?.some((l) => normalizeForSearch(l).includes(qNorm)) ||
+          m.attachments?.some((a) => normalizeForSearch(a.name).includes(qNorm))
+        );
+      })()
     : messages;
 
   // Determine if a chat, DM, or verified group channel is currently active
@@ -1233,6 +1273,23 @@ export const ChatArea = ({
     (isDmMode && (activeDmFriend || (activeChannel && activeChannel.startsWith('dm-')))) ||
     (!isDmMode && channelExists && channelData && activeChannel && activeChannel !== 'home')
   );
+
+  // Global Ctrl+F / Cmd+F shortcut to trigger in-chat search & Escape to dismiss
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        if (chatInnerView === 'messages' && hasActiveChat) {
+          e.preventDefault();
+          setIsSearchOpen(true);
+          setTimeout(() => searchInputRef.current?.focus(), 60);
+        }
+      } else if (e.key === 'Escape' && isSearchOpen) {
+        handleCloseSearch();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [chatInnerView, hasActiveChat, isSearchOpen]);
 
   const shouldShowRightPanel = Boolean(hasActiveChat && (!isDmMode || isDmVoiceActive));
 
@@ -1514,7 +1571,7 @@ export const ChatArea = ({
 
         {/* Right side of Top Bar: Universal Call Button + Search Filter */}
         {hasActiveChat && (
-        <div className="flex items-center space-x-2 flex-shrink-0">
+        <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
           {/* Universal Call Button:
               - Sesli sohbet yokken başlatmak için telefon butonu görünür (Grup & DM).
               - Sesli sohbet aktifken veya sohbete girildiğinde üst bardaki bu buton kaybolur (katılma ve kontroller sağ paneldeki sesli menüdedir).
@@ -1527,6 +1584,50 @@ export const ChatArea = ({
               className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition active:scale-95 cursor-pointer"
             >
               <Phone size={17} />
+            </button>
+          )}
+
+          {/* Sohbette Mesaj Arama (Sesli Sohbet ile Üç Nokta Arasında) */}
+          {isSearchOpen ? (
+            <div className="flex items-center bg-[#141418] border border-white/15 focus-within:border-indigo-500/70 focus-within:ring-1 focus-within:ring-indigo-500/30 rounded-xl px-2.5 py-1 transition-all duration-200 w-36 sm:w-52 md:w-60 shadow-inner">
+              <Search size={14} className="text-gray-400 flex-shrink-0 mr-1.5" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={activeSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Sohbette ara..."
+                className="bg-transparent text-xs text-white placeholder-gray-500 focus:outline-none w-full min-w-0"
+              />
+              {activeSearch && (
+                <span className="text-[10px] text-gray-400 font-mono flex-shrink-0 px-1 select-none">
+                  {filteredMessages.length}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleCloseSearch}
+                className="w-5 h-5 rounded-md hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition flex-shrink-0 ml-0.5 cursor-pointer"
+                title="Aramayı Kapat (ESC)"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen(true);
+                setTimeout(() => searchInputRef.current?.focus(), 60);
+              }}
+              title="Sohbette Ara (Ctrl+F)"
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
+                activeSearch
+                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Search size={17} />
             </button>
           )}
 
@@ -1553,6 +1654,18 @@ export const ChatArea = ({
                   onClick={() => setIsOptionsMenuOpen(false)}
                 />
                 <div className="absolute right-0 top-full mt-2 w-48 bg-[#121216] border border-white/10 rounded-2xl shadow-xl p-1.5 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOptionsMenuOpen(false);
+                      setIsSearchOpen(true);
+                      setTimeout(() => searchInputRef.current?.focus(), 60);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
+                  >
+                    <Search size={15} className="text-indigo-400 flex-shrink-0" />
+                    <span>Sohbette ara</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -1998,6 +2111,26 @@ export const ChatArea = ({
             />
           )}
 
+          {/* Active Search Filter Banner */}
+          {activeSearch.trim() && !isFullChatScreenShare && (
+            <div className="px-3 sm:px-4 py-2 bg-[#12131a] border-b border-indigo-500/20 flex items-center justify-between text-xs text-indigo-200 select-none flex-shrink-0 z-10 shadow-sm">
+              <div className="flex items-center space-x-2 truncate">
+                <Search size={13} className="text-indigo-400 shrink-0" />
+                <span className="truncate">
+                  &ldquo;<strong className="text-white">{activeSearch}</strong>&rdquo; araması: <strong className="text-indigo-300">{filteredMessages.length}</strong> mesaj bulundu
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseSearch}
+                className="text-[11px] text-gray-400 hover:text-white transition px-2 py-0.5 rounded hover:bg-white/5 cursor-pointer shrink-0 ml-2"
+                title="Aramayı Kapat (ESC)"
+              >
+                Filtreyi Temizle
+              </button>
+            </div>
+          )}
+
           {/* Channel Not Found / No Groups Empty State */}
           {!hasActiveChat && !isDmMode ? (
             <div className={`flex-1 flex flex-col items-center justify-center p-8 text-center select-none space-y-3 ${isFullChatScreenShare ? 'hidden' : ''}`}>
@@ -2039,15 +2172,15 @@ export const ChatArea = ({
                 <div className="flex-1 my-auto flex flex-col items-center justify-center py-8 px-4 text-center select-none space-y-2">
                   <div className="space-y-1 max-w-sm">
                     <h3 className="text-sm font-bold text-gray-200 tracking-wide">
-                      {searchTerm
+                      {activeSearch
                         ? 'Eşleşen Mesaj Yok'
                         : isDmMode && activeDmFriend
                           ? 'Sohbet Geçmişi Boş'
                           : 'Henüz mesaj yok'}
                     </h3>
                     <p className="text-xs text-gray-400 leading-relaxed">
-                      {searchTerm
-                        ? `"${searchTerm}" araması ile eşleşen mesaj bulunamadı.`
+                      {activeSearch
+                        ? `"${activeSearch}" araması ile eşleşen mesaj bulunamadı.`
                         : isDmMode && activeDmFriend
                           ? `${activeDmFriend.name} ile henüz bir mesaj geçmişiniz yok. Bir merhaba diyerek konuşmayı başlatın!`
                           : 'Bu sohbette henüz mesaj paylaşılmadı. İlk mesajı siz yazarak sohbeti başlatın!'}
@@ -2354,7 +2487,7 @@ export const ChatArea = ({
                           <div className="space-y-0.5 text-[13.5px] leading-relaxed break-words text-gray-200 max-w-full">
                             {msg.lines.map((line, idx) => (
                               <div key={idx} className="font-normal font-sans">
-                                <MessageTextWithLinks text={line} />
+                                <MessageTextWithLinks text={line} highlightText={activeSearch} />
                               </div>
                             ))}
                           </div>
