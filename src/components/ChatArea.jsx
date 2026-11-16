@@ -1761,7 +1761,7 @@ export const ChatArea = ({
                         });
                       }}
                       className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] flex items-center justify-center cursor-pointer transition flex-shrink-0"
-                      title="Profil fotoğrafını büyüt"
+                      title="Profil fotoğrafını görüntüle"
                     >
                       <UserAvatar
                         user={activeDmFriend}
@@ -1771,7 +1771,7 @@ export const ChatArea = ({
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
                         <Eye size={16} className="mb-0.5 text-white" />
-                        <span>Büyüt</span>
+                        <span>Görüntüle</span>
                       </div>
                     </div>
 
@@ -1916,37 +1916,44 @@ export const ChatArea = ({
                       className="hidden"
                     />
                     <div
-                      onClick={() => !isUploadingGroupAvatar && groupFileInputRef.current?.click()}
-                      className={`relative group w-20 h-20 rounded-2xl overflow-hidden border-2 bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 ${
-                        currentGroupAvatar
-                          ? 'border-white/10 hover:border-[#8B51FF]'
-                          : 'border-white/10 hover:border-[#8B51FF]'
-                      }`}
-                      title="Grup fotoğrafını değiştirmek için tıklayın"
+                      onClick={(e) => {
+                        if (currentGroupAvatar) {
+                          e.stopPropagation();
+                          setActiveMediaModal({
+                            url: currentGroupAvatar,
+                            name: `${channelData?.name || (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Grup')} - Grup Fotoğrafı`,
+                            isGroup: true,
+                          });
+                        } else if (!isUploadingGroupAvatar) {
+                          groupFileInputRef.current?.click();
+                        }
+                      }}
+                      className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
+                      title={currentGroupAvatar ? 'Grup fotoğrafını görüntüle' : 'Fotoğraf yüklemek için tıklayın'}
                     >
                       {currentGroupAvatar ? (
                         <>
                           <img
                             src={currentGroupAvatar}
                             alt={channelData?.name || 'Grup'}
-                            className="w-full h-full object-cover group-hover:opacity-30 transition"
+                            className="w-full h-full object-cover rounded-full group-hover:opacity-30 transition"
                           />
-                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
-                            <Camera size={16} className="mb-0.5 text-white" />
-                            <span>Değiştir</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-full transition text-white text-[10px] font-semibold">
+                            <Eye size={16} className="mb-0.5 text-white" />
+                            <span>Görüntüle</span>
                           </div>
                         </>
                       ) : (
                         <>
                           <Users size={28} className="text-gray-400 group-hover:scale-110 transition" />
-                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-full transition text-white text-[10px] font-semibold">
                             <Camera size={16} className="mb-0.5 text-white" />
                             <span>Yükle</span>
                           </div>
                         </>
                       )}
                       {isUploadingGroupAvatar && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-full">
                           <Loader2 size={20} className="animate-spin text-white" />
                         </div>
                       )}
