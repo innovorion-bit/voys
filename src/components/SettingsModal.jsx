@@ -769,11 +769,23 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
           {activeTab === 'account' && (
             <div className="space-y-6">
               {/* Header: Hesap */}
-              <div className="pb-4 border-b border-white/[0.08] flex items-center justify-between">
+              <div className="pb-4 border-b border-white/[0.08] flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-tight">Hesap</h2>
                   <p className="text-xs text-gray-400 mt-1">Kişisel profilinizi, kullanıcı bilgilerinizi ve şifre güvenliğinizi yönetin.</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClose();
+                    onLogout?.();
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded-lg transition active:scale-95 inline-flex items-center space-x-2 cursor-pointer flex-shrink-0"
+                  title="Oturumu Kapat"
+                >
+                  <LogOut size={14} />
+                  <span>Çıkış Yap</span>
+                </button>
               </div>
 
               {/* Bölüm 1: Profil Fotoğrafı */}
@@ -1070,21 +1082,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                     </button>
                   </div>
                 </form>
-              </div>
-
-              {/* Sade Çıkış Yap Aksiyonu */}
-              <div className="pt-4 border-t border-white/[0.08] flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleClose();
-                    onLogout?.();
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded-lg transition active:scale-95 inline-flex items-center space-x-2 cursor-pointer"
-                >
-                  <LogOut size={14} />
-                  <span>Çıkış Yap</span>
-                </button>
               </div>
             </div>
           )}
