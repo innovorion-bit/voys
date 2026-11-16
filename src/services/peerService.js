@@ -1187,6 +1187,7 @@ export class MeshVoiceService {
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: videoConstraints,
           audio: includeAudio,
+          systemAudio: includeAudio ? 'include' : 'exclude',
         });
       } catch (constraintErr) {
         if (constraintErr?.name === 'OverconstrainedError' || constraintErr?.name === 'TypeError') {
@@ -1201,6 +1202,7 @@ export class MeshVoiceService {
           stream = await navigator.mediaDevices.getDisplayMedia({
             video: fallbackConstraints,
             audio: includeAudio,
+            systemAudio: includeAudio ? 'include' : 'exclude',
           });
         } else {
           throw constraintErr;

@@ -9,16 +9,26 @@ export const ScreenShareModal = ({
   const [resolution, setResolution] = useState('1080p');
   const [fps, setFps] = useState(30);
   const [includeAudio, setIncludeAudio] = useState(true);
+  const [isWaitingSelection, setIsWaitingSelection] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleStart = () => {
-    onStartShare({
-      resolution,
-      fps: Number(fps),
-      includeAudio,
-    });
-    onClose();
+  const handleStart = async () => {
+    setIsWaitingSelection(true);
+    try {
+      const stream = await onStartShare({
+        resolution,
+        fps: Number(fps),
+        includeAudio,
+      });
+      if (stream) {
+        onClose();
+      }
+    } catch {
+      //
+    } finally {
+      setIsWaitingSelection(false);
+    }
   };
 
   const resolutionList = [
@@ -29,6 +39,31 @@ export const ScreenShareModal = ({
   ];
 
   const fpsList = [15, 30, 60];
+
+  if (isWaitingSelection) {
+    return (
+      <div className="bg-[#121319] border-b border-white/10 px-4 py-3 flex-shrink-0 text-gray-200 select-none">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <span className="w-2 h-2 rounded-full bg-[#8B51FF] animate-pulse"></span>
+            <span className="text-xs font-medium text-white">
+              Tarayıcı penceresinden paylaşmak istediğiniz ekranı veya pencereyi seçin...
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsWaitingSelection(false);
+              onClose();
+            }}
+            className="px-3 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer"
+          >
+            Vazgeç
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#121319] border-b border-white/10 px-4 py-3 flex-shrink-0 text-gray-200 select-none">

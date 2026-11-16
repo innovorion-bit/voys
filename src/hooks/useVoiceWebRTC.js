@@ -599,11 +599,16 @@ export const useVoiceWebRTC = () => {
         toast.success('Ekran Paylaşımı Başlatıldı', {
           description: `${qualityLabel} kalitesinde canlı yayınlanıyor.`,
         });
+        return stream;
       }
+      return null;
     } catch (err) {
-      toast.error('Ekran Paylaşılamadı', {
-        description: err.message || 'Ekran yakalama sırasında bir hata oluştu.',
-      });
+      if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+        toast.error('Ekran Paylaşılamadı', {
+          description: err.message || 'Ekran yakalama sırasında bir hata oluştu.',
+        });
+      }
+      return null;
     }
   }, [myPeerId]);
 

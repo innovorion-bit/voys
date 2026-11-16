@@ -1977,9 +1977,9 @@ export const ChatArea = ({
               onClose={() => setIsScreenShareModalOpen(false)}
               onStartShare={(options) => {
                 if (onStartScreenShare) {
-                  onStartScreenShare(options);
+                  return onStartScreenShare(options);
                 } else if (onToggleScreenShare) {
-                  onToggleScreenShare();
+                  return onToggleScreenShare();
                 }
               }}
             />
