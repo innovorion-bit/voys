@@ -161,26 +161,26 @@ export const LandingPage = () => {
           60 FPS ekran paylaşımı ve kesintisiz grup sohbetleri. Arkadaşların ve topluluğun için özel alanın.
         </p>
 
-        {/* Hero CTA Buttons - Sayfaya tam ortalanmış ve yan yana */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 w-full">
-          {/* Main Direct Download CTA */}
+        {/* Hero CTA Buttons - Sayfaya tam ortalanmış, arka planla uyumlu aşağı kaydırılmış */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 w-full mt-4 sm:mt-8 translate-y-2 sm:translate-y-4">
+          {/* Main Direct Download CTA - Beyaz Buton Siyah Yazı */}
           <button
             type="button"
             onClick={() => handleDownloadClick(directExeUrl)}
-            className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-gradient-to-r from-[#8B51FF] via-[#8144ff] to-[#6d28d9] hover:from-[#9b66ff] hover:to-[#7c3aed] text-white font-bold text-sm sm:text-base shadow-xl shadow-[#8B51FF]/30 hover:shadow-[#8B51FF]/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 cursor-pointer group whitespace-nowrap"
+            className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-white hover:bg-gray-100 text-gray-900 font-bold text-sm sm:text-base shadow-xl shadow-black/25 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 cursor-pointer group whitespace-nowrap"
           >
-            <Download size={19} className="group-hover:-translate-y-0.5 transition-transform shrink-0" />
+            <Download size={19} className="text-gray-900 group-hover:-translate-y-0.5 transition-transform shrink-0" />
             <span>Windows için İndir</span>
           </button>
 
-          {/* Open in Browser CTA */}
+          {/* Open in Browser CTA - Mor Buton Beyaz Yazı */}
           <button
             type="button"
             onClick={() => navigate(isAuthenticated ? '/channel/home' : '/login')}
-            className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-[#121217] hover:bg-[#1a1a22] border border-white/10 hover:border-white/20 text-white font-bold text-sm sm:text-base shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
+            className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-[#8B51FF] hover:bg-[#7a3ef2] border border-white/15 hover:border-white/30 text-white font-bold text-sm sm:text-base shadow-xl shadow-[#8B51FF]/35 hover:shadow-[#8B51FF]/55 transition-all flex items-center justify-center space-x-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] group whitespace-nowrap"
           >
             <span>Voys'u Tarayıcında Aç</span>
-            <ArrowRight size={16} className="text-gray-400 ml-0.5 shrink-0" />
+            <ArrowRight size={16} className="text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-0.5 shrink-0" />
           </button>
         </div>
       </section>
