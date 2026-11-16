@@ -1952,7 +1952,11 @@ export const ChatArea = ({
                           groupFileInputRef.current?.click();
                         }
                       }}
-                      className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0"
+                      className={`relative group w-20 h-20 rounded-full overflow-hidden border-2 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 ${
+                        currentGroupAvatar
+                          ? 'border-white/10 hover:border-[#8B51FF] bg-black/40'
+                          : 'bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border-indigo-500/40 hover:border-[#8B51FF] text-indigo-300 shadow-sm'
+                      }`}
                       title={currentGroupAvatar ? 'Grup fotoğrafını görüntüle' : 'Fotoğraf yüklemek için tıklayın'}
                     >
                       {currentGroupAvatar ? (
@@ -1969,7 +1973,7 @@ export const ChatArea = ({
                         </>
                       ) : (
                         <>
-                          <Users size={28} className="text-gray-400 group-hover:scale-110 transition" />
+                          <Users size={32} className="text-indigo-300 group-hover:scale-110 transition" />
                           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-full transition text-white text-[10px] font-semibold">
                             <Camera size={16} className="mb-0.5 text-white" />
                             <span>Yükle</span>

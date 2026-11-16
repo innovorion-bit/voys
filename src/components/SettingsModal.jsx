@@ -44,6 +44,7 @@ import { sounds } from '../utils/audio';
 import { dbService, isAuthorizedAdminUser } from '../lib/supabase';
 import { AdminMonitorTab } from './AdminMonitorTab';
 import { ImageCropModal } from './ImageCropModal';
+import { UserAvatar } from './UserAvatar';
 import {
   DEFAULT_PTT_KEY,
   formatShortcutLabel,
@@ -810,9 +811,18 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
                       </>
                     ) : (
                       <>
-                        <User size={30} className="text-gray-400 group-hover:scale-110 transition" />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
-                          <Camera size={16} className="mb-0.5" />
+                        <UserAvatar
+                          user={{
+                            name: displayNameInput || profile?.name || authUser?.display_name || 'Kullanıcı',
+                            username: usernameInput || profile?.username || authUser?.username,
+                            avatar: null,
+                          }}
+                          size="2xl"
+                          showStatus={false}
+                          className="!w-full !h-full !rounded-full"
+                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-full transition text-white text-[10px] font-semibold">
+                          <Camera size={16} className="mb-0.5 text-white" />
                           <span>Yükle</span>
                         </div>
                       </>
