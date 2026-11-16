@@ -470,6 +470,18 @@ export const ChatArea = ({
     setIsSearchOpen(false);
   };
 
+  // Filter messages if search is active (supports Turkish diacritics & ASCII) - declared early to prevent TDZ
+  const filteredMessages = activeSearch.trim()
+    ? (() => {
+        const qNorm = normalizeForSearch(activeSearch.trim());
+        return messages.filter((m) =>
+          normalizeForSearch(m.user).includes(qNorm) ||
+          m.lines?.some((l) => normalizeForSearch(l).includes(qNorm)) ||
+          m.attachments?.some((a) => normalizeForSearch(a.name).includes(qNorm))
+        );
+      })()
+    : messages;
+
   // Reset search when changing active channel or DM
   useEffect(() => {
     handleCloseSearch();
@@ -1255,18 +1267,6 @@ export const ChatArea = ({
       }, 1800);
     }
   };
-
-  // Filter messages if search is active (supports Turkish diacritics & ASCII)
-  const filteredMessages = activeSearch.trim()
-    ? (() => {
-        const qNorm = normalizeForSearch(activeSearch.trim());
-        return messages.filter((m) =>
-          normalizeForSearch(m.user).includes(qNorm) ||
-          m.lines?.some((l) => normalizeForSearch(l).includes(qNorm)) ||
-          m.attachments?.some((a) => normalizeForSearch(a.name).includes(qNorm))
-        );
-      })()
-    : messages;
 
   // Determine if a chat, DM, or verified group channel is currently active
   const hasActiveChat = Boolean(
