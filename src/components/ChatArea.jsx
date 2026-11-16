@@ -1682,18 +1682,6 @@ export const ChatArea = ({
                     type="button"
                     onClick={() => {
                       setIsOptionsMenuOpen(false);
-                      setIsSearchOpen(true);
-                      setTimeout(() => searchInputRef.current?.focus(), 60);
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
-                  >
-                    <Search size={15} className="text-indigo-400 flex-shrink-0" />
-                    <span>Sohbette ara</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOptionsMenuOpen(false);
                       setChatInnerView('userInfo');
                     }}
                     className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 rounded-xl transition text-left cursor-pointer"
