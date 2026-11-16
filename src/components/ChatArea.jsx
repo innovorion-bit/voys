@@ -2960,7 +2960,7 @@ export const ChatArea = ({
                       className={`${
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
-                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 text-xs font-semibold'
+                          : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl transition cursor-pointer border ${
                         inputMode === 'ptt'
                           ? isPttActive
@@ -2977,26 +2977,16 @@ export const ChatArea = ({
                           ? 'Mikrofonu Aç'
                           : 'Mikrofonu Kapat'
                       }
+                      aria-label={isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
                     >
                       {isMuted ? (
-                        <MicOff size={14} className={inputMode === 'ptt' ? 'text-indigo-300' : 'text-rose-400'} />
+                        <MicOff size={16} className={inputMode === 'ptt' ? 'text-indigo-300' : 'text-rose-400'} />
                       ) : (
-                        <Mic size={14} className={isPttActive ? 'text-emerald-400' : ''} />
-                      )}
-                      {!isRightPanelCompact && (
-                        <span className="truncate">
-                          {inputMode === 'ptt'
-                            ? isPttActive
-                              ? 'Konuşuyor'
-                              : `Bas-Konuş (${formatShortcutLabel(pttKey)})`
-                            : isMuted
-                            ? 'Susturuldu'
-                            : 'Sustur'}
-                        </span>
+                        <Mic size={16} className={isPttActive ? 'text-emerald-400' : ''} />
                       )}
                     </button>
 
-                    {/* Ekran Paylaşımı Butonu (Sustur ve Ayrıl Ortasında - Eşit Oranda) */}
+                    {/* Ekran Paylaşımı Butonu (Sadece İkon) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -3009,7 +2999,7 @@ export const ChatArea = ({
                       className={`${
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
-                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 text-xs font-semibold'
+                          : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl transition cursor-pointer border ${
                         isScreenSharing
                           ? 'bg-[#8B51FF]/25 text-[#c084fc] border-[#8B51FF]/50 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
@@ -3024,32 +3014,28 @@ export const ChatArea = ({
                           ? 'Yayın Panelini Kapat'
                           : 'Ekranını Paylaş'
                       }
+                      aria-label={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
                     >
                       {isScreenSharing ? (
-                        <MonitorX size={14} className="text-rose-400" />
+                        <MonitorX size={16} className="text-rose-400" />
                       ) : (
-                        <Monitor size={14} className={isScreenShareModalOpen ? 'text-white' : 'text-[#c084fc]'} />
-                      )}
-                      {!isRightPanelCompact && (
-                        <span className="truncate">
-                          {isScreenSharing ? 'Durdur' : 'Yayınla'}
-                        </span>
+                        <Monitor size={16} className={isScreenShareModalOpen ? 'text-white' : 'text-[#c084fc]'} />
                       )}
                     </button>
 
-                    {/* Ayrıl Butonu */}
+                    {/* Ayrıl Butonu (Sadece İkon) */}
                     <button
                       type="button"
                       onClick={onLeaveCall || onToggleDmCall || onDisconnect}
                       className={`${
                         isRightPanelCompact
                           ? 'w-9 h-8 flex items-center justify-center'
-                          : 'flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 text-xs font-semibold'
+                          : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer border border-rose-600 hover:border-rose-500`}
                       title="Sesli Sohbetten Ayrıl"
+                      aria-label="Sesli Sohbetten Ayrıl"
                     >
-                      <PhoneOff size={14} />
-                      {!isRightPanelCompact && <span>Ayrıl</span>}
+                      <PhoneOff size={16} />
                     </button>
                   </div>
                 ) : (
