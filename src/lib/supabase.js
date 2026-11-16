@@ -1175,7 +1175,11 @@ export const dbService = {
   async resetPasswordForEmail(email, redirectTo) {
     if (isSupabaseConfigured) {
       try {
-        const redirect = redirectTo || (typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined);
+        const origin =
+          typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
+            ? window.location.origin
+            : 'https://voys-omega.vercel.app';
+        const redirect = redirectTo || `${origin}/reset-password`;
         const res = await withTimeout(
           supabase.auth.resetPasswordForEmail(email, { redirectTo: redirect }),
           45000,
