@@ -45,6 +45,7 @@ import {
   User,
   Phone,
   PhoneOff,
+  LogOut,
   Mic,
   MicOff,
   Monitor,
@@ -3214,10 +3215,10 @@ export const ChatArea = ({
                           : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl transition cursor-pointer border ${
                         isScreenSharing
-                          ? 'bg-[#8B51FF]/25 text-[#c084fc] border-[#8B51FF]/50 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
                           : isScreenShareModalOpen
-                          ? 'bg-[#8B51FF]/30 text-white border-[#8B51FF]/60 shadow-sm'
-                          : 'bg-white/10 text-white border-white/10 hover:bg-[#8B51FF]/20 hover:border-[#8B51FF]/30 hover:text-white'
+                          ? 'bg-white/20 text-white border-white/25 shadow-sm'
+                          : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
                       }`}
                       title={
                         isScreenSharing
@@ -3231,7 +3232,7 @@ export const ChatArea = ({
                       {isScreenSharing ? (
                         <MonitorX size={16} className="text-rose-400" />
                       ) : (
-                        <Monitor size={16} className={isScreenShareModalOpen ? 'text-white' : 'text-[#c084fc]'} />
+                        <Monitor size={16} className="text-white" />
                       )}
                     </button>
 
@@ -3247,7 +3248,7 @@ export const ChatArea = ({
                       title="Sesli Sohbetten Ayrıl"
                       aria-label="Sesli Sohbetten Ayrıl"
                     >
-                      <PhoneOff size={16} />
+                      <LogOut size={16} />
                     </button>
                   </div>
                 ) : (
@@ -4017,7 +4018,7 @@ export const ChatArea = ({
                     }}
                     className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-rose-500/15 text-rose-400 transition text-left border-t border-white/5 mt-1 pt-2 cursor-pointer"
                   >
-                    <PhoneOff size={14} className="flex-shrink-0" />
+                    <LogOut size={14} className="flex-shrink-0" />
                     <span>Sesli Sohbetten Ayrıl</span>
                   </button>
                 )}
