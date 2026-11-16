@@ -6,6 +6,11 @@ export const LOGIN_SIZE = { width: 380, height: 400, minWidth: 360, minHeight: 3
 export const REGISTER_SIZE = { width: 380, height: 580, minWidth: 360, minHeight: 500 };
 export const MAIN_SIZE = { width: 950, height: 580, minWidth: 720, minHeight: 500 };
 
+// Keep WebView2 process and Chromium timers active when occluded by fullscreen games
+if (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function') {
+  navigator.locks.request('voys_background_keepalive', () => new Promise(() => {})).catch(() => {});
+}
+
 export function isTauriEnvironment() {
   return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__);
 }

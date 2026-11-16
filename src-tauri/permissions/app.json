@@ -1,0 +1,50 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "default": {
+    "description": "Default permissions for application commands",
+    "permissions": [
+      "allow-start-ptt-listener",
+      "allow-stop-ptt-listener",
+      "allow-detect-running-game",
+      "allow-open-external-url",
+      "allow-exit-app"
+    ]
+  },
+  "permission": [
+    {
+      "identifier": "allow-start-ptt-listener",
+      "description": "Enables the start_ptt_listener command",
+      "commands": {
+        "allow": ["start_ptt_listener"]
+      }
+    },
+    {
+      "identifier": "allow-stop-ptt-listener",
+      "description": "Enables the stop_ptt_listener command",
+      "commands": {
+        "allow": ["stop_ptt_listener"]
+      }
+    },
+    {
+      "identifier": "allow-detect-running-game",
+      "description": "Enables the detect_running_game command",
+      "commands": {
+        "allow": ["detect_running_game"]
+      }
+    },
+    {
+      "identifier": "allow-open-external-url",
+      "description": "Enables the open_external_url command",
+      "commands": {
+        "allow": ["open_external_url"]
+      }
+    },
+    {
+      "identifier": "allow-exit-app",
+      "description": "Enables the exit_app command",
+      "commands": {
+        "allow": ["exit_app"]
+      }
+    }
+  ]
+}

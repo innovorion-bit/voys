@@ -28,7 +28,8 @@
         "transparent": true,
         "shadow": false,
         "theme": "Dark",
-        "visible": true
+        "visible": true,
+        "backgroundThrottling": "disabled"
       }
     ],
     "security": {

@@ -527,7 +527,7 @@ function attachWindowFallbackListeners(parsed, onStateChange) {
   };
 
   const handleVisibilityChange = () => {
-    if (document.hidden) {
+    if (document.hidden && !isTauriEnvironment()) {
       setPressed(false);
     }
   };

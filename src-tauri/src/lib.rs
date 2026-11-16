@@ -94,6 +94,16 @@ fn open_external_url(url: String) -> Result<bool, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  #[cfg(target_os = "windows")]
+  {
+    unsafe {
+      std::env::set_var(
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-media-suspend --disable-features=CalculateNativeWinOcclusion",
+      );
+    }
+  }
+
   std::panic::set_hook(Box::new(|info| {
     let msg = format!("PANIC: {}\n", info);
     let _ = std::fs::write("tauri_panic.log", msg);

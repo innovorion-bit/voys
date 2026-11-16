@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { peerService } from '../services/peerService';
 import { sounds } from '../utils/audio';
+import { isTauriEnvironment } from '../utils/windowManager';
 
 const VAD_RMS_THRESHOLD = 1.2;
 const VAD_PEAK_DEV_THRESHOLD = 4;
@@ -99,7 +100,7 @@ export const useVoiceWebRTC = () => {
 
       const scheduleNext = () => {
         if (disposed) return;
-        if (typeof document !== 'undefined' && document.hidden) return;
+        if (typeof document !== 'undefined' && document.hidden && !isTauriEnvironment()) return;
         const delay = typeof document !== 'undefined' && !document.hasFocus() ? 180 : 90;
         timerId = setTimeout(tick, delay);
       };
@@ -107,12 +108,16 @@ export const useVoiceWebRTC = () => {
       const checkVolume = () => {
         if (!localAnalyserRef.current) return;
 
-        if (typeof document !== 'undefined' && document.hidden) {
+        if (typeof document !== 'undefined' && document.hidden && !isTauriEnvironment()) {
           if (localSpeakingRef.current) {
             localSpeakingRef.current = false;
             setIsSpeaking(false);
           }
           return;
+        }
+
+        if (localAudioContextRef.current && localAudioContextRef.current.state === 'suspended') {
+          localAudioContextRef.current.resume().catch(() => {});
         }
 
         let speakingNow = false;
@@ -140,6 +145,10 @@ export const useVoiceWebRTC = () => {
 
       const handleVisibility = () => {
         if (disposed) return;
+        if (isTauriEnvironment()) {
+          // Never suspend voice detection on desktop when occluded by fullscreen games
+          return;
+        }
         if (timerId) {
           clearTimeout(timerId);
           timerId = null;
@@ -475,7 +484,7 @@ export const useVoiceWebRTC = () => {
         remoteAudioContextRef.current.resume().catch(() => {});
       }
 
-      if (typeof document !== 'undefined' && document.hidden) {
+      if (typeof document !== 'undefined' && document.hidden && !isTauriEnvironment()) {
         resetRemoteSpeaking();
         return;
       }
@@ -519,6 +528,7 @@ export const useVoiceWebRTC = () => {
 
     const handleRemoteVadVisibility = () => {
       if (remoteVadDisposed) return;
+      if (isTauriEnvironment()) return;
       if (remoteVadTimer) {
         clearTimeout(remoteVadTimer);
         remoteVadTimer = null;

@@ -8,10 +8,13 @@
   "remote": {
     "urls": [
       "https://*.vercel.app/*",
-      "https://voys-omega.vercel.app/*"
+      "https://*.vercel.app",
+      "https://voys-omega.vercel.app/*",
+      "https://voys-omega.vercel.app"
     ]
   },
   "permissions": [
+    "default",
     "core:default",
     "core:app:default",
     "core:app:allow-exit",
