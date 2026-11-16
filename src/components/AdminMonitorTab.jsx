@@ -523,14 +523,11 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                     <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-400 bg-white/[0.02]">
                       <th className="py-2.5 px-3">Kullanıcı</th>
                       <th className="py-2.5 px-3">E-posta</th>
-                      <th className="py-2.5 px-3">Durum</th>
                       <th className="py-2.5 px-3">Kayıt Tarihi</th>
-                      <th className="py-2.5 px-3">Son Giriş</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {users.map((u) => {
-                      const st = USER_STATUS_LABELS[u.status] || USER_STATUS_LABELS.offline;
                       const isContextTarget = contextMenu?.user?.id === u.id;
                       const isBeingDeleted = deletingUserId === u.id;
                       return (
@@ -576,17 +573,8 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                               )}
                             </div>
                           </td>
-                          <td className="py-2.5 px-3">
-                            <span className="inline-flex items-center space-x-1.5 text-[11px] text-gray-300">
-                              <span className={`w-2 h-2 rounded-full ${st.dot}`} />
-                              <span>{st.text}</span>
-                            </span>
-                          </td>
                           <td className="py-2.5 px-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">
                             {formatDateTr(u.created_at)}
-                          </td>
-                          <td className="py-2.5 px-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">
-                            {formatDateTr(u.last_sign_in_at)}
                           </td>
                         </tr>
                       );
