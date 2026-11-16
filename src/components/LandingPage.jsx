@@ -30,9 +30,9 @@ export const LandingPage = () => {
     <div
       className="min-h-screen text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between"
       style={{
-        backgroundImage: "url('/voys_backgraund.png')",
-        backgroundColor: '#070709',
-        backgroundSize: '100% 100%',
+        backgroundImage: "url('/voys_hero_bg.jpg')",
+        backgroundColor: '#07050f',
+        backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
       }}
@@ -41,15 +41,15 @@ export const LandingPage = () => {
       <div
         className="fixed inset-0 w-full h-full pointer-events-none z-0"
         style={{
-          backgroundImage: "url('/voys_backgraund.png')",
-          backgroundSize: '100% 100%',
+          backgroundImage: "url('/voys_hero_bg.jpg')",
+          backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
         }}
       />
 
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070709]/50 pt-4 sm:pt-6 pb-2">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#07050f]/40 pt-4 sm:pt-6 pb-2">
         <div className="w-full px-6 sm:px-10 lg:px-16 h-16 sm:h-20 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
@@ -118,15 +118,15 @@ export const LandingPage = () => {
       {/* 2. Hero Section (Centered headline, subtitle and buttons) */}
       <section className="relative z-10 flex-1 flex flex-col items-center justify-center pt-16 sm:pt-24 pb-24 sm:pb-36 px-6 sm:px-10 lg:px-16 max-w-5xl mx-auto text-center">
         {/* Hero Title */}
-        <h1 className="max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white mb-6 leading-[1.12] text-center">
+        <h1 className="max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white mb-6 leading-[1.12] text-center drop-shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
           Birlikte Konuşmak ve Paylaşmak İçin{' '}
-          <span className="inline-block bg-gradient-to-r from-[#a36eff] via-[#c084fc] to-[#e879f9] bg-clip-text text-transparent">
+          <span className="inline-block bg-gradient-to-r from-[#d8b4fe] via-[#f0abfc] to-[#ffffff] bg-clip-text text-transparent drop-shadow-[0_2px_20px_rgba(192,132,252,0.8)]">
             Yepyeni Bir Boyut.
           </span>
         </h1>
 
         {/* Hero Subtitle */}
-        <p className="max-w-2xl text-base sm:text-lg md:text-xl text-gray-300 font-normal leading-relaxed mb-12 text-center">
+        <p className="max-w-2xl text-base sm:text-lg md:text-xl text-gray-200 font-normal leading-relaxed mb-12 text-center drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
           Düşük gecikmeli ses kanalları, yapay zeka destekli arka plan gürültü filtresi,
           60 FPS ekran paylaşımı ve kesintisiz grup sohbetleri. Arkadaşların ve topluluğun için özel alanın.
         </p>
@@ -149,7 +149,6 @@ export const LandingPage = () => {
             onClick={() => navigate(isAuthenticated ? '/channel/home' : '/login')}
             className="w-full sm:w-[260px] h-[54px] rounded-2xl bg-[#121217] hover:bg-[#1a1a22] border border-white/10 hover:border-white/20 text-white font-bold text-sm sm:text-base shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
           >
-            <Monitor size={18} className="text-gray-400 shrink-0" />
             <span>Voys'u Tarayıcında Aç</span>
             <ArrowRight size={16} className="text-gray-400 ml-0.5 shrink-0" />
           </button>
