@@ -49,7 +49,7 @@ export const LandingPage = () => {
       />
 
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#07050f]/40 pt-4 sm:pt-6 pb-2">
+      <header className="sticky top-0 z-50 bg-transparent pt-4 sm:pt-6 pb-2">
         <div className="w-full px-6 sm:px-10 lg:px-16 h-16 sm:h-20 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
