@@ -7,22 +7,27 @@ import {
   MonitorX, 
   Radio, 
   Volume2, 
-  VolumeX,
-  ChevronUp,
-  ChevronDown
+  VolumeX
 } from 'lucide-react';
 
 export const ScreenShareStage = ({
   activeScreenShare = null,
   onStopScreenShare,
+  isPipMode = false,
+  onTogglePip,
 }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   
   const [isMuted, setIsMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPipMode, setIsPipMode] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalPip, setInternalPip] = useState(false);
+
+  const pip = isPipMode !== undefined ? isPipMode : internalPip;
+  const setPip = (val) => {
+    setInternalPip(val);
+    if (onTogglePip) onTogglePip(val);
+  };
 
   // Connect MediaStream to the video element whenever stream changes
   useEffect(() => {
@@ -66,34 +71,63 @@ export const ScreenShareStage = ({
     <div
       ref={containerRef}
       className={`transition-all duration-300 ease-in-out select-none ${
-        isPipMode
-          ? 'absolute top-14 right-4 z-40 w-72 sm:w-88 md:w-96 shadow-xl border border-white/10 rounded-2xl overflow-hidden bg-[#0c0c0e]'
-          : 'relative w-full border-b border-white/5 bg-[#08080a] flex-shrink-0'
+        pip
+          ? 'absolute top-14 right-4 z-40 w-72 sm:w-88 md:w-96 shadow-2xl border border-white/15 rounded-2xl overflow-hidden bg-[#0c0c0e] flex flex-col'
+          : 'flex-1 h-full w-full min-h-0 flex flex-col bg-[#070709] relative overflow-hidden'
       }`}
     >
-      {/* Stage Header Overlay Bar */}
-      <div className="px-3.5 py-2 bg-[#0c0c0e] border-b border-white/5 flex items-center justify-between text-xs text-gray-200 z-10 relative">
-        <div className="flex items-center space-x-2.5 min-w-0">
-          {/* Live badge */}
-          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold tracking-wider flex-shrink-0">
-            <Radio size={10} />
-            <span>CANLI</span>
-          </span>
+      {/* Video Stream Stage */}
+      <div
+        className={`relative flex items-center justify-center bg-black overflow-hidden ${
+          pip ? 'h-44 sm:h-52 w-full' : 'flex-1 min-h-0 w-full'
+        }`}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocal || isMuted}
+          className="w-full h-full object-contain bg-black"
+        />
 
-          {/* Streamer details */}
-          <div className="flex items-center space-x-1.5 truncate">
-            <Monitor size={14} className="text-[#c084fc] flex-shrink-0" />
-            <span className="font-semibold text-gray-100 truncate">
-              {isLocal ? 'Ekranın' : `${streamerName}`}
-            </span>
-            <span className="text-[10px] text-gray-400 font-mono hidden sm:inline bg-white/5 px-1.5 py-0.5 rounded">
-              {activeScreenShare?.qualityLabel || '1080p HD'}
+        {/* Discreet Watermark */}
+        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md text-[9px] font-mono text-gray-400 pointer-events-none border border-white/10">
+          Voys Screen Link
+        </div>
+      </div>
+
+      {/* Stage Bottom Controls Bar */}
+      <div
+        className={`${
+          pip ? 'h-11 px-2.5' : 'h-14 px-4'
+        } bg-[#0a0a0d] border-t border-white/10 flex items-center justify-between z-10 flex-shrink-0 select-none`}
+      >
+        {/* Left Side: Live badge & Streamer info */}
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          {/* Live indicator badge */}
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25 text-[10px] sm:text-[11px] font-bold tracking-wider flex-shrink-0">
+            <Radio size={11} className="animate-pulse" />
+            <span>CANLI</span>
+          </div>
+
+          {/* Streamer name */}
+          <div className="flex items-center space-x-1.5 min-w-0">
+            <Monitor size={15} className="text-[#a855f7] flex-shrink-0" />
+            <span className="font-semibold text-gray-200 text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[200px]">
+              {isLocal ? 'Ekran Paylaşımın' : streamerName}
             </span>
           </div>
+
+          {/* Quality Badge (hidden in PiP or on small screen) */}
+          {!pip && (
+            <div className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[10px] text-gray-400 font-mono">
+              {activeScreenShare?.qualityLabel || '1080p · 30 FPS'}
+            </div>
+          )}
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center space-x-1 flex-shrink-0">
+        {/* Right Side: Action Controls */}
+        <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
           {/* Audio Mute/Unmute for remote stream */}
           {!isLocal && (
             <button
@@ -104,50 +138,37 @@ export const ScreenShareStage = ({
                   setIsMuted(!isMuted);
                 }
               }}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition"
+              className={`${
+                pip ? 'w-7 h-7' : 'w-9 h-9'
+              } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
               title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
             >
-              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} className="text-emerald-400" />}
+              {isMuted ? <VolumeX size={pip ? 13 : 16} /> : <Volume2 size={pip ? 13 : 16} className="text-emerald-400" />}
             </button>
           )}
 
-          {/* Collapse/Expand Toggle (In banner mode) */}
-          {!isPipMode && (
-            <button
-              type="button"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition"
-              title={isCollapsed ? "Genişlet" : "Daralt"}
-            >
-              {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-            </button>
-          )}
-
-          {/* Picture-in-Picture / Floating mode toggle */}
+          {/* Picture-in-Picture / Floating Mode Toggle */}
           <button
             type="button"
-            onClick={() => {
-              setIsPipMode(!isPipMode);
-              setIsCollapsed(false);
-            }}
-            className={`p-1.5 rounded-lg transition ${
-              isPipMode 
-                ? 'text-indigo-300 bg-indigo-600/20 border border-indigo-500/30' 
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-            title={isPipMode ? "Üst Panel Görünümüne Geç" : "Kayan Pencere (PiP) Yap"}
+            onClick={() => setPip(!pip)}
+            className={`${
+              pip ? 'w-7 h-7 text-[#c084fc] bg-[#8B51FF]/20 border border-[#8B51FF]/40' : 'w-9 h-9 text-gray-300 hover:text-white bg-white/5 hover:bg-white/10'
+            } rounded-xl flex items-center justify-center transition cursor-pointer`}
+            title={pip ? "Sohbet Alanına Genişlet" : "Kayan Pencere (PiP) Yap"}
           >
-            <PictureInPicture2 size={14} />
+            <PictureInPicture2 size={pip ? 13 : 16} />
           </button>
 
           {/* Fullscreen Button */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition"
+            className={`${
+              pip ? 'w-7 h-7' : 'w-9 h-9'
+            } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
             title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran Yap"}
           >
-            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            {isFullscreen ? <Minimize2 size={pip ? 13 : 16} /> : <Maximize2 size={pip ? 13 : 16} />}
           </button>
 
           {/* Stop Stream Button (If local user) */}
@@ -155,39 +176,17 @@ export const ScreenShareStage = ({
             <button
               type="button"
               onClick={onStopScreenShare}
-              className="ml-1 px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-[11px] font-bold rounded-lg transition flex items-center space-x-1 shadow-sm active:scale-95"
+              className={`${
+                pip ? 'h-7 px-2 text-[11px]' : 'h-9 px-3.5 text-xs'
+              } bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ml-1`}
               title="Ekran Paylaşımını Sonlandır"
             >
-              <MonitorX size={12} />
+              <MonitorX size={pip ? 12 : 14} />
               <span>Durdur</span>
             </button>
           )}
         </div>
       </div>
-
-      {/* Video Stream Stage */}
-      {!isCollapsed && (
-        <div
-          className={`relative bg-black flex items-center justify-center overflow-hidden transition-all ${
-            isPipMode
-              ? 'h-44 sm:h-52 w-full'
-              : 'h-56 sm:h-72 md:h-80 lg:h-92 w-full'
-          }`}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isLocal || isMuted}
-            className="w-full h-full object-contain bg-black"
-          />
-
-          {/* Watermark in bottom corner */}
-          <div className="absolute bottom-2 right-2 bg-black/75 px-2 py-0.5 rounded-md text-[9px] font-mono text-gray-400 pointer-events-none border border-white/5">
-            Voys Screen Link • P2P
-          </div>
-        </div>
-      )}
     </div>
   );
 };

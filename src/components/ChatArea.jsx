@@ -296,6 +296,15 @@ export const ChatArea = ({
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
   const [isScreenShareModalOpen, setIsScreenShareModalOpen] = useState(false);
+  const [isScreenSharePip, setIsScreenSharePip] = useState(false);
+
+  useEffect(() => {
+    if (!activeScreenShare) {
+      setIsScreenSharePip(false);
+    }
+  }, [activeScreenShare]);
+
+  const isFullChatScreenShare = Boolean(activeScreenShare && !isScreenSharePip);
 
   // Right sidebar inline add-member state (declared early to prevent TDZ in updateRightPanelCompact)
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -1956,11 +1965,13 @@ export const ChatArea = ({
           )}
 
 
-          {/* Screen Share Stage (Top Banner or PiP Video Component) */}
+          {/* Screen Share Stage (Takes entire chat when active and not PiP, or floats as PiP) */}
           {activeScreenShare && (
             <ScreenShareStage
               activeScreenShare={activeScreenShare}
               onStopScreenShare={onStopScreenShare}
+              isPipMode={isScreenSharePip}
+              onTogglePip={(pip) => setIsScreenSharePip(pip)}
             />
           )}
 
@@ -1981,7 +1992,7 @@ export const ChatArea = ({
 
           {/* Channel Not Found / No Groups Empty State */}
           {!hasActiveChat && !isDmMode ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none space-y-3">
+            <div className={`flex-1 flex flex-col items-center justify-center p-8 text-center select-none space-y-3 ${isFullChatScreenShare ? 'hidden' : ''}`}>
               <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-xl">
                 {activeChannel ? <Hash size={24} /> : <Users size={24} />}
               </div>
@@ -2010,7 +2021,7 @@ export const ChatArea = ({
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto px-2 md:px-4 py-3 space-y-0.5 select-text scroll-smooth"
+              className={`flex-1 overflow-y-auto px-2 md:px-4 py-3 space-y-0.5 select-text scroll-smooth ${isFullChatScreenShare ? 'hidden' : ''}`}
             >
               {filteredMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center py-16 px-4 text-center select-none space-y-2">
@@ -2588,7 +2599,7 @@ export const ChatArea = ({
             </button>
           )}
 
-          {hasActiveChat && (
+          {hasActiveChat && !isFullChatScreenShare && (
             <>
               {/* Typing Indicator */}
               <div className="h-5 px-4 text-[11px] text-gray-400 italic select-none flex items-center flex-shrink-0">

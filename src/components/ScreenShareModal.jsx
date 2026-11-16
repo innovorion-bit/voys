@@ -72,6 +72,34 @@ export const ScreenShareModal = ({
     );
   }
 
+  if (isWaitingSelection) {
+    return (
+      <div className="absolute inset-0 z-30 bg-[#0b0c10] flex flex-col items-center justify-center p-6 text-gray-200 select-none">
+        <div className="max-w-md w-full bg-[#121319] border border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+          <div className="w-10 h-10 rounded-xl bg-[#8B51FF]/20 border border-[#8B51FF]/30 flex items-center justify-center mx-auto text-[#c084fc]">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#8B51FF] animate-ping"></span>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white">Ekran Seçimi Bekleniyor</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Açılan tarayıcı penceresinden yayınlamak istediğiniz ekranı veya uygulama penceresini seçin.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsWaitingSelection(false);
+              onClose();
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition cursor-pointer"
+          >
+            Vazgeç
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0 z-30 bg-[#0b0c10] flex flex-col justify-between text-gray-200 select-none overflow-y-auto">
       {/* Header Bar */}
