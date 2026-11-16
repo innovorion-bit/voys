@@ -11,10 +11,6 @@ import {
   WifiOff,
   ExternalLink,
   Search,
-  FileArchive,
-  MessageSquare,
-  UserPlus,
-  FolderOpen,
   Copy,
   X,
   Users,
@@ -87,14 +83,6 @@ function QuotaCard({ label, usedText, limitText, percent, subText, accent = 'ind
     </div>
   );
 }
-
-const EVENT_BADGES = {
-  signup: { label: 'Kayıt', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', icon: UserPlus },
-  channel_msg: { label: 'Grup Mesajı', cls: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30', icon: MessageSquare },
-  dm_msg: { label: 'DM', cls: 'bg-purple-500/15 text-purple-300 border-purple-500/30', icon: MessageSquare },
-  storage_upload: { label: 'Dosya', cls: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30', icon: FileArchive },
-  channel_create: { label: 'Yeni Grup', cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30', icon: FolderOpen },
-};
 
 const USER_STATUS_LABELS = {
   online: { text: 'Çevrimiçi', dot: 'bg-emerald-400' },
@@ -335,9 +323,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
   const storageInfo = telemetry.storage || {};
   const counts = telemetry.counts || {};
   const cronInfo = telemetry.cron || {};
-  const recentEvents = telemetry.recent_events || [];
-  const recentObjects = storageInfo.recent_objects || [];
-  const tableStats = telemetry.tables || [];
 
   const isRtHealthy = realtimeHealth?.status === 'CONNECTED';
 
@@ -498,14 +483,11 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
             </div>
           </div>
 
-          {/* Alt Sekmeler: Üyeler / Gruplar / Canlı Akış / Dosyalar / Tablolar */}
+          {/* Alt Sekmeler: Üyeler / Gruplar */}
           <div className="flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-2">
             {[
               { id: 'users', label: 'Kayıtlı Üyeler' },
               { id: 'groups', label: 'Kurulan Gruplar' },
-              { id: 'events', label: 'Canlı İşlemler' },
-              { id: 'storage', label: 'Depolama Dosyaları' },
-              { id: 'tables', label: 'Tablo Performansı' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -702,118 +684,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-
-          {/* SEKME 2: Canlı İşlemler */}
-          {subTab === 'events' && (
-            <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
-              {recentEvents.map((ev, idx) => {
-                const badge = EVENT_BADGES[ev.event_type] || {
-                  label: ev.event_type,
-                  cls: 'bg-white/10 text-gray-300 border-white/15',
-                  icon: Activity,
-                };
-                const EvIcon = badge.icon;
-                return (
-                  <div
-                    key={`${ev.event_type}_${ev.ts}_${idx}`}
-                    className="p-2.5 rounded-xl bg-[#111115] border border-white/10 flex items-center justify-between gap-2 text-xs"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border flex items-center space-x-1 flex-shrink-0 ${badge.cls}`}>
-                        <EvIcon size={11} />
-                        <span>{badge.label}</span>
-                      </span>
-                      <span className="font-semibold text-white truncate max-w-[140px]">{ev.actor}</span>
-                      <span className="text-gray-400 truncate text-[11px] font-mono">{ev.detail}</span>
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap flex-shrink-0">
-                      {formatDateTr(ev.ts)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* SEKME 3: Depolama Dosyaları */}
-          {subTab === 'storage' && (
-            <div className="rounded-xl border border-white/10 overflow-x-auto bg-[#0e0e12]">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-400 bg-white/[0.02]">
-                    <th className="py-2.5 px-3">Bucket</th>
-                    <th className="py-2.5 px-3">Dosya Yolu</th>
-                    <th className="py-2.5 px-3">Boyut</th>
-                    <th className="py-2.5 px-3">Durum</th>
-                    <th className="py-2.5 px-3">Tarih</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {recentObjects.map((obj) => (
-                    <tr key={obj.id} className="hover:bg-white/[0.03]">
-                      <td className="py-2 px-3 font-mono text-[11px] text-indigo-300">{obj.bucket_id}</td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-gray-300 truncate max-w-[220px]" title={obj.name}>
-                        {obj.name}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-gray-400">{formatBytes(obj.size_bytes)}</td>
-                      <td className="py-2 px-3 text-[11px]">
-                        {obj.eligible_for_cleanup ? (
-                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                            48s+ Silinecek
-                          </span>
-                        ) : obj.in_use === true ? (
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                            Aktif Avatar
-                          </span>
-                        ) : obj.in_use === false ? (
-                          <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                            Eski Avatar (&lt;48s)
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded bg-white/5 text-gray-400 border border-white/10">
-                            Sohbet Eki
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-gray-500 whitespace-nowrap">
-                        {formatDateTr(obj.created_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* SEKME 4: Tablo Performansı */}
-          {subTab === 'tables' && (
-            <div className="rounded-xl border border-white/10 overflow-x-auto bg-[#0e0e12]">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-400 bg-white/[0.02]">
-                    <th className="py-2.5 px-3">Tablo</th>
-                    <th className="py-2.5 px-3">Canlı / Ölü Satır</th>
-                    <th className="py-2.5 px-3">Seq Scan</th>
-                    <th className="py-2.5 px-3">Index Scan</th>
-                    <th className="py-2.5 px-3">Toplam Boyut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {tableStats.map((t) => (
-                    <tr key={t.table_name} className="hover:bg-white/[0.03]">
-                      <td className="py-2 px-3 font-mono font-semibold text-white">{t.table_name}</td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-gray-300">
-                        {t.live_rows} <span className="text-gray-500">/ {t.dead_rows} ölü</span>
-                      </td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-amber-300">{t.seq_scan}</td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-emerald-300">{t.idx_scan ?? 0}</td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-gray-400">{formatBytes(t.total_bytes)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           )}
         </>
