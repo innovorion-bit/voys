@@ -2,8 +2,8 @@ node_modules
 src-tauri
 dist
 .git
-*.exe
+/*.exe
+!public/*.exe
 *.msi
-*.ico
 *.icns
 
