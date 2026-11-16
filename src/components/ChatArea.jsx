@@ -1970,6 +1970,21 @@ export const ChatArea = ({
             />
           )}
 
+          {/* Sohbet İçi Sade Ekran Paylaşımı Kalite Ayarı Paneli */}
+          {isScreenShareModalOpen && !isScreenSharing && (
+            <ScreenShareModal
+              isOpen={isScreenShareModalOpen}
+              onClose={() => setIsScreenShareModalOpen(false)}
+              onStartShare={(options) => {
+                if (onStartScreenShare) {
+                  onStartScreenShare(options);
+                } else if (onToggleScreenShare) {
+                  onToggleScreenShare();
+                }
+              }}
+            />
+          )}
+
           {/* Channel Not Found / No Groups Empty State */}
           {!hasActiveChat && !isDmMode ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none space-y-3">
@@ -2988,7 +3003,7 @@ export const ChatArea = ({
                         if (isScreenSharing) {
                           onStopScreenShare?.();
                         } else {
-                          setIsScreenShareModalOpen(true);
+                          setIsScreenShareModalOpen((prev) => !prev);
                         }
                       }}
                       className={`${
@@ -2998,14 +3013,22 @@ export const ChatArea = ({
                       } rounded-xl transition cursor-pointer border ${
                         isScreenSharing
                           ? 'bg-[#8B51FF]/25 text-[#c084fc] border-[#8B51FF]/50 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
+                          : isScreenShareModalOpen
+                          ? 'bg-[#8B51FF]/30 text-white border-[#8B51FF]/60 shadow-sm'
                           : 'bg-white/10 text-white border-white/10 hover:bg-[#8B51FF]/20 hover:border-[#8B51FF]/30 hover:text-white'
                       }`}
-                      title={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
+                      title={
+                        isScreenSharing
+                          ? 'Ekran Paylaşımını Durdur'
+                          : isScreenShareModalOpen
+                          ? 'Yayın Panelini Kapat'
+                          : 'Ekranını Paylaş'
+                      }
                     >
                       {isScreenSharing ? (
                         <MonitorX size={14} className="text-rose-400" />
                       ) : (
-                        <Monitor size={14} className="text-[#c084fc]" />
+                        <Monitor size={14} className={isScreenShareModalOpen ? 'text-white' : 'text-[#c084fc]'} />
                       )}
                       {!isRightPanelCompact && (
                         <span className="truncate">
@@ -4091,18 +4114,6 @@ export const ChatArea = ({
           </div>
         </div>
       )}
-      {/* 5. Ekran Paylaşımı Çözünürlük & FPS Seçim Modalı */}
-      <ScreenShareModal
-        isOpen={isScreenShareModalOpen}
-        onClose={() => setIsScreenShareModalOpen(false)}
-        onStartShare={(options) => {
-          if (onStartScreenShare) {
-            onStartScreenShare(options);
-          } else if (onToggleScreenShare) {
-            onToggleScreenShare();
-          }
-        }}
-      />
     </div>
   );
 };

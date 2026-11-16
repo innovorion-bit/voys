@@ -82,9 +82,9 @@ export const ScreenShareStage = ({
 
           {/* Streamer details */}
           <div className="flex items-center space-x-1.5 truncate">
-            <Monitor size={14} className="text-indigo-400 flex-shrink-0" />
+            <Monitor size={14} className="text-[#c084fc] flex-shrink-0" />
             <span className="font-semibold text-gray-100 truncate">
-              {isLocal ? 'Ekranını Paylaşıyorsun' : `${streamerName} Ekranı`}
+              {isLocal ? 'Ekranın' : `${streamerName}`}
             </span>
             <span className="text-[10px] text-gray-400 font-mono hidden sm:inline bg-white/5 px-1.5 py-0.5 rounded">
               {activeScreenShare?.qualityLabel || '1080p HD'}
