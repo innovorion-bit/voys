@@ -49,45 +49,16 @@ function getPercent(used, limit) {
   return Math.min(100, Math.round(((Number(used) || 0) / limit) * 1000) / 10);
 }
 
-function MetricRow({ icon: Icon, iconColor = 'text-indigo-400', title, subText, valueText, limitText, percent, accent = 'indigo' }) {
-  const barColor =
-    percent >= 85
-      ? 'bg-rose-500'
-      : percent >= 65
-        ? 'bg-amber-400'
-        : accent === 'emerald'
-          ? 'bg-emerald-500'
-          : accent === 'cyan'
-            ? 'bg-cyan-400'
-            : accent === 'purple'
-              ? 'bg-purple-500'
-              : 'bg-indigo-500';
-
+function MetricRow({ icon: Icon, title, valueText, limitText }) {
   return (
-    <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+    <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
       <div className="flex items-center space-x-3 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-          <Icon size={16} className={iconColor} />
-        </div>
-        <div className="min-w-0">
-          <div className="text-xs font-semibold text-white">{title}</div>
-          {subText && <div className="text-[11px] text-gray-400 mt-0.5 truncate">{subText}</div>}
-        </div>
+        <Icon size={18} className="text-white flex-shrink-0" />
+        <div className="text-xs font-semibold text-white truncate">{title}</div>
       </div>
 
-      <div className="flex items-center space-x-3 sm:space-x-4 flex-shrink-0 self-end sm:self-auto">
-        <div className="text-right">
-          <div className="font-mono text-xs font-semibold text-white">
-            {valueText} <span className="text-gray-500 font-normal">/ {limitText}</span>
-          </div>
-          <div className="text-[10px] font-mono text-gray-400">%{percent}</div>
-        </div>
-        <div className="w-24 sm:w-28 h-1.5 rounded-full bg-white/10 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-            style={{ width: `${Math.max(percent > 0 ? 3 : 0, percent)}%` }}
-          />
-        </div>
+      <div className="flex-shrink-0 font-mono text-xs font-semibold text-white">
+        {valueText} <span className="text-gray-500 font-normal">/ {limitText}</span>
       </div>
     </div>
   );
@@ -373,33 +344,22 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           {/* Sistem & Veritabanı İzleme (Satır Düzeni) */}
           <div className="rounded-xl border border-white/10 bg-[#111115] divide-y divide-white/5 overflow-hidden">
             {/* Satır 1: Realtime Bağlantı Durumu */}
-            <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+            <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-                  isRtHealthy ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'
-                }`}>
-                  {isRtHealthy ? (
-                    <Wifi size={16} className="text-emerald-400" />
-                  ) : (
-                    <WifiOff size={16} className="text-amber-400" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white">Realtime Bağlantı Durumu</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">
-                    {realtimeHealth?.activeChannels || 0} aktif kanal • Yeniden bağlanma: {realtimeHealth?.reconnectCount || 0} kez
-                    {data?.checked_at ? ` • Son güncelleme: ${formatDateTr(data.checked_at)}` : ''}
-                    {realtimeHealth?.lastError ? ` • Uyarı: ${realtimeHealth.lastError}` : ''}
-                  </div>
-                </div>
+                {isRtHealthy ? (
+                  <Wifi size={18} className="text-white flex-shrink-0" />
+                ) : (
+                  <WifiOff size={18} className="text-white flex-shrink-0" />
+                )}
+                <div className="text-xs font-semibold text-white truncate">Realtime Bağlantı Durumu</div>
               </div>
-              <div className="flex-shrink-0 self-start sm:self-auto">
+              <div className="flex-shrink-0">
                 <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
                   isRtHealthy
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                     : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                 }`}>
-                  {realtimeHealth?.status || 'Bilinmiyor'}
+                  {isRtHealthy ? 'Bağlı' : (realtimeHealth?.status || 'Bağlantı Yok')}
                 </span>
               </div>
             </div>
@@ -407,65 +367,42 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
             {/* Satır 2: Veritabanı Alanı */}
             <MetricRow
               icon={Database}
-              iconColor="text-indigo-400"
               title="Veritabanı Alanı"
-              subText={`Toplam ${counts.channel_messages_total || 0} grup mesajı, ${counts.direct_messages_total || 0} DM`}
               valueText={formatBytes(dbInfo.size_bytes)}
               limitText={formatBytes(dbInfo.limit_bytes || 524288000)}
-              percent={getPercent(dbInfo.size_bytes, dbInfo.limit_bytes || 524288000)}
-              accent="indigo"
             />
 
             {/* Satır 3: Storage Depolama */}
             <MetricRow
               icon={HardDrive}
-              iconColor="text-cyan-400"
               title="Storage Depolama"
-              subText={`${storageInfo.total_objects || 0} dosya • ${storageInfo.expired_candidates || 0} tanesi 48s+ temizlik bekliyor`}
               valueText={formatBytes(storageInfo.total_bytes)}
               limitText={formatBytes(storageInfo.limit_bytes || 1073741824)}
-              percent={getPercent(storageInfo.total_bytes, storageInfo.limit_bytes || 1073741824)}
-              accent="cyan"
             />
 
             {/* Satır 4: 30 Günlük Aktif Kullanıcı (MAU) */}
             <MetricRow
               icon={Users}
-              iconColor="text-emerald-400"
               title="30 Günlük Aktif Kullanıcı (MAU)"
-              subText={`Toplam ${authInfo.total_users ?? users.length} kayıtlı hesap • Son 24s: ${authInfo.active_24h || 0} aktif`}
               valueText={String(authInfo.mau_30d ?? 0)}
               limitText={(authInfo.mau_limit || 50000).toLocaleString('tr-TR')}
-              percent={getPercent(authInfo.mau_30d, authInfo.mau_limit || 50000)}
-              accent="emerald"
             />
 
             {/* Satır 5: Aktif DB Bağlantıları */}
             <MetricRow
               icon={Activity}
-              iconColor="text-purple-400"
               title="Aktif DB Bağlantıları"
-              subText={`${effectiveGroups.length || counts.channels_total || 0} grup • ${counts.friendships_accepted || 0} arkadaşlık (+${counts.friendships_pending || 0} bekleyen)`}
               valueText={String(dbInfo.active_connections ?? 0)}
               limitText={String(dbInfo.max_connections || 60)}
-              percent={getPercent(dbInfo.active_connections, dbInfo.max_connections || 60)}
-              accent="purple"
             />
 
             {/* Satır 6: 2 Günlük Otomatik Depolama Temizliği */}
-            <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+            <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
-                  <Trash2 size={16} className="text-rose-400" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white">2 Günlük Otomatik Depolama Temizliği</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">
-                    Zamanlama: {cronInfo.job?.schedule || '0 */6 * * *'} (6 saatte bir) • Durum: {cronInfo.job?.active ? <span className="text-emerald-400 font-medium">Aktif</span> : <span className="text-amber-400 font-medium">Pasif</span>} • Bekleyen: <strong className="text-white">{storageInfo.expired_candidates || 0}</strong> dosya
-                  </div>
-                </div>
+                <Trash2 size={18} className="text-white flex-shrink-0" />
+                <div className="text-xs font-semibold text-white truncate">2 Günlük Otomatik Depolama Temizliği</div>
               </div>
-              <div className="flex-shrink-0 self-start sm:self-auto">
+              <div className="flex-shrink-0">
                 <button
                   type="button"
                   onClick={handleManualCleanup}
@@ -479,19 +416,12 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
             </div>
 
             {/* Satır 7: Egress & Realtime Kotası */}
-            <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+            <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                  <ExternalLink size={16} className="text-indigo-400" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white">Egress (5 GB) & Realtime Kotası</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">
-                    Aylık Egress trafiği ve Realtime mesaj kotası Supabase faturalandırma panelinde tutulur
-                  </div>
-                </div>
+                <ExternalLink size={18} className="text-white flex-shrink-0" />
+                <div className="text-xs font-semibold text-white truncate">Egress (5 GB) & Realtime Kotası</div>
               </div>
-              <div className="flex-shrink-0 self-start sm:self-auto">
+              <div className="flex-shrink-0">
                 <a
                   href="https://supabase.com/dashboard/project/kdxwyvommyyvtzpzmsbm/settings/billing/usage"
                   target="_blank"
