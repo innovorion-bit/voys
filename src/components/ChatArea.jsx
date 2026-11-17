@@ -3085,13 +3085,8 @@ export const ChatArea = ({
               {/* Typing Indicator */}
               <div className="h-5 px-4 text-[11px] text-gray-400 select-none flex items-center flex-shrink-0 transition-opacity duration-200">
                 {typingUsers.length > 0 && (
-                  <div className="flex items-center space-x-1.5 text-gray-300">
-                    <span className="inline-flex items-center space-x-1 mr-0.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]"></span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"></span>
-                    </span>
-                    <span>{formatTypingText(typingUsers)}</span>
+                  <div className="text-gray-300">
+                    {formatTypingText(typingUsers)}
                   </div>
                 )}
               </div>
