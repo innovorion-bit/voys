@@ -4398,14 +4398,20 @@ export const ChatArea = ({
           activeMediaModal.name?.includes('Profil Fotoğrafı') ||
           activeMediaModal.name?.includes('Grup Fotoğrafı')
         );
+        const isGifModal = Boolean(
+          activeMediaModal.isGif ||
+          activeMediaModal.type === 'image/gif' ||
+          activeMediaModal.name?.toLowerCase().endsWith('.gif')
+        );
+        const showMinimalHeader = isProfileView || isGifModal;
 
         return (
           <div
             onClick={() => setActiveMediaModal(null)}
             className="fixed inset-0 bg-black/90 z-[120] flex flex-col items-center justify-center p-4 sm:p-6 select-none animate-in fade-in duration-200"
           >
-            {/* Profil fotoğraflarında sol başlık ve sağ indir/yeni sekme butonları gizlenir, sadece sağ üstte kapat (X) butonu kalır */}
-            {isProfileView ? (
+            {/* Profil fotoğraflarında ve GIF önizlemelerinde üst çubuk komple gizlenir, yalnızca sağ üstte çarpı (X) butonu kalır */}
+            {showMinimalHeader ? (
               <button
                 type="button"
                 onClick={() => setActiveMediaModal(null)}
