@@ -40,7 +40,7 @@ export const WindowHeader = ({
           src="/voys_logo.png"
           alt="Voys"
           draggable={false}
-          className="h-[16px] w-auto object-contain select-none pointer-events-none"
+          className="h-[18px] w-[18px] object-contain select-none pointer-events-none"
         />
       </div>
 
