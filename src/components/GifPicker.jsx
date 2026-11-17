@@ -200,9 +200,9 @@ export default function GifPicker({ onSelectGif, onClose }) {
   const col2 = gifs.filter((_, idx) => idx % 2 === 1);
 
   return (
-    <div className="gif-picker-container absolute bottom-12 right-[-32px] shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50 w-[295px] h-[350px] flex flex-col select-none animate-in fade-in zoom-in-95 duration-150">
+    <div className="gif-picker-container absolute bottom-12 right-[-32px] shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50 w-[295px] h-[350px] flex flex-col select-none isolate animate-in fade-in zoom-in-95 duration-150">
       {/* Header with Search and Close */}
-      <div className="p-2.5 pb-2 border-b border-white/5 flex items-center gap-2 bg-[#121216]/90 backdrop-blur-md">
+      <div className="p-2.5 pb-2 border-b border-white/5 flex items-center gap-2 bg-[#121216] rounded-t-2xl">
         <div className="relative flex-1">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input
@@ -259,7 +259,7 @@ export default function GifPicker({ onSelectGif, onClose }) {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-2 custom-scrollbar min-h-0 bg-[#0d0d11]">
+      <div className="flex-1 overflow-y-auto p-2 custom-scrollbar min-h-0 bg-[#0d0d11] rounded-b-2xl">
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs py-10">
             <Loader2 size={20} className="animate-spin text-indigo-400 mb-2" />
