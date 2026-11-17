@@ -2824,9 +2824,10 @@ export const ChatArea = ({
                             {msg.attachments.map((att, idx) => {
                               const mediaKey = att.id || `${msg.id}_att_${idx}`;
                               const isMediaExpired = expiredMediaKeys.has(mediaKey);
-                              const isImage = att.type?.startsWith('image/');
-                              const isVideo = att.type?.startsWith('video/');
                               const ext = (att.name?.split('.').pop() || '').toLowerCase();
+                              const isGif = Boolean(att.isGif || att.type === 'image/gif' || ext === 'gif');
+                              const isImage = att.type?.startsWith('image/') || ext === 'gif';
+                              const isVideo = att.type?.startsWith('video/');
                               const isAudio = att.type?.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext);
 
                               if (isMediaExpired) {
@@ -2842,6 +2843,32 @@ export const ChatArea = ({
                                       <div className="text-gray-300 font-semibold truncate">{att.name || 'Dosya'}</div>
                                       <div className="text-[11px] text-amber-300/80">
                                         Dosyanın 2 günlük süresi doldu veya silindi
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Pure Clean & Full-Size GIF Presentation (No badge, no bottom bar)
+                              if (isGif) {
+                                return (
+                                  <div
+                                    key={att.id || idx}
+                                    onClick={() => setActiveMediaModal(att)}
+                                    className="group/gif relative inline-block rounded-2xl overflow-hidden shadow-xl border border-white/10 hover:border-indigo-500/50 transition-all max-w-sm sm:max-w-md md:max-w-lg cursor-pointer bg-[#0c0c0e]"
+                                  >
+                                    <img
+                                      src={att.url}
+                                      alt={att.name || 'GIF'}
+                                      onError={() => markMediaExpired(mediaKey)}
+                                      className="w-auto h-auto max-w-full max-h-[380px] sm:max-h-[460px] object-contain rounded-2xl block group-hover/gif:scale-[1.01] transition-transform duration-200"
+                                      loading="lazy"
+                                    />
+                                    {/* Hover zoom overlay */}
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/gif:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                      <div className="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20 shadow-md">
+                                        <Eye size={13} className="text-indigo-400" />
+                                        <span>Büyüt</span>
                                       </div>
                                     </div>
                                   </div>
@@ -2866,12 +2893,6 @@ export const ChatArea = ({
                                         className="max-h-72 w-auto object-contain rounded-t-2xl group-hover/img:scale-[1.01] transition-transform duration-200"
                                         loading="lazy"
                                       />
-                                      {/* GIF Badge */}
-                                      {(att.isGif || att.type === 'image/gif') && (
-                                        <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase border border-white/20 pointer-events-none shadow-md z-10">
-                                          GIF
-                                        </div>
-                                      )}
                                       {/* Hover zoom overlay */}
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                         <div className="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20">
@@ -2886,7 +2907,7 @@ export const ChatArea = ({
                                       <div className="flex flex-col min-w-0 pr-2">
                                         <span className="font-semibold text-gray-200 truncate text-[12px]">{att.name}</span>
                                         <span className="text-[10px] text-gray-400 font-mono">
-                                          {att.isGif || att.type === 'image/gif' ? 'GIF' : formatFileSize(att.size)}
+                                          {formatFileSize(att.size)}
                                         </span>
                                       </div>
                                       <button
