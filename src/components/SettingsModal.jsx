@@ -794,10 +794,10 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                     handleClose();
                     onLogout?.();
                   }}
-                  className="px-4 py-2 text-xs font-semibold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded-lg transition active:scale-95 inline-flex items-center space-x-2 cursor-pointer flex-shrink-0"
+                  className="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors active:scale-95 inline-flex items-center space-x-1.5 cursor-pointer flex-shrink-0"
                   title="Oturumu Kapat"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={15} />
                   <span>Çıkış Yap</span>
                 </button>
               </div>
