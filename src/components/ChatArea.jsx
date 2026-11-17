@@ -2849,19 +2849,19 @@ export const ChatArea = ({
                                 );
                               }
 
-                              // Image & GIF Attachment (Full size, no bottom bar, no side letterbox margins)
+                              // Image & GIF Attachment (Constrained max dimensions, no bottom bar, no side letterbox margins)
                               if (isImage) {
                                 return (
                                   <div
                                     key={att.id || idx}
                                     onClick={() => setActiveMediaModal(att)}
-                                    className="group/img relative inline-block rounded-2xl overflow-hidden shadow-xl border border-white/10 hover:border-indigo-500/50 transition-all max-w-sm sm:max-w-md md:max-w-lg cursor-pointer bg-transparent"
+                                    className="group/img relative inline-block rounded-2xl overflow-hidden shadow-lg border border-white/10 hover:border-indigo-500/50 transition-all max-w-[280px] sm:max-w-[320px] cursor-pointer bg-transparent"
                                   >
                                     <img
                                       src={att.url}
                                       alt={att.name || 'Görsel'}
                                       onError={() => markMediaExpired(mediaKey)}
-                                      className="w-auto h-auto max-w-full max-h-[380px] sm:max-h-[460px] object-contain rounded-2xl block group-hover/img:scale-[1.01] transition-transform duration-200"
+                                      className="w-auto h-auto max-w-full max-h-[250px] sm:max-h-[280px] object-contain rounded-2xl block group-hover/img:scale-[1.01] transition-transform duration-200"
                                       loading="lazy"
                                     />
                                     {/* Hover zoom overlay */}
@@ -2875,18 +2875,18 @@ export const ChatArea = ({
                                 );
                               }
 
-                              // Video Attachment (Full size, no bottom bar, no side letterbox margins)
+                              // Video Attachment (Constrained max dimensions, no bottom bar, no side letterbox margins)
                               if (isVideo) {
                                 return (
                                   <div
                                     key={att.id || idx}
-                                    className="relative inline-block rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 shadow-xl max-w-sm sm:max-w-md md:max-w-lg bg-black"
+                                    className="relative inline-block rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 shadow-lg max-w-[280px] sm:max-w-[320px] bg-black"
                                   >
                                     <video
                                       src={att.url}
                                       controls
                                       onError={() => markMediaExpired(mediaKey)}
-                                      className="w-auto h-auto max-w-full max-h-[380px] sm:max-h-[460px] object-contain rounded-2xl block"
+                                      className="w-auto h-auto max-w-full max-h-[250px] sm:max-h-[280px] object-contain rounded-2xl block"
                                       preload="metadata"
                                     />
                                   </div>
