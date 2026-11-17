@@ -4331,88 +4331,21 @@ export const ChatArea = ({
           activeMediaModal.name?.includes('Profil Fotoğrafı') ||
           activeMediaModal.name?.includes('Grup Fotoğrafı')
         );
-        const isGifModal = Boolean(
-          activeMediaModal.isGif ||
-          activeMediaModal.type === 'image/gif' ||
-          activeMediaModal.name?.toLowerCase().endsWith('.gif')
-        );
-        const showMinimalHeader = isProfileView || isGifModal;
 
         return (
           <div
             onClick={() => setActiveMediaModal(null)}
             className="fixed inset-0 bg-black/90 z-[120] flex flex-col items-center justify-center p-4 sm:p-6 select-none animate-in fade-in duration-200"
           >
-            {/* Profil fotoğraflarında ve GIF önizlemelerinde üst çubuk komple gizlenir, yalnızca sağ üstte çarpı (X) butonu kalır */}
-            {showMinimalHeader ? (
-              <button
-                type="button"
-                onClick={() => setActiveMediaModal(null)}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-lg"
-                title="Kapat (ESC)"
-              >
-                <X size={18} />
-              </button>
-            ) : (
-              /* Header Bar (Normal sohbet görselleri için başlık, dosya boyutu ve indirme butonları) */
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-4xl flex items-center justify-between pb-3 text-white border-b border-white/10 mb-4 px-2"
-              >
-                <div className="flex items-center space-x-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                    <ImageIcon size={16} />
-                  </div>
-                  <span className="text-sm font-semibold truncate text-white">{activeMediaModal.name}</span>
-                  {activeMediaModal.size > 0 && (
-                    <span className="text-xs text-gray-400 font-mono">({formatFileSize(activeMediaModal.size)})</span>
-                  )}
-                  {(activeMediaModal.isGif || activeMediaModal.type === 'image/gif') && (
-                    <span className="text-[11px] text-indigo-300 font-mono font-bold bg-indigo-500/15 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                      GIF
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  {activeMediaModal.url && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => dbService.downloadFile(activeMediaModal.url, activeMediaModal.name)}
-                        className="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-xs text-indigo-300 hover:text-white rounded-xl border border-indigo-500/30 transition flex items-center space-x-1.5 font-medium cursor-pointer"
-                        title="Görseli İndir"
-                      >
-                        <Download size={13} />
-                        <span>İndir</span>
-                      </button>
-                      <a
-                        href={activeMediaModal.url}
-                        onClick={(e) => {
-                          if (isTauriEnvironment()) {
-                            e.preventDefault();
-                            openExternalUrl(activeMediaModal.url);
-                          }
-                        }}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/5 cursor-pointer"
-                        title="Yeni Sekmede Aç"
-                      >
-                        <ExternalLink size={15} />
-                      </a>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setActiveMediaModal(null)}
-                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center transition border border-white/5 cursor-pointer"
-                    title="Kapat (ESC)"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Yalnızca sağ üstte kapat (X) butonu kalır */}
+            <button
+              type="button"
+              onClick={() => setActiveMediaModal(null)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-lg"
+              title="Kapat (ESC)"
+            >
+              <X size={18} />
+            </button>
 
             {/* Centered Image or Fallback Avatar (Profil fotoğrafları net kare olarak render edilir) */}
             <div
@@ -4426,7 +4359,7 @@ export const ChatArea = ({
                   className={
                     isProfileView
                       ? "w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square object-cover rounded-none border border-white/15 shadow-2xl"
-                      : "max-h-[78vh] max-w-full rounded-2xl shadow-2xl object-contain border border-white/10"
+                      : "max-h-[85vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain border border-white/10"
                   }
                 />
               ) : activeMediaModal.fallbackUser ? (
