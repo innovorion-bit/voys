@@ -2559,7 +2559,7 @@ export const Sidebar = ({
             className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-rose-400 hover:bg-rose-500/15 hover:text-rose-300 transition-colors text-left font-medium cursor-pointer"
           >
             <Trash2 size={13} className="flex-shrink-0" />
-            <span>Sohbeti Sil</span>
+            <span>Sohbeti Kaldır</span>
           </button>
         </div>,
         document.body
