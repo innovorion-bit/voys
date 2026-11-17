@@ -1126,7 +1126,6 @@ function StanduppApp() {
       } catch { }
     } catch (err) {
       console.error('handleClearActiveChat error:', err);
-      throw err;
     }
   }, [isDm, activeDmFriend, activeUserProfile, activeChannel, clearMessages]);
 

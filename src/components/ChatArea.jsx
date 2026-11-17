@@ -527,10 +527,10 @@ export const ChatArea = ({
 
   const handleDeleteChat = async () => {
     setIsDeletingChat(true);
+    setIsConfirmDeleteOpen(false);
     try {
       if (!isDmMode && !isCurrentUserGroupAdmin) {
         toast.error('Yalnızca grup yöneticisi grup sohbetini temizleyebilir.');
-        setIsConfirmDeleteOpen(false);
         return;
       }
 
@@ -553,7 +553,6 @@ export const ChatArea = ({
       }
 
       clearMessages?.(activeChannel);
-      setIsConfirmDeleteOpen(false);
 
       if (isDmMode) {
         toast.success('Sohbet geçmişiniz yalnızca sizden temizlendi');
@@ -565,6 +564,7 @@ export const ChatArea = ({
       toast.error('Sohbet geçmişi silinemedi');
     } finally {
       setIsDeletingChat(false);
+      setIsConfirmDeleteOpen(false);
     }
   };
 
@@ -573,13 +573,13 @@ export const ChatArea = ({
     if (!targetChannelId || isDmMode) return;
     try {
       setIsDeletingGroup(true);
+      setIsConfirmDeleteGroupOpen(false);
       if (onDeleteChannel) {
         await onDeleteChannel(targetChannelId);
       } else {
         await dbService.deleteChannel(targetChannelId);
         if (onBackToChannels) onBackToChannels();
       }
-      setIsConfirmDeleteGroupOpen(false);
       setChatInnerView('messages');
       toast.success('Grup başarıyla silindi');
     } catch (err) {
@@ -587,6 +587,7 @@ export const ChatArea = ({
       toast.error('Grup silinemedi', { description: err?.message });
     } finally {
       setIsDeletingGroup(false);
+      setIsConfirmDeleteGroupOpen(false);
     }
   };
 
