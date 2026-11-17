@@ -2071,13 +2071,7 @@ export const ChatArea = ({
                         TEHLİKELİ BÖLGE
                       </label>
                     </div>
-                    <div className="p-4 bg-rose-500/[0.03] border border-rose-500/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <div className="text-xs font-bold text-white">Grubu Kalıcı Olarak Sil</div>
-                        <p className="text-[11px] text-gray-400">
-                          Bu grup, tüm mesaj geçmişi ve katılımcı listesiyle birlikte kalıcı olarak silinecektir.
-                        </p>
-                      </div>
+                    <div className="flex justify-start">
                       <button
                         type="button"
                         onClick={() => setIsConfirmDeleteGroupOpen(true)}
