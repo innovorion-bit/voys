@@ -296,6 +296,11 @@ class RealtimeChatService {
               this.emitLocal('clear_chat', payload);
             }
           })
+          .on('broadcast', { event: 'typing' }, ({ payload }) => {
+            if (payload) {
+              this.emitLocal('typing', payload);
+            }
+          })
           .subscribe();
       } catch (err) {
         console.warn('Supabase call channel error:', err);
@@ -364,16 +369,44 @@ class RealtimeChatService {
     this.emitLocal('reaction', payload);
   }
 
-  sendTyping(user, isTyping = true) {
-    const data = { user, isTyping, room: this.room };
-    if (this.socket && this.socket.connected) {
-      this.socket.emit('typing', data);
+  sendTyping(user, isTyping = true, userId = null) {
+    if (!this.room) return;
+    const data = {
+      user,
+      userId: userId || this.currentPresencePayload?.id || null,
+      isTyping: Boolean(isTyping),
+      room: this.room,
+      sentAt: Date.now(),
+    };
+
+    // 1. Broadcast via Supabase Realtime (cross-device/network instant transmission)
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: data,
+        });
+      } catch (err) {
+        console.warn('Supabase typing broadcast error:', err);
+      }
     }
+
+    // 2. Broadcast via BroadcastChannel (local browser tabs)
     if (this.broadcastChannel) {
-      this.broadcastChannel.postMessage({
-        type: 'USER_TYPING',
-        payload: data,
-      });
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'USER_TYPING',
+          payload: data,
+        });
+      } catch {}
+    }
+
+    // 3. Socket.IO if connected
+    if (this.socket && this.socket.connected) {
+      try {
+        this.socket.emit('typing', data);
+      } catch {}
     }
   }
 

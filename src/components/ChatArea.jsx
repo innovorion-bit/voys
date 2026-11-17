@@ -159,6 +159,41 @@ function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+// Helper to format typing indicator text nicely in Turkish
+function formatTypingText(users = []) {
+  if (!users || users.length === 0) return null;
+  if (users.length === 1) {
+    return (
+      <>
+        <span className="font-semibold text-indigo-300">{users[0]}</span> yazıyor...
+      </>
+    );
+  }
+  if (users.length === 2) {
+    return (
+      <>
+        <span className="font-semibold text-indigo-300">{users[0]}</span> ve{' '}
+        <span className="font-semibold text-indigo-300">{users[1]}</span> yazıyor...
+      </>
+    );
+  }
+  if (users.length === 3) {
+    return (
+      <>
+        <span className="font-semibold text-indigo-300">{users[0]}</span>,{' '}
+        <span className="font-semibold text-indigo-300">{users[1]}</span> ve{' '}
+        <span className="font-semibold text-indigo-300">{users[2]}</span> yazıyor...
+      </>
+    );
+  }
+  return (
+    <>
+      <span className="font-semibold text-indigo-300">{users[0]}</span>,{' '}
+      <span className="font-semibold text-indigo-300">{users[1]}</span> ve {users.length - 2} kişi daha yazıyor...
+    </>
+  );
+}
+
 // Helper to get matching Lucide icon based on MIME type or extension
 function getFileIcon(type = '', name = '') {
   const ext = (name.split('.').pop() || '').toLowerCase();
@@ -1018,6 +1053,7 @@ export const ChatArea = ({
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const lastTypingSentRef = useRef(0);
   const isNearBottomRef = useRef(true);
 
   // Close emoji picker and message options menu on outside click or Escape
@@ -1288,11 +1324,22 @@ export const ChatArea = ({
     setInputText(val);
 
     if (onTyping) {
-      onTyping(true);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
+
+      if (val.trim().length === 0) {
+        lastTypingSentRef.current = 0;
         onTyping(false);
-      }, 1500);
+      } else {
+        const now = Date.now();
+        if (now - lastTypingSentRef.current > 1500) {
+          lastTypingSentRef.current = now;
+          onTyping(true);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+          lastTypingSentRef.current = 0;
+          onTyping(false);
+        }, 2500);
+      }
     }
   };
 
@@ -1350,6 +1397,7 @@ export const ChatArea = ({
 
     if (onTyping) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      lastTypingSentRef.current = 0;
       onTyping(false);
     }
 
@@ -1392,6 +1440,7 @@ export const ChatArea = ({
 
     if (onTyping) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      lastTypingSentRef.current = 0;
       onTyping(false);
     }
 
@@ -3034,11 +3083,15 @@ export const ChatArea = ({
           {hasActiveChat && !isFullChatScreenShare && (
             <>
               {/* Typing Indicator */}
-              <div className="h-5 px-4 text-[11px] text-gray-400 italic select-none flex items-center flex-shrink-0">
+              <div className="h-5 px-4 text-[11px] text-gray-400 select-none flex items-center flex-shrink-0 transition-opacity duration-200">
                 {typingUsers.length > 0 && (
-                  <div className="flex items-center space-x-1.5 text-indigo-400">
-                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full"></span>
-                    <span>{typingUsers.join(', ')} yazıyor...</span>
+                  <div className="flex items-center space-x-1.5 text-gray-300">
+                    <span className="inline-flex items-center space-x-1 mr-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"></span>
+                    </span>
+                    <span>{formatTypingText(typingUsers)}</span>
                   </div>
                 )}
               </div>

@@ -142,7 +142,15 @@ export const useRealtimeChat = (
   });
 
   const [typingUsers, setTypingUsers] = useState([]);
+  const typingTimeoutsRef = useRef(new Map());
   const [isConnected, setIsConnected] = useState(false);
+
+  // Clear typing timeouts & users when switching channels
+  useEffect(() => {
+    typingTimeoutsRef.current.forEach((t) => clearTimeout(t));
+    typingTimeoutsRef.current.clear();
+    setTypingUsers([]);
+  }, [channelId]);
 
   // Set of received message IDs to prevent duplicate rendering
   const allInitialIds = [
@@ -238,6 +246,17 @@ export const useRealtimeChat = (
     const isOwnMessage = senderId === 'you' || Boolean(currentUserRef.current?.id && senderId === currentUserRef.current.id);
     if (!isOwnMessage) {
       sounds.playMessage();
+    }
+
+    // Immediately clear typing state if a message arrives from this user
+    const authorName = pickDisplayName([incoming.user, incoming.user_name, incoming.sender_name], null);
+    if (authorName) {
+      const timer = typingTimeoutsRef.current.get(authorName);
+      if (timer) {
+        clearTimeout(timer);
+        typingTimeoutsRef.current.delete(authorName);
+      }
+      setTypingUsers((prev) => prev.filter((u) => u !== authorName));
     }
 
   }, []);
@@ -373,12 +392,13 @@ export const useRealtimeChat = (
 
   // Handle typing indicator
   const setTyping = useCallback((isTyping) => {
+    const activeUser = currentUserRef.current;
     const typingName = pickDisplayName(
-      [currentUserRef.current?.display_name, currentUserRef.current?.name, currentUserRef.current?.username],
+      [activeUser?.display_name, activeUser?.name, activeUser?.username],
       null
     );
-    if (typingName) {
-      chatService.sendTyping(typingName, isTyping);
+    if (typingName && activeUser?.id && activeUser.id !== 'you') {
+      chatService.sendTyping(typingName, isTyping, activeUser.id);
     }
   }, []);
 
@@ -404,17 +424,43 @@ export const useRealtimeChat = (
       }
     };
 
-    const handleTyping = ({ user, isTyping, room }) => {
-      const safeUser = pickDisplayName([user], null);
-      if (!safeUser || safeUser === currentUserRef.current?.name || room !== channelId) return;
+    const handleTyping = ({ user, userId, isTyping, room }) => {
+      if (!room || room !== channelId) return;
+
+      const myId = normalizeParticipantId(currentUserRef.current?.id);
+      const incomingId = normalizeParticipantId(userId);
+      if (myId && incomingId && myId === incomingId) return;
+
+      const myName = (currentUserRef.current?.name || '').toLowerCase();
+      const myDisplayName = (currentUserRef.current?.display_name || '').toLowerCase();
+      const incomingName = (user || '').toLowerCase();
+      if (incomingName && (incomingName === myName || incomingName === myDisplayName)) return;
+
+      const safeUser = pickDisplayName([user], 'Biri');
+      if (!safeUser) return;
+
       setTypingUsers((prev) => {
-        if (isTyping && !prev.includes(safeUser)) {
-          return [...prev, safeUser];
+        if (isTyping) {
+          const existingTimer = typingTimeoutsRef.current.get(safeUser);
+          if (existingTimer) clearTimeout(existingTimer);
+          const newTimer = setTimeout(() => {
+            setTypingUsers((curr) => curr.filter((u) => u !== safeUser));
+            typingTimeoutsRef.current.delete(safeUser);
+          }, 3500);
+          typingTimeoutsRef.current.set(safeUser, newTimer);
+
+          if (!prev.includes(safeUser)) {
+            return [...prev, safeUser];
+          }
+          return prev;
         }
-        if (!isTyping) {
-          return prev.filter((u) => u !== safeUser);
+
+        const existingTimer = typingTimeoutsRef.current.get(safeUser);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+          typingTimeoutsRef.current.delete(safeUser);
         }
-        return prev;
+        return prev.filter((u) => u !== safeUser);
       });
     };
 
@@ -701,6 +747,9 @@ export const useRealtimeChat = (
     return () => {
       isCancelled = true;
       clearInterval(pollInterval);
+      typingTimeoutsRef.current.forEach((t) => clearTimeout(t));
+      typingTimeoutsRef.current.clear();
+      setTypingUsers([]);
       chatService.off('message_read', handleMessageRead);
       chatService.off('message_delivered', handleMessageDelivered);
       unsubRecovered?.();
