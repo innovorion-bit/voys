@@ -573,10 +573,17 @@ export const useRealtimeChat = (
       }
       if (!payload.new || !isDmChannel) return;
       const row = payload.new;
+      if (row.room_id === 'dm-control-cleared') return;
 
       const myId = normalizeParticipantId(currentUserRef.current?.id);
       if (!myId || myId === 'you' || !otherUserId) return;
       if (!isDirectMessageForPair(row, myId, otherUserId)) {
+        return;
+      }
+
+      const clearedAt = dbService.getDmClearedAt?.(myId, channelId, otherUserId);
+      const rowTime = Number(row.sent_at) || (row.created_at ? new Date(row.created_at).getTime() : 0);
+      if (clearedAt && rowTime <= clearedAt) {
         return;
       }
 
@@ -678,6 +685,17 @@ export const useRealtimeChat = (
         return changed ? next : prevMap;
       });
     };
+    const handleClearChat = (payload) => {
+      if (!payload) return;
+      if (!payload.isDm && payload.channelId === channelId) {
+        receivedMsgIdsRef.current?.clear?.();
+        setMessagesByChannel((prev) => ({
+          ...prev,
+          [channelId]: [],
+        }));
+      }
+    };
+    chatService.on('clear_chat', handleClearChat);
     chatService.on('delete_message', handleDeleteMessage);
 
     return () => {
@@ -692,6 +710,7 @@ export const useRealtimeChat = (
       chatService.off('connected', handleConnected);
       chatService.off('account_deleted', handleAccountDeleted);
       chatService.off('delete_message', handleDeleteMessage);
+      chatService.off('clear_chat', handleClearChat);
       unsubChannel?.();
       unsubDm?.();
     };

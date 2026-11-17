@@ -439,7 +439,7 @@ class StanduppLocalEngine {
     return message;
   }
 
-  getDmMessages(roomId) {
+  getDmMessages(roomId, currentUserId = null) {
     this.ensureCleanDmCache();
     const all = this.getItem('standupp_db_dm_msgs', {});
     const pair = parseDmRoomPair(roomId);
@@ -461,7 +461,18 @@ class StanduppLocalEngine {
       seenIds.add(msg.id);
       return true;
     });
-    return sanitizeDmMessagesList(deduped, u1, u2);
+    const sanitized = sanitizeDmMessagesList(deduped, u1, u2);
+    if (currentUserId && dbService?.getDmClearedAt) {
+      const partnerId = normalizeParticipantId(u1) === normalizeParticipantId(currentUserId) ? u2 : u1;
+      const clearedAt = dbService.getDmClearedAt(currentUserId, canonical, partnerId);
+      if (clearedAt) {
+        return sanitized.filter((m) => {
+          const t = Number(m?.sent_at ?? m?.sentAt) || (m?.created_at ? new Date(m.created_at).getTime() : 0);
+          return t > clearedAt;
+        });
+      }
+    }
+    return sanitized;
   }
 
   saveDmMessages(roomId, messages) {
@@ -1812,10 +1823,14 @@ export const dbService = {
             return item?.created_at ? new Date(item.created_at).getTime() || 0 : 0;
           };
 
+          const clearedAt = this.getDmClearedAt(user1, canonical, user2);
+
           const realMessages = combined
             .filter((row) => {
               if (!row?.id || seen.has(row.id)) return false;
               seen.add(row.id);
+              if (row.room_id === 'dm-control-cleared') return false;
+              if (clearedAt && getRowTime(row) <= clearedAt) return false;
               return isDirectMessageForPair(row, user1, user2);
             })
             .sort((a, b) => getRowTime(a) - getRowTime(b));
@@ -1829,7 +1844,7 @@ export const dbService = {
       }
     }
 
-    return localDb.getDmMessages(canonical);
+    return localDb.getDmMessages(canonical, user1);
   },
 
   // Batched latest DM lookup for Sidebar (eliminates N+1 per-friend query bursts)
@@ -1890,10 +1905,13 @@ export const dbService = {
           ].sort((a, b) => getRowTime(b) - getRowTime(a));
 
           for (const row of combined) {
+            if (row.room_id === 'dm-control-cleared') continue;
             const partnerId = resolveDirectMessagePartner(row, me, validFriendSet);
             if (!partnerId) continue;
             const canonical = canonicalByFriend.get(partnerId);
             if (!canonical || latestByCanonicalRoom[canonical]) continue;
+            const clearedAt = this.getDmClearedAt(me, canonical, partnerId);
+            if (clearedAt && getRowTime(row) <= clearedAt) continue;
             latestByCanonicalRoom[canonical] = mapDirectMessageRow(row);
           }
           return latestByCanonicalRoom;
@@ -1904,10 +1922,12 @@ export const dbService = {
     }
 
     // Local fallback
-    canonicalByFriend.forEach((canonical) => {
-      const localCanonical = localDb.getDmMessages(canonical);
-      if (Array.isArray(localCanonical) && localCanonical.length > 0) {
-        latestByCanonicalRoom[canonical] = localCanonical[localCanonical.length - 1];
+    canonicalByFriend.forEach((canonical, fid) => {
+      if (!latestByCanonicalRoom[canonical]) {
+        const localCanonical = localDb.getDmMessages(canonical, me);
+        if (Array.isArray(localCanonical) && localCanonical.length > 0) {
+          latestByCanonicalRoom[canonical] = localCanonical[localCanonical.length - 1];
+        }
       }
     });
     return latestByCanonicalRoom;
@@ -2065,34 +2085,124 @@ export const dbService = {
     return localDb.addDmMessage(canonicalRoomId, localMsg);
   },
 
-  // Delete all messages in a DM room or channel
-  async deleteChatMessages(roomId, channelId) {
-    if (isSupabaseConfigured) {
+  // Get DM cleared timestamp for a user and room
+  getDmClearedAt(userId, roomId, partnerId) {
+    if (!userId) return 0;
+    try {
+      const normUser = normalizeParticipantId(userId);
+      const keys = [
+        roomId ? `voys_dm_cleared_${normUser}_${roomId}` : null,
+        partnerId ? `voys_dm_cleared_${normUser}_${partnerId}` : null,
+      ].filter(Boolean);
+      for (const k of keys) {
+        const val = localStorage.getItem(k);
+        if (val) {
+          const num = Number(val);
+          if (!Number.isNaN(num) && num > 0) return num;
+        }
+      }
+    } catch {}
+    return 0;
+  },
+
+  // Save DM cleared timestamp for a user (One-sided clear / Tek taraflı silme)
+  async clearDmForUser(userId, partnerId, roomId) {
+    if (!userId) return false;
+    const normUser = normalizeParticipantId(userId);
+    const normPartner = partnerId ? normalizeParticipantId(partnerId) : null;
+    const canonical = (normUser && normPartner) ? getCanonicalDmRoomId(normUser, normPartner) : roomId;
+    const clearedAt = Date.now();
+
+    // 1. Save synchronously to localStorage
+    try {
+      if (canonical) localStorage.setItem(`voys_dm_cleared_${normUser}_${canonical}`, String(clearedAt));
+      if (roomId) localStorage.setItem(`voys_dm_cleared_${normUser}_${roomId}`, String(clearedAt));
+      if (normPartner) localStorage.setItem(`voys_dm_cleared_${normUser}_${normPartner}`, String(clearedAt));
+    } catch {}
+
+    // 2. Persist to Supabase so it syncs across devices
+    if (isSupabaseConfigured && supabase) {
       try {
-        if (roomId) {
-          await supabase.from('direct_messages').delete().eq('room_id', roomId);
-          if (typeof roomId === 'string' && roomId.startsWith('dm-')) {
-            const parts = roomId.replace(/^dm-/, '').split('--');
-            if (parts.length === 2) {
-              const alt = `dm-${parts[1]}--${parts[0]}`;
-              await supabase.from('direct_messages').delete().eq('room_id', alt);
-            }
-          }
-        }
-        if (channelId) {
-          await supabase.from('channel_messages').delete().eq('channel_id', channelId);
-          await supabase.from('messages').delete().eq('channel_id', channelId);
-        }
+        const controlId = `dm_clear_${normUser}_${canonical || roomId || normPartner}`;
+        const payload = {
+          id: controlId,
+          room_id: 'dm-control-cleared',
+          sender_id: normUser,
+          receiver_id: normUser,
+          sender_name: 'System',
+          lines: [JSON.stringify({ type: 'dm_cleared', targetRoomId: canonical || roomId, partnerId: normPartner, clearedAt })],
+          sent_at: clearedAt,
+        };
+        await supabase.from('direct_messages').upsert(payload, { onConflict: 'id' });
       } catch (err) {
-        console.warn('Supabase deleteChatMessages error:', err);
+        console.warn('Supabase clearDmForUser persistence error:', err);
       }
     }
+
+    return true;
+  },
+
+  // Load DM cleared records from Supabase on start / auth
+  async loadUserDmClearedRecords(userId) {
+    if (!isSupabaseConfigured || !supabase || !userId) return;
+    try {
+      const normUser = normalizeParticipantId(userId);
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .select('lines, sent_at')
+        .eq('room_id', 'dm-control-cleared')
+        .eq('sender_id', normUser);
+
+      if (!error && Array.isArray(data)) {
+        data.forEach((row) => {
+          try {
+            const raw = Array.isArray(row.lines) ? row.lines[0] : null;
+            if (raw) {
+              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+              if (parsed?.clearedAt) {
+                const ts = Number(parsed.clearedAt);
+                if (parsed.targetRoomId) {
+                  localStorage.setItem(`voys_dm_cleared_${normUser}_${parsed.targetRoomId}`, String(ts));
+                }
+                if (parsed.partnerId) {
+                  localStorage.setItem(`voys_dm_cleared_${normUser}_${parsed.partnerId}`, String(ts));
+                }
+              }
+            }
+          } catch {}
+        });
+      }
+    } catch (err) {
+      console.warn('loadUserDmClearedRecords error:', err);
+    }
+  },
+
+  // Delete all messages in a DM room or channel
+  // - For DMs: Clears ONLY for calling user (tek taraflı silinir, karşı tarafta kalır)
+  // - For Channels: Clears completely from DB for all users (komple silinir)
+  async deleteChatMessages(roomId, channelId, currentUserId = null, partnerId = null) {
     if (roomId) {
-      localDb.deleteDmMessages(roomId);
+      if (currentUserId) {
+        await this.clearDmForUser(currentUserId, partnerId, roomId);
+      } else {
+        localDb.deleteDmMessages(roomId);
+      }
+      return true;
     }
+
     if (channelId) {
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.from('channel_messages').delete().eq('channel_id', channelId);
+          await supabase.from('messages').delete().eq('channel_id', channelId);
+        } catch (err) {
+          console.warn('Supabase deleteChatMessages error:', err);
+        }
+      }
       localDb.deleteChannelMessages(channelId);
+      return true;
     }
+
     return true;
   },
 

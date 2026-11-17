@@ -1115,9 +1115,10 @@ function StanduppApp() {
     try {
       if (isDm && activeDmFriend?.id && activeUserProfile?.id) {
         const roomId = getDmRoomId(activeUserProfile.id, activeDmFriend.id);
-        await dbService.deleteChatMessages(roomId, null);
+        await dbService.deleteChatMessages(roomId, null, activeUserProfile.id, activeDmFriend.id);
       } else if (activeChannel) {
-        await dbService.deleteChatMessages(null, activeChannel);
+        await dbService.deleteChatMessages(null, activeChannel, activeUserProfile?.id);
+        chatService.sendClearChat?.(null, activeChannel, false);
       }
       clearMessages?.(activeChannel);
       try {

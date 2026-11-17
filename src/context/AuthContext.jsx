@@ -172,6 +172,9 @@ export const AuthProvider = ({ children }) => {
                   forceDeletedAccountLogout(currentSession.user.id);
                   return null;
                 }
+                if (currentSession?.user?.id) {
+                  dbService.loadUserDmClearedRecords?.(currentSession.user.id);
+                }
                 return dbService.ensureProfile(currentSession.user);
               })
               .then((profileData) => {

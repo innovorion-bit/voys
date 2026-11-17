@@ -21,6 +21,7 @@ class RealtimeChatService {
       call_status: [],
       account_deleted: [],
       delete_message: [],
+      clear_chat: [],
     };
   }
 
@@ -127,6 +128,8 @@ class RealtimeChatService {
           this.emitLocal('typing', event.data.payload);
         } else if (event.data?.type === 'DELETE_MESSAGE' && event.data.payload) {
           this.emitLocal('delete_message', event.data.payload);
+        } else if (event.data?.type === 'CLEAR_CHAT' && event.data.payload) {
+          this.emitLocal('clear_chat', event.data.payload);
         }
       };
     } catch (err) {
@@ -165,6 +168,8 @@ class RealtimeChatService {
             this.emitLocal('account_deleted', event.data.payload);
           } else if (event.data?.type === 'DELETE_MESSAGE' && event.data.payload) {
             this.emitLocal('delete_message', event.data.payload);
+          } else if (event.data?.type === 'CLEAR_CHAT' && event.data.payload) {
+            this.emitLocal('clear_chat', event.data.payload);
           }
         };
 
@@ -284,6 +289,11 @@ class RealtimeChatService {
           .on('broadcast', { event: 'delete_message' }, ({ payload }) => {
             if (payload?.messageId) {
               this.emitLocal('delete_message', payload);
+            }
+          })
+          .on('broadcast', { event: 'clear_chat' }, ({ payload }) => {
+            if (payload) {
+              this.emitLocal('clear_chat', payload);
             }
           })
           .subscribe();
@@ -629,6 +639,52 @@ class RealtimeChatService {
     }
 
     this.emitLocal('delete_message', payload);
+  }
+
+  // Broadcast chat clearing to connected clients and browser tabs
+  sendClearChat(roomId, channelId, isDm = false) {
+    const payload = {
+      roomId: roomId ? String(roomId) : null,
+      channelId: channelId ? String(channelId) : null,
+      isDm: Boolean(isDm),
+      timestamp: Date.now(),
+    };
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'CLEAR_CHAT',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (this.presenceBroadcastChannel) {
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'CLEAR_CHAT',
+          payload,
+        });
+      } catch { }
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'clear_chat',
+          payload,
+        });
+      } catch (err) {
+        console.warn('Supabase clear_chat broadcast send error:', err);
+      }
+    }
+
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('clear_chat', payload);
+    }
+
+    this.emitLocal('clear_chat', payload);
   }
 
   // Emit read receipt for a room

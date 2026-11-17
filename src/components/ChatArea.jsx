@@ -352,6 +352,18 @@ export const ChatArea = ({
   };
   const [expiredMediaKeys, setExpiredMediaKeys] = useState(() => new Set());
 
+  // Grup yöneticisi / kurucusu kontrolü
+  const isCurrentUserGroupAdmin = useMemo(() => {
+    if (isDmMode) return false;
+    const currentId = currentUser?.id ? String(currentUser.id) : null;
+    if (!currentId) return false;
+    if (channelData?.created_by && String(channelData.created_by) === currentId) {
+      return true;
+    }
+    const list = Array.isArray(channelMembers) ? channelMembers : [];
+    return list.some((m) => String(m.id || m.user_id) === currentId && m.role === 'admin');
+  }, [isDmMode, currentUser?.id, channelData?.created_by, channelMembers]);
+
   const markMediaExpired = useCallback((mediaKey) => {
     if (!mediaKey) return;
     setExpiredMediaKeys((prev) => {
@@ -511,16 +523,38 @@ export const ChatArea = ({
   const handleDeleteChat = async () => {
     setIsDeletingChat(true);
     try {
+      if (!isDmMode && !isCurrentUserGroupAdmin) {
+        toast.error('Yalnızca grup yöneticisi grup sohbetini temizleyebilir.');
+        setIsConfirmDeleteOpen(false);
+        return;
+      }
+
       if (onClearChat) {
         await onClearChat();
       } else {
         const roomId = isDmMode && rawActiveDmFriend && currentUser
           ? getDmRoomId(currentUser.id, rawActiveDmFriend.id)
           : activeChannel;
-        await dbService.deleteChatMessages(roomId, isDmMode ? null : activeChannel);
+        await dbService.deleteChatMessages(
+          isDmMode ? roomId : null,
+          isDmMode ? null : activeChannel,
+          currentUser?.id,
+          rawActiveDmFriend?.id
+        );
       }
+
+      if (!isDmMode && activeChannel) {
+        chatService.sendClearChat?.(null, activeChannel, false);
+      }
+
+      clearMessages?.(activeChannel);
       setIsConfirmDeleteOpen(false);
-      toast.success('Sohbet geçmişi başarıyla silindi');
+
+      if (isDmMode) {
+        toast.success('Sohbet geçmişiniz yalnızca sizden temizlendi');
+      } else {
+        toast.success('Grup sohbeti tüm üyeler için temizlendi');
+      }
     } catch (err) {
       console.error('Sohbet silinirken hata:', err);
       toast.error('Sohbet geçmişi silinemedi');
@@ -1699,19 +1733,23 @@ export const ChatArea = ({
                     )}
                   </button>
 
-                  <div className="my-1 border-t border-white/5" />
+                  {(isDmMode || isCurrentUserGroupAdmin) && (
+                    <>
+                      <div className="my-1 border-t border-white/5" />
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOptionsMenuOpen(false);
-                      setIsConfirmDeleteOpen(true);
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition text-left cursor-pointer"
-                  >
-                    <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
-                    <span>Sohbeti temizle</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOptionsMenuOpen(false);
+                          setIsConfirmDeleteOpen(true);
+                        }}
+                        className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition text-left cursor-pointer"
+                      >
+                        <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
+                        <span>Sohbeti temizle</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -4131,13 +4169,23 @@ export const ChatArea = ({
             </div>
 
             <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-white">Sohbeti Sil</h3>
+              <h3 className="text-base font-bold text-white">
+                {isDmMode ? 'Sohbeti Temizle' : 'Grup Sohbetini Temizle'}
+              </h3>
               <p className="text-xs text-gray-400 leading-relaxed">
-                {isDmMode && activeDmFriend?.name
-                  ? `${activeDmFriend.name} ile olan tüm sohbet geçmişi kalıcı olarak silinecektir.`
-                  : 'Bu sohbetteki tüm mesajlar kalıcı olarak silinecektir.'}
-                <br />
-                <span className="text-rose-400/90 font-medium">Bu işlem geri alınamaz.</span>
+                {isDmMode ? (
+                  <>
+                    <strong className="text-white">{activeDmFriend?.name || 'Bu kişi'}</strong> ile olan sohbet geçmişi yalnızca sizin ekranınızdan temizlenecektir.
+                    <br />
+                    <span className="text-gray-400">Karşı taraf mesajları görmeye devam eder.</span>
+                  </>
+                ) : (
+                  <>
+                    Bu gruptaki tüm mesajlar <strong className="text-white">tüm üyeler için</strong> kalıcı olarak silinecektir.
+                    <br />
+                    <span className="text-rose-400/90 font-medium">Bu işlem geri alınamaz.</span>
+                  </>
+                )}
               </p>
             </div>
 
@@ -4159,10 +4207,10 @@ export const ChatArea = ({
                 {isDeletingChat ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>Siliniyor...</span>
+                    <span>Temizleniyor...</span>
                   </>
                 ) : (
-                  <span>Sohbeti Sil</span>
+                  <span>{isDmMode ? 'Benden Temizle' : 'Herkes İçin Sil'}</span>
                 )}
               </button>
             </div>

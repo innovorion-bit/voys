@@ -829,8 +829,21 @@ export const Sidebar = ({
       }
     };
 
+    const handleClearChat = (payload) => {
+      if (!payload) return;
+      if (!payload.isDm && payload.channelId) {
+        setLastMessagesMap((prev) => {
+          if (!prev[payload.channelId]) return prev;
+          const next = { ...prev };
+          delete next[payload.channelId];
+          return next;
+        });
+      }
+    };
+
     chatService.on('message', handleChatMessage);
     chatService.on('delete_message', handleDeleteLastMessage);
+    chatService.on('clear_chat', handleClearChat);
 
     return () => {
       cancelled = true;
@@ -839,6 +852,7 @@ export const Sidebar = ({
       unsubChannelMsgs?.();
       chatService.off('message', handleChatMessage);
       chatService.off('delete_message', handleDeleteLastMessage);
+      chatService.off('clear_chat', handleClearChat);
     };
   }, [effectiveUserId, friendIdsKey, ensureDiscoveredDmPartner, unhideChat]);
 
