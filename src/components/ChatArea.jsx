@@ -440,18 +440,23 @@ export const ChatArea = ({
 
   // Chat inner view state: 'messages' (default) | 'userInfo'
   const [chatInnerView, setChatInnerView] = useState('messages');
+  const [selectedUserInfoUser, setSelectedUserInfoUser] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
 
   // Reset inner view to 'messages' when channel or friend changes
   useEffect(() => {
     setChatInnerView('messages');
+    setSelectedUserInfoUser(null);
   }, [activeChannel, rawActiveDmFriend?.id]);
 
   // Close inner view on Escape key
   useEffect(() => {
     if (chatInnerView === 'messages') return;
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setChatInnerView('messages');
+      if (e.key === 'Escape') {
+        setChatInnerView('messages');
+        setSelectedUserInfoUser(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -1766,7 +1771,10 @@ export const ChatArea = ({
           {/* Sadece sağ üstte çarpı butonu */}
           <button
             type="button"
-            onClick={() => setChatInnerView('messages')}
+            onClick={() => {
+              setChatInnerView('messages');
+              setSelectedUserInfoUser(null);
+            }}
             className="absolute top-4 right-4 sm:top-5 sm:right-6 z-40 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-md"
             title="Kapat (ESC)"
           >
@@ -1779,178 +1787,208 @@ export const ChatArea = ({
             <div className="pb-4 border-b border-white/[0.08] flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isDmMode ? 'Kişi Bilgisi' : 'Grup Bilgisi'}
+                  {(selectedUserInfoUser || isDmMode) ? 'Kişi Bilgisi' : 'Grup Bilgisi'}
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  {isDmMode
+                  {(selectedUserInfoUser || isDmMode)
                     ? 'Kişisel profil detayları, kullanıcı bilgileri ve doğrudan iletişim seçenekleri.'
                     : 'Grup profili, katılımcı yönetimi ve grup ayarları.'}
                 </p>
               </div>
             </div>
 
-            {isDmMode && activeDmFriend ? (
-              <>
-                {/* Bölüm 1: Profil Fotoğrafı & Kimlik */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                      PROFİL FOTOĞRAFI
-                    </label>
-                  </div>
-                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-col sm:flex-row items-center gap-5">
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const avatarUrl = activeDmFriend?.avatar || activeDmFriend?.avatar_url || activeDmFriend?.avatarUrl || null;
-                        setActiveMediaModal({
-                          url: avatarUrl,
-                          name: `${activeDmFriend?.name || 'Kullanıcı'} - Profil Fotoğrafı`,
-                          fallbackUser: activeDmFriend,
-                          isProfile: true,
-                        });
-                      }}
-                      className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] flex items-center justify-center cursor-pointer transition flex-shrink-0"
-                      title="Profil fotoğrafını görüntüle"
-                    >
-                      <UserAvatar
-                        user={activeDmFriend}
-                        size="2xl"
-                        showStatus={false}
-                        className="!w-full !h-full !rounded-full"
-                      />
-                      <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
-                        <Eye size={16} className="mb-0.5 text-white" />
-                        <span>Görüntüle</span>
+            {(() => {
+              const targetProfileUser = selectedUserInfoUser || (isDmMode ? activeDmFriend : null);
+              if (targetProfileUser) {
+                const avatarUrl = targetProfileUser?.avatar || targetProfileUser?.avatar_url || targetProfileUser?.avatarUrl || null;
+                const isUserOnline = Boolean(targetProfileUser.isOnline);
+                const userStatus = targetProfileUser.status;
+
+                return (
+                  <>
+                    {/* Bölüm 1: Profil Fotoğrafı & Kimlik */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                          PROFİL FOTOĞRAFI
+                        </label>
+                      </div>
+                      <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-col sm:flex-row items-center gap-5">
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMediaModal({
+                              url: avatarUrl,
+                              name: `${targetProfileUser?.name || 'Kullanıcı'} - Profil Fotoğrafı`,
+                              fallbackUser: targetProfileUser,
+                              isProfile: true,
+                            });
+                          }}
+                          className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 hover:border-[#8B51FF] flex items-center justify-center cursor-pointer transition flex-shrink-0"
+                          title="Profil fotoğrafını görüntüle"
+                        >
+                          <UserAvatar
+                            user={targetProfileUser}
+                            size="2xl"
+                            showStatus={false}
+                            className="!w-full !h-full !rounded-full"
+                          />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 transition text-white text-[10px] font-semibold">
+                            <Eye size={16} className="mb-0.5 text-white" />
+                            <span>Görüntüle</span>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 space-y-1.5 text-center sm:text-left min-w-0">
+                          <div className="flex items-center justify-center sm:justify-start space-x-2">
+                            <h3 className="text-base font-bold text-white truncate">
+                              {targetProfileUser.name}
+                            </h3>
+                            {targetProfileUser?.hasCrown && (
+                              <Crown size={14} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 font-mono truncate">
+                            {targetProfileUser.username ? `@${targetProfileUser.username}` : (targetProfileUser.email || 'Voys Kullanıcısı')}
+                          </p>
+                          <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                            <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
+                              userStatus === 'dnd'
+                                ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                                : (userStatus === 'idle' || targetProfileUser.isAway)
+                                ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                                : isUserOnline
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                userStatus === 'dnd'
+                                  ? 'bg-rose-400'
+                                  : (userStatus === 'idle' || targetProfileUser.isAway)
+                                  ? 'bg-amber-400'
+                                  : isUserOnline
+                                  ? 'bg-emerald-400'
+                                  : 'bg-zinc-500'
+                              }`} />
+                              <span>
+                                {userStatus === 'dnd'
+                                  ? 'Rahatsız Etmeyin'
+                                  : (userStatus === 'idle' || targetProfileUser.isAway)
+                                  ? 'Boşta'
+                                  : isUserOnline
+                                  ? 'Çevrimiçi'
+                                  : 'Çevrimdışı'}
+                              </span>
+                            </span>
+
+                            {targetProfileUser.game && (
+                              <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                <Gamepad2 size={12} className="text-emerald-400" />
+                                <span className="truncate">{targetProfileUser.game}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex-1 space-y-1.5 text-center sm:text-left min-w-0">
-                      <div className="flex items-center justify-center sm:justify-start space-x-2">
-                        <h3 className="text-base font-bold text-white truncate">
-                          {activeDmFriend.name}
-                        </h3>
-                        {activeDmFriend?.hasCrown && (
-                          <Crown size={14} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                    {/* Bölüm 2: Kullanıcı Bilgileri */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                          HESAP BİLGİLERİ
+                        </label>
+                      </div>
+                      <div className="p-4 bg-[#111214] border border-white/10 rounded-xl space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                              Görünen İsim
+                            </label>
+                            <div className="w-full rounded-lg px-3.5 py-2.5 text-xs bg-[#161719]/80 text-gray-200 border border-white/5 select-text">
+                              {targetProfileUser.name}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                              Kullanıcı Adı
+                            </label>
+                            <div className="w-full rounded-lg px-3.5 py-2.5 text-xs font-mono bg-[#161719]/80 text-gray-200 border border-white/5 select-text">
+                              {targetProfileUser.username ? `@${targetProfileUser.username}` : '@kullanici'}
+                            </div>
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-xs font-semibold text-gray-200 block mb-1.5">
+                              Biyografi / Durum
+                            </label>
+                            <div className="w-full rounded-lg px-3.5 py-2.5 text-xs bg-[#161719]/80 text-gray-300 border border-white/5 select-text leading-relaxed">
+                              {targetProfileUser.substatus || targetProfileUser.bio || 'Henüz bir durum veya biyografi eklenmemiş.'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bölüm 3: İletişim ve İşlemler */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
+                          HIZLI İŞLEMLER
+                        </label>
+                      </div>
+                      <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-wrap items-center gap-3">
+                        {onSelectDm && targetProfileUser.id !== currentUser?.id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectDm(targetProfileUser.id);
+                              setChatInnerView('messages');
+                              setSelectedUserInfoUser(null);
+                            }}
+                            className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer"
+                          >
+                            <MessageSquare size={14} />
+                            <span>Mesaj Gönder</span>
+                          </button>
+                        )}
+
+                        {targetProfileUser.id !== currentUser?.id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (selectedUserInfoUser && onSelectDm) {
+                                onSelectDm(targetProfileUser.id);
+                              }
+                              if (onStartCall) onStartCall();
+                              else if (onToggleDmCall) onToggleDmCall();
+                            }}
+                            className="inline-flex items-center space-x-2 px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer"
+                          >
+                            <Phone size={14} />
+                            <span>Sesli Arama Başlat</span>
+                          </button>
+                        )}
+
+                        {isDmMode && !selectedUserInfoUser && (
+                          <button
+                            type="button"
+                            onClick={() => setIsConfirmDeleteOpen(true)}
+                            className="inline-flex items-center space-x-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg text-xs font-semibold border border-rose-500/20 transition active:scale-95 cursor-pointer"
+                          >
+                            <Trash2 size={14} className="text-rose-400" />
+                            <span>Sohbet Geçmişini Temizle</span>
+                          </button>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 font-mono truncate">
-                        {activeDmFriend.username ? `@${activeDmFriend.username}` : (activeDmFriend.email || 'Voys Kullanıcısı')}
-                      </p>
-                      <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                        <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
-                          activeDmFriend.status === 'dnd'
-                            ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
-                            : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
-                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-                            : activeDmFriend.isOnline
-                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            activeDmFriend.status === 'dnd'
-                              ? 'bg-rose-400'
-                              : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
-                              ? 'bg-amber-400'
-                              : activeDmFriend.isOnline
-                              ? 'bg-emerald-400'
-                              : 'bg-zinc-500'
-                          }`} />
-                          <span>
-                            {activeDmFriend.status === 'dnd'
-                              ? 'Rahatsız Etmeyin'
-                              : (activeDmFriend.status === 'idle' || activeDmFriend.isAway)
-                              ? 'Boşta'
-                              : activeDmFriend.isOnline
-                              ? 'Çevrimiçi'
-                              : 'Çevrimdışı'}
-                          </span>
-                        </span>
-
-                        {activeDmFriend.game && (
-                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                            <Gamepad2 size={12} className="text-emerald-400" />
-                            <span className="truncate">{activeDmFriend.game}</span>
-                          </span>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Bölüm 2: Kullanıcı Bilgileri */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                      HESAP BİLGİLERİ
-                    </label>
-                  </div>
-                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-200 block mb-1.5">
-                          Görünen İsim
-                        </label>
-                        <div className="w-full rounded-lg px-3.5 py-2.5 text-xs bg-[#161719]/80 text-gray-200 border border-white/5 select-text">
-                          {activeDmFriend.name}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-gray-200 block mb-1.5">
-                          Kullanıcı Adı
-                        </label>
-                        <div className="w-full rounded-lg px-3.5 py-2.5 text-xs font-mono bg-[#161719]/80 text-gray-200 border border-white/5 select-text">
-                          {activeDmFriend.username ? `@${activeDmFriend.username}` : '@kullanici'}
-                        </div>
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="text-xs font-semibold text-gray-200 block mb-1.5">
-                          Biyografi / Durum
-                        </label>
-                        <div className="w-full rounded-lg px-3.5 py-2.5 text-xs bg-[#161719]/80 text-gray-300 border border-white/5 select-text leading-relaxed">
-                          {activeDmFriend.substatus || activeDmFriend.bio || 'Henüz bir durum veya biyografi eklenmemiş.'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bölüm 3: İletişim ve İşlemler */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                      HIZLI İŞLEMLER
-                    </label>
-                  </div>
-                  <div className="p-4 bg-[#111214] border border-white/10 rounded-xl flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onStartCall) onStartCall();
-                        else if (onToggleDmCall) onToggleDmCall();
-                      }}
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer"
-                    >
-                      <Phone size={14} />
-                      <span>Sesli Arama Başlat</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmDeleteOpen(true)}
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg text-xs font-semibold border border-rose-500/20 transition active:scale-95 cursor-pointer"
-                    >
-                      <Trash2 size={14} className="text-rose-400" />
-                      <span>Sohbet Geçmişini Temizle</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Bölüm 1: Grup Profili & Fotoğrafı */}
+                  </>
+                );
+              }
+              return (
+                <>
+                  {/* Bölüm 1: Grup Profili & Fotoğrafı */}
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
@@ -2122,7 +2160,8 @@ export const ChatArea = ({
                   </div>
                 )}
               </>
-            )}
+            );
+          })()}
           </div>
         </div>
       </div>
@@ -3758,6 +3797,22 @@ export const ChatArea = ({
                   >
                     <MessageSquare size={14} className="text-indigo-400 flex-shrink-0" />
                     <span>Mesaj Gönder</span>
+                  </button>
+                )}
+
+                {/* Kişi Bilgisi */}
+                {isValidRealUser && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserInfoUser(liveTarget);
+                      setChatInnerView('userInfo');
+                      closeContextMenu();
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-indigo-500/15 hover:text-white transition text-left text-gray-100 cursor-pointer font-medium"
+                  >
+                    <User size={14} className="text-indigo-400 flex-shrink-0" />
+                    <span>Kişi Bilgisi</span>
                   </button>
                 )}
 
