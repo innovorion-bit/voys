@@ -2849,23 +2849,23 @@ export const ChatArea = ({
                                 );
                               }
 
-                              // Pure Clean & Full-Size GIF Presentation (No badge, no bottom bar)
-                              if (isGif) {
+                              // Image & GIF Attachment (Full size, no bottom bar, no side letterbox margins)
+                              if (isImage) {
                                 return (
                                   <div
                                     key={att.id || idx}
                                     onClick={() => setActiveMediaModal(att)}
-                                    className="group/gif relative inline-block rounded-2xl overflow-hidden shadow-xl border border-white/10 hover:border-indigo-500/50 transition-all max-w-sm sm:max-w-md md:max-w-lg cursor-pointer bg-[#0c0c0e]"
+                                    className="group/img relative inline-block rounded-2xl overflow-hidden shadow-xl border border-white/10 hover:border-indigo-500/50 transition-all max-w-sm sm:max-w-md md:max-w-lg cursor-pointer bg-transparent"
                                   >
                                     <img
                                       src={att.url}
-                                      alt={att.name || 'GIF'}
+                                      alt={att.name || 'Görsel'}
                                       onError={() => markMediaExpired(mediaKey)}
-                                      className="w-auto h-auto max-w-full max-h-[380px] sm:max-h-[460px] object-contain rounded-2xl block group-hover/gif:scale-[1.01] transition-transform duration-200"
+                                      className="w-auto h-auto max-w-full max-h-[380px] sm:max-h-[460px] object-contain rounded-2xl block group-hover/img:scale-[1.01] transition-transform duration-200"
                                       loading="lazy"
                                     />
                                     {/* Hover zoom overlay */}
-                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/gif:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                       <div className="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20 shadow-md">
                                         <Eye size={13} className="text-indigo-400" />
                                         <span>Büyüt</span>
@@ -2875,87 +2875,20 @@ export const ChatArea = ({
                                 );
                               }
 
-                              // Image Attachment with Rich Thumbnail
-                              if (isImage) {
-                                return (
-                                  <div
-                                    key={att.id || idx}
-                                    className="group/img relative rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/60 bg-[#0c0c0e] transition-all max-w-xs sm:max-w-md shadow-lg flex flex-col"
-                                  >
-                                    <div
-                                      onClick={() => setActiveMediaModal(att)}
-                                      className="cursor-pointer relative overflow-hidden bg-black/40 flex items-center justify-center min-h-[140px]"
-                                    >
-                                      <img
-                                        src={att.url}
-                                        alt={att.name || 'Paylaşılan Görsel'}
-                                        onError={() => markMediaExpired(mediaKey)}
-                                        className="max-h-72 w-auto object-contain rounded-t-2xl group-hover/img:scale-[1.01] transition-transform duration-200"
-                                        loading="lazy"
-                                      />
-                                      {/* Hover zoom overlay */}
-                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                        <div className="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20">
-                                          <Eye size={13} className="text-indigo-400" />
-                                          <span>Büyüt</span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Bottom Bar: File Name, Size, Download */}
-                                    <div className="p-2.5 px-3 bg-[#0c0c0e]/95 border-t border-white/5 flex items-center justify-between text-xs text-gray-300">
-                                      <div className="flex flex-col min-w-0 pr-2">
-                                        <span className="font-semibold text-gray-200 truncate text-[12px]">{att.name}</span>
-                                        <span className="text-[10px] text-gray-400 font-mono">
-                                          {formatFileSize(att.size)}
-                                        </span>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleAttachmentDownload(att, mediaKey);
-                                        }}
-                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-white/5 hover:border-indigo-500/30 transition flex items-center space-x-1"
-                                        title="Görseli İndir"
-                                      >
-                                        <Download size={13} />
-                                        <span className="text-[10px] font-medium hidden sm:inline">İndir</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              // Video Attachment
+                              // Video Attachment (Full size, no bottom bar, no side letterbox margins)
                               if (isVideo) {
                                 return (
                                   <div
                                     key={att.id || idx}
-                                    className="rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 bg-[#0a0a0d] max-w-xs sm:max-w-md shadow-lg"
+                                    className="relative inline-block rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 shadow-xl max-w-sm sm:max-w-md md:max-w-lg bg-black"
                                   >
                                     <video
                                       src={att.url}
                                       controls
                                       onError={() => markMediaExpired(mediaKey)}
-                                      className="max-h-80 w-full bg-black"
+                                      className="w-auto h-auto max-w-full max-h-[380px] sm:max-h-[460px] object-contain rounded-2xl block"
                                       preload="metadata"
                                     />
-                                    <div className="px-3 py-2 bg-[#0c0c0e] border-t border-white/5 flex items-center justify-between text-xs text-gray-300">
-                                      <div className="flex flex-col min-w-0 pr-2">
-                                        <span className="truncate font-semibold text-gray-200 text-[12px]">{att.name}</span>
-                                        <span className="font-mono text-[10px] text-gray-400">{formatFileSize(att.size)} • Video</span>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAttachmentDownload(att, mediaKey)}
-                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-gray-300 hover:text-white border border-white/5 hover:border-indigo-500/30 transition flex items-center space-x-1 flex-shrink-0"
-                                        title="Videoyu İndir"
-                                      >
-                                        <Download size={13} />
-                                        <span className="text-[10px] font-medium hidden sm:inline">İndir</span>
-                                      </button>
-                                    </div>
                                   </div>
                                 );
                               }
