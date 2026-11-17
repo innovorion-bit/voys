@@ -4213,18 +4213,14 @@ export const ChatArea = ({
       {isConfirmDeleteOpen && (
         <div 
           onClick={() => setIsConfirmDeleteOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4"
+            className="w-full max-w-xs bg-[#121216] border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4"
           >
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
-              <Trash2 size={24} />
-            </div>
-
             <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-sm font-bold text-white">
                 {isDmMode ? 'Sohbeti Temizle' : 'Grup Sohbetini Temizle'}
               </h3>
               <p className="text-xs text-gray-400 leading-relaxed">
@@ -4244,12 +4240,12 @@ export const ChatArea = ({
               </p>
             </div>
 
-            <div className="flex items-center space-x-3 pt-2">
+            <div className="flex items-center space-x-2.5 pt-1">
               <button
                 type="button"
                 disabled={isDeletingChat}
                 onClick={() => setIsConfirmDeleteOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-xs transition border border-white/10"
+                className="flex-1 py-2 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/5 cursor-pointer disabled:opacity-50"
               >
                 Vazgeç
               </button>
@@ -4257,11 +4253,11 @@ export const ChatArea = ({
                 type="button"
                 disabled={isDeletingChat}
                 onClick={handleDeleteChat}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5"
+                className="flex-1 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isDeletingChat ? (
                   <>
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={13} className="animate-spin" />
                     <span>Temizleniyor...</span>
                   </>
                 ) : (
@@ -4277,18 +4273,14 @@ export const ChatArea = ({
       {isConfirmDeleteGroupOpen && (
         <div 
           onClick={() => setIsConfirmDeleteGroupOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-[#121216] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4"
+            className="w-full max-w-xs bg-[#121216] border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4"
           >
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
-              <Trash2 size={24} />
-            </div>
-
             <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-white">Grubu Sil</h3>
+              <h3 className="text-sm font-bold text-white">Grubu Sil</h3>
               <p className="text-xs text-gray-400 leading-relaxed">
                 <span className="font-semibold text-white">"{channelData?.name || 'Grup'}"</span> adlı grubu silmek istediğinize emin misiniz?
                 <br />
@@ -4298,12 +4290,12 @@ export const ChatArea = ({
               </p>
             </div>
 
-            <div className="flex items-center space-x-3 pt-2">
+            <div className="flex items-center space-x-2.5 pt-1">
               <button
                 type="button"
                 disabled={isDeletingGroup}
                 onClick={() => setIsConfirmDeleteGroupOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-xs transition border border-white/10 cursor-pointer"
+                className="flex-1 py-2 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/5 cursor-pointer disabled:opacity-50"
               >
                 Vazgeç
               </button>
@@ -4311,11 +4303,11 @@ export const ChatArea = ({
                 type="button"
                 disabled={isDeletingGroup}
                 onClick={handleDeleteGroup}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="flex-1 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isDeletingGroup ? (
                   <>
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={13} className="animate-spin" />
                     <span>Siliniyor...</span>
                   </>
                 ) : (
