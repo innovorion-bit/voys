@@ -14,6 +14,8 @@ import {
   Copy,
   X,
   Users,
+  Database,
+  HardDrive,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { dbService } from '../lib/supabase';
@@ -47,7 +49,7 @@ function getPercent(used, limit) {
   return Math.min(100, Math.round(((Number(used) || 0) / limit) * 1000) / 10);
 }
 
-function QuotaCard({ label, usedText, limitText, percent, subText, accent = 'indigo' }) {
+function MetricRow({ icon: Icon, iconColor = 'text-indigo-400', title, subText, valueText, limitText, percent, accent = 'indigo' }) {
   const barColor =
     percent >= 85
       ? 'bg-rose-500'
@@ -62,23 +64,30 @@ function QuotaCard({ label, usedText, limitText, percent, subText, accent = 'ind
               : 'bg-indigo-500';
 
   return (
-    <div className="p-3.5 rounded-xl bg-[#111115] border border-white/10 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-300">{label}</span>
-        <span className="text-[11px] font-mono font-semibold text-gray-400">%{percent}</span>
-      </div>
-      <div>
-        <div className="flex items-baseline space-x-1.5">
-          <span className="text-base font-bold text-white font-mono">{usedText}</span>
-          <span className="text-[11px] text-gray-500 font-mono">/ {limitText}</span>
+    <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-center space-x-3 min-w-0">
+        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+          <Icon size={16} className={iconColor} />
         </div>
-        {subText && <p className="text-[11px] text-gray-500 mt-0.5">{subText}</p>}
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-white">{title}</div>
+          {subText && <div className="text-[11px] text-gray-400 mt-0.5 truncate">{subText}</div>}
+        </div>
       </div>
-      <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-          style={{ width: `${Math.max(percent > 0 ? 3 : 0, percent)}%` }}
-        />
+
+      <div className="flex items-center space-x-3 sm:space-x-4 flex-shrink-0 self-end sm:self-auto">
+        <div className="text-right">
+          <div className="font-mono text-xs font-semibold text-white">
+            {valueText} <span className="text-gray-500 font-normal">/ {limitText}</span>
+          </div>
+          <div className="text-[10px] font-mono text-gray-400">%{percent}</div>
+        </div>
+        <div className="w-24 sm:w-28 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+            style={{ width: `${Math.max(percent > 0 ? 3 : 0, percent)}%` }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -347,36 +356,6 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
         </div>
       </div>
 
-      {/* Canlı Bağlantı & Gecikme Durum Çubuğu */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[#111115] border border-white/10">
-        <div className="flex items-center space-x-2.5">
-          {isRtHealthy ? (
-            <Wifi size={16} className="text-emerald-400 flex-shrink-0" />
-          ) : (
-            <WifiOff size={16} className="text-amber-400 flex-shrink-0" />
-          )}
-          <div>
-            <div className="flex items-center space-x-2 text-xs font-semibold text-white">
-              <span>
-                Realtime Durumu:{' '}
-                <span className={isRtHealthy ? 'text-emerald-400' : 'text-amber-400'}>
-                  {realtimeHealth?.status || 'Bilinmiyor'}
-                </span>
-              </span>
-              <span className="text-gray-600">•</span>
-              <span className="text-gray-400 font-mono text-[11px]">
-                {realtimeHealth?.activeChannels || 0} aktif kanal
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-500">
-              Yeniden bağlanma: {realtimeHealth?.reconnectCount || 0} kez
-              {data?.checked_at ? ` • Son güncelleme: ${formatDateTr(data.checked_at)}` : ''}
-              {realtimeHealth?.lastError ? ` • Uyarı: ${realtimeHealth.lastError}` : ''}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {errorMsg && (
         <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start space-x-2 text-xs text-rose-200">
           <AlertTriangle size={16} className="text-rose-400 flex-shrink-0 mt-0.5" />
@@ -391,69 +370,107 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
         </div>
       ) : (
         <>
-          {/* Supabase Kullanım Limitleri Kartları */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <QuotaCard
-              label="Veritabanı Alanı"
-              usedText={formatBytes(dbInfo.size_bytes)}
-              limitText={formatBytes(dbInfo.limit_bytes || 524288000)}
-              percent={getPercent(dbInfo.size_bytes, dbInfo.limit_bytes || 524288000)}
-              subText={`Toplam ${counts.channel_messages_total || 0} grup mesajı, ${counts.direct_messages_total || 0} DM`}
-              accent="indigo"
-            />
-            <QuotaCard
-              label="Storage Depolama"
-              usedText={formatBytes(storageInfo.total_bytes)}
-              limitText={formatBytes(storageInfo.limit_bytes || 1073741824)}
-              percent={getPercent(storageInfo.total_bytes, storageInfo.limit_bytes || 1073741824)}
-              subText={`${storageInfo.total_objects || 0} dosya • ${storageInfo.expired_candidates || 0} tanesi 48s+ temizlik bekliyor`}
-              accent="cyan"
-            />
-            <QuotaCard
-              label="30 Günlük Aktif Kullanıcı (MAU)"
-              usedText={String(authInfo.mau_30d ?? 0)}
-              limitText={(authInfo.mau_limit || 50000).toLocaleString('tr-TR')}
-              percent={getPercent(authInfo.mau_30d, authInfo.mau_limit || 50000)}
-              subText={`Toplam ${authInfo.total_users ?? users.length} kayıtlı hesap • Son 24s: ${authInfo.active_24h || 0} aktif`}
-              accent="emerald"
-            />
-            <QuotaCard
-              label="Aktif DB Bağlantıları"
-              usedText={String(dbInfo.active_connections ?? 0)}
-              limitText={String(dbInfo.max_connections || 60)}
-              percent={getPercent(dbInfo.active_connections, dbInfo.max_connections || 60)}
-              subText={`${effectiveGroups.length || counts.channels_total || 0} grup • ${counts.friendships_accepted || 0} arkadaşlık (+${counts.friendships_pending || 0} bekleyen)`}
-              accent="purple"
-            />
-          </div>
-
-          {/* 2 Günlük Otomatik Temizlik + Egress Bilgi Kutusu */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-xl bg-[#111115] border border-white/10 flex flex-col justify-between space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-xs font-semibold text-white">
-                    <span>2 Günlük Otomatik Depolama Temizliği</span>
+          {/* Sistem & Veritabanı İzleme (Satır Düzeni) */}
+          <div className="rounded-xl border border-white/10 bg-[#111115] divide-y divide-white/5 overflow-hidden">
+            {/* Satır 1: Realtime Bağlantı Durumu */}
+            <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+                  isRtHealthy ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'
+                }`}>
+                  {isRtHealthy ? (
+                    <Wifi size={16} className="text-emerald-400" />
+                  ) : (
+                    <WifiOff size={16} className="text-amber-400" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-white">Realtime Bağlantı Durumu</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">
+                    {realtimeHealth?.activeChannels || 0} aktif kanal • Yeniden bağlanma: {realtimeHealth?.reconnectCount || 0} kez
+                    {data?.checked_at ? ` • Son güncelleme: ${formatDateTr(data.checked_at)}` : ''}
+                    {realtimeHealth?.lastError ? ` • Uyarı: ${realtimeHealth.lastError}` : ''}
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Zamanlama: <code className="text-indigo-300">{cronInfo.job?.schedule || '0 */6 * * *'}</code> (6 saatte bir) •
-                    Durum: {cronInfo.job?.active ? <span className="text-emerald-400 font-semibold">Aktif</span> : <span className="text-amber-400">Pasif</span>}
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    48 saati aşan sohbet dosyaları ve kullanılmayan eski avatarlar otomatik silinir.
-                  </p>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                <span className="text-[11px] text-gray-400">
-                  Bekleyen aday: <strong className="text-white">{storageInfo.expired_candidates || 0}</strong> dosya
+              <div className="flex-shrink-0 self-start sm:self-auto">
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                  isRtHealthy
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                }`}>
+                  {realtimeHealth?.status || 'Bilinmiyor'}
                 </span>
+              </div>
+            </div>
+
+            {/* Satır 2: Veritabanı Alanı */}
+            <MetricRow
+              icon={Database}
+              iconColor="text-indigo-400"
+              title="Veritabanı Alanı"
+              subText={`Toplam ${counts.channel_messages_total || 0} grup mesajı, ${counts.direct_messages_total || 0} DM`}
+              valueText={formatBytes(dbInfo.size_bytes)}
+              limitText={formatBytes(dbInfo.limit_bytes || 524288000)}
+              percent={getPercent(dbInfo.size_bytes, dbInfo.limit_bytes || 524288000)}
+              accent="indigo"
+            />
+
+            {/* Satır 3: Storage Depolama */}
+            <MetricRow
+              icon={HardDrive}
+              iconColor="text-cyan-400"
+              title="Storage Depolama"
+              subText={`${storageInfo.total_objects || 0} dosya • ${storageInfo.expired_candidates || 0} tanesi 48s+ temizlik bekliyor`}
+              valueText={formatBytes(storageInfo.total_bytes)}
+              limitText={formatBytes(storageInfo.limit_bytes || 1073741824)}
+              percent={getPercent(storageInfo.total_bytes, storageInfo.limit_bytes || 1073741824)}
+              accent="cyan"
+            />
+
+            {/* Satır 4: 30 Günlük Aktif Kullanıcı (MAU) */}
+            <MetricRow
+              icon={Users}
+              iconColor="text-emerald-400"
+              title="30 Günlük Aktif Kullanıcı (MAU)"
+              subText={`Toplam ${authInfo.total_users ?? users.length} kayıtlı hesap • Son 24s: ${authInfo.active_24h || 0} aktif`}
+              valueText={String(authInfo.mau_30d ?? 0)}
+              limitText={(authInfo.mau_limit || 50000).toLocaleString('tr-TR')}
+              percent={getPercent(authInfo.mau_30d, authInfo.mau_limit || 50000)}
+              accent="emerald"
+            />
+
+            {/* Satır 5: Aktif DB Bağlantıları */}
+            <MetricRow
+              icon={Activity}
+              iconColor="text-purple-400"
+              title="Aktif DB Bağlantıları"
+              subText={`${effectiveGroups.length || counts.channels_total || 0} grup • ${counts.friendships_accepted || 0} arkadaşlık (+${counts.friendships_pending || 0} bekleyen)`}
+              valueText={String(dbInfo.active_connections ?? 0)}
+              limitText={String(dbInfo.max_connections || 60)}
+              percent={getPercent(dbInfo.active_connections, dbInfo.max_connections || 60)}
+              accent="purple"
+            />
+
+            {/* Satır 6: 2 Günlük Otomatik Depolama Temizliği */}
+            <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+                  <Trash2 size={16} className="text-rose-400" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-white">2 Günlük Otomatik Depolama Temizliği</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">
+                    Zamanlama: {cronInfo.job?.schedule || '0 */6 * * *'} (6 saatte bir) • Durum: {cronInfo.job?.active ? <span className="text-emerald-400 font-medium">Aktif</span> : <span className="text-amber-400 font-medium">Pasif</span>} • Bekleyen: <strong className="text-white">{storageInfo.expired_candidates || 0}</strong> dosya
+                  </div>
+                </div>
+              </div>
+              <div className="flex-shrink-0 self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={handleManualCleanup}
                   disabled={runningCleanup}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-500/30 transition disabled:opacity-50"
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-500/30 transition disabled:opacity-50 cursor-pointer"
                 >
                   <Trash2 size={12} />
                   <span>{runningCleanup ? 'Temizleniyor...' : 'Temizliği Şimdi Çalıştır'}</span>
@@ -461,25 +478,30 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#111115] border border-white/10 flex flex-col justify-between space-y-2">
-              <div>
-                <div className="text-xs font-semibold text-white">
-                  <span>Egress (5 GB) & Realtime Kotası Hakkında</span>
+            {/* Satır 7: Egress & Realtime Kotası */}
+            <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 hover:bg-white/[0.02] transition-colors">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                  <ExternalLink size={16} className="text-indigo-400" />
                 </div>
-                <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
-                  Veritabanı boyutu, depolama, bağlantılar ve MAU doğrudan canlı ölçülür. Aylık Egress trafiği ve
-                  Realtime mesaj kotası ise Supabase faturalandırma panelinde tutulur.
-                </p>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-white">Egress (5 GB) & Realtime Kotası</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5 truncate">
+                    Aylık Egress trafiği ve Realtime mesaj kotası Supabase faturalandırma panelinde tutulur
+                  </div>
+                </div>
               </div>
-              <a
-                href="https://supabase.com/dashboard/project/kdxwyvommyyvtzpzmsbm/settings/billing/usage"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-indigo-300 hover:text-indigo-200 transition w-fit"
-              >
-                <span>Supabase Usage Dashboard&apos;u Aç</span>
-                <ExternalLink size={12} />
-              </a>
+              <div className="flex-shrink-0 self-start sm:self-auto">
+                <a
+                  href="https://supabase.com/dashboard/project/kdxwyvommyyvtzpzmsbm/settings/billing/usage"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition"
+                >
+                  <span>Supabase Dashboard</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
           </div>
 
@@ -587,21 +609,15 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
           {/* SEKME: Kurulan Gruplar */}
           {subTab === 'groups' && (
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                  <input
-                    type="text"
-                    value={groupSearch}
-                    onChange={(e) => setGroupSearch(e.target.value)}
-                    placeholder="Grup adı veya ID ara..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111115] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 px-3 py-2 rounded-xl bg-[#111115] border border-white/10 flex items-center space-x-1.5">
-                  <Users size={13} className="text-indigo-400" />
-                  <span>Toplam <strong className="text-white font-semibold">{effectiveGroups.length}</strong> grup kurulu</span>
-                </div>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={groupSearch}
+                  onChange={(e) => setGroupSearch(e.target.value)}
+                  placeholder="Grup adı veya ID ara..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#111115] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
+                />
               </div>
 
               <div className="rounded-xl border border-white/10 overflow-x-auto bg-[#0e0e12]">
