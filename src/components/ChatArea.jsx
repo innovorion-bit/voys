@@ -1449,9 +1449,53 @@ export const ChatArea = ({
 
   // Handle start replying to a message
   const handleStartReply = (msg, resolvedAuthorName, isMe = false) => {
-    const previewText = msg.lines?.[0] ||
-      (msg.attachments?.length > 0 ? `📎 ${msg.attachments[0].name}` : '') ||
-      'Mesaj';
+    let previewText = msg.lines?.[0] || '';
+    if (!previewText && typeof msg.text === 'string') previewText = msg.text.trim();
+    if (!previewText && msg.attachments?.length > 0) {
+      const att = msg.attachments[0] || {};
+      const type = (att.type || '').toLowerCase();
+      const name = (att.name || '').toLowerCase();
+      const url = (att.url || '').toLowerCase();
+
+      const isGif = Boolean(
+        att.isGif ||
+        type === 'image/gif' ||
+        type.includes('gif') ||
+        name.endsWith('.gif') ||
+        url.includes('.gif') ||
+        url.includes('giphy.com') ||
+        url.includes('tenor.com')
+      );
+      if (isGif) {
+        previewText = '🎬 GIF';
+      } else if (
+        att.isVideo ||
+        type.startsWith('video/') ||
+        /\.(mp4|mov|webm|mkv|avi)($|\?)/i.test(name) ||
+        /\.(mp4|mov|webm|mkv|avi)($|\?)/i.test(url)
+      ) {
+        previewText = '🎥 Video';
+      } else if (
+        att.isAudio ||
+        type.startsWith('audio/') ||
+        /\.(mp3|wav|ogg|m4a|aac)($|\?)/i.test(name) ||
+        /\.(mp3|wav|ogg|m4a|aac)($|\?)/i.test(url)
+      ) {
+        previewText = '🎤 Ses kaydı';
+      } else if (
+        att.isImage ||
+        type.startsWith('image/') ||
+        /\.(png|jpe?g|webp|bmp|svg)($|\?)/i.test(name) ||
+        /\.(png|jpe?g|webp|bmp|svg)($|\?)/i.test(url)
+      ) {
+        previewText = '📷 Fotoğraf';
+      } else {
+        const isHashOrUuid = /^[0-9a-f-]{20,}/i.test(att.name || '');
+        previewText = `📎 ${att.name && !isHashOrUuid ? att.name : 'Dosya'}`;
+      }
+    }
+    if (!previewText) previewText = 'Mesaj';
+
     setReplyingTo({
       id: msg.id,
       user: pickDisplayName([resolvedAuthorName, msg.user], 'Kullanıcı'),

@@ -147,27 +147,77 @@ function formatChatDateOnly(sentAt, fallbackTimestampText = '') {
 function formatMessagePreview(message) {
   if (!message) return '';
 
+  let textContent = '';
   if (Array.isArray(message.lines) && message.lines.length > 0) {
     const lastLine = message.lines[message.lines.length - 1];
     if (typeof lastLine === 'string' && lastLine.trim()) {
-      return lastLine.trim();
+      textContent = lastLine.trim();
     }
+  } else if (typeof message.text === 'string' && message.text.trim()) {
+    textContent = message.text.trim();
   }
 
-  if (typeof message.text === 'string' && message.text.trim()) {
-    return message.text.trim();
+  const hasAttachments = Array.isArray(message.attachments) && message.attachments.length > 0;
+  if (!hasAttachments) {
+    return textContent;
   }
 
-  if (Array.isArray(message.attachments) && message.attachments.length > 0) {
-    const att = message.attachments[0];
-    const type = att.type || '';
-    if (type.startsWith('image/') || att.isImage) return '📷 Fotoğraf';
-    if (type.startsWith('audio/') || att.isAudio) return '🎤 Ses kaydı';
-    if (type.startsWith('video/') || att.isVideo) return '🎥 Video';
-    return `📎 ${att.name || 'Dosya'}`;
+  const att = message.attachments[0] || {};
+  const type = (att.type || '').toLowerCase();
+  const name = (att.name || '').toLowerCase();
+  const url = (att.url || '').toLowerCase();
+
+  // 1. GIF check
+  const isGif = Boolean(
+    att.isGif ||
+    type === 'image/gif' ||
+    type.includes('gif') ||
+    name.endsWith('.gif') ||
+    url.includes('.gif') ||
+    url.includes('giphy.com') ||
+    url.includes('tenor.com')
+  );
+  if (isGif) {
+    return textContent ? `🎬 ${textContent}` : '🎬 GIF';
   }
 
-  return '';
+  // 2. Video check
+  const isVideo = Boolean(
+    att.isVideo ||
+    type.startsWith('video/') ||
+    /\.(mp4|mov|webm|mkv|avi)($|\?)/i.test(name) ||
+    /\.(mp4|mov|webm|mkv|avi)($|\?)/i.test(url)
+  );
+  if (isVideo) {
+    return textContent ? `🎥 ${textContent}` : '🎥 Video';
+  }
+
+  // 3. Audio check
+  const isAudio = Boolean(
+    att.isAudio ||
+    type.startsWith('audio/') ||
+    /\.(mp3|wav|ogg|m4a|aac)($|\?)/i.test(name) ||
+    /\.(mp3|wav|ogg|m4a|aac)($|\?)/i.test(url)
+  );
+  if (isAudio) {
+    return textContent ? `🎤 ${textContent}` : '🎤 Ses kaydı';
+  }
+
+  // 4. Image / Photo check
+  const isImage = Boolean(
+    att.isImage ||
+    type.startsWith('image/') ||
+    /\.(png|jpe?g|webp|bmp|svg)($|\?)/i.test(name) ||
+    /\.(png|jpe?g|webp|bmp|svg)($|\?)/i.test(url)
+  );
+  if (isImage) {
+    return textContent ? `📷 ${textContent}` : '📷 Fotoğraf';
+  }
+
+  // 5. File / Document check
+  const isHashOrUuid = /^[0-9a-f-]{20,}/i.test(att.name || '');
+  const fileName = (att.name && !isHashOrUuid) ? att.name : 'Dosya';
+  return textContent ? `📎 ${textContent}` : `📎 ${fileName}`;
 }
 
 // Resolve sender display name for group messages (e.g. "Udinese", "Sen")
