@@ -892,9 +892,9 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                           type="button"
                           disabled={isUploadingAvatar}
                           onClick={handleRemoveAvatar}
-                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg text-xs font-medium border border-rose-500/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center space-x-1.5 px-2 py-1.5 text-rose-400 hover:text-rose-300 text-xs font-medium transition active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                           <span>Fotoğrafı Kaldır</span>
                         </button>
                       )}
