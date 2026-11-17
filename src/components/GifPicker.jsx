@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Loader2, Sparkles, TrendingUp } from 'lucide-react';
+import { Search, X, Loader2, Sparkles } from 'lucide-react';
 
 // Sleek GIF SVG icon matching Lucide aesthetic
 export const GifIcon = ({ size = 16, className = '' }) => (
@@ -80,18 +80,18 @@ const FALLBACK_GIFS = [
 ];
 
 const CATEGORIES = [
-  { label: '🔥 Trend', query: '' },
-  { label: '😂 Komik', query: 'funny' },
-  { label: '👏 Alkış', query: 'applause' },
-  { label: '💃 Dans', query: 'dance' },
-  { label: '🐱 Kedi', query: 'cat' },
-  { label: '🎮 Oyun', query: 'gaming' },
-  { label: '❤️ Sevgi', query: 'love' },
-  { label: '🎉 Parti', query: 'party' },
-  { label: '😱 Şaşkın', query: 'shocked' },
-  { label: '😎 Havalı', query: 'cool' },
-  { label: '👋 Selam', query: 'hello' },
-  { label: '☕ Kahve', query: 'coffee' },
+  { label: 'Trend', query: '' },
+  { label: 'Komik', query: 'funny' },
+  { label: 'Alkış', query: 'applause' },
+  { label: 'Dans', query: 'dance' },
+  { label: 'Kedi', query: 'cat' },
+  { label: 'Oyun', query: 'gaming' },
+  { label: 'Sevgi', query: 'love' },
+  { label: 'Parti', query: 'party' },
+  { label: 'Şaşkın', query: 'shocked' },
+  { label: 'Havalı', query: 'cool' },
+  { label: 'Selam', query: 'hello' },
+  { label: 'Kahve', query: 'coffee' },
 ];
 
 export default function GifPicker({ onSelectGif, onClose }) {
@@ -210,7 +210,7 @@ export default function GifPicker({ onSelectGif, onClose }) {
             type="text"
             value={searchQuery}
             onChange={handleInputChange}
-            placeholder="GIF ara... (ör. kedi, dans)"
+            placeholder="GIF ara..."
             className="w-full pl-7 pr-6 py-1 bg-white/5 hover:bg-white/[0.08] focus:bg-white/10 text-white placeholder-gray-400 text-xs rounded-lg border border-white/10 focus:border-indigo-500/60 focus:outline-none transition"
           />
           {searchQuery && (
@@ -323,15 +323,6 @@ export default function GifPicker({ onSelectGif, onClose }) {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Footer Attribution */}
-      <div className="px-2.5 py-1 bg-[#121216] border-t border-white/5 flex items-center justify-between text-[9px] text-gray-500">
-        <span className="flex items-center gap-1">
-          <TrendingUp size={10} className="text-indigo-400" />
-          <span>GIPHY</span>
-        </span>
-        <span className="text-[9px] text-gray-500">Göndermek için tıklayın</span>
       </div>
     </div>
   );
