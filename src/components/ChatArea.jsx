@@ -443,6 +443,7 @@ export const ChatArea = ({
   const [chatInnerView, setChatInnerView] = useState('messages');
   const [selectedUserInfoUser, setSelectedUserInfoUser] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
+  const [activeMediaModal, setActiveMediaModal] = useState(null); // Lightbox for images & profile photos
 
   // Reset inner view to 'messages' when channel or friend changes
   useEffect(() => {
@@ -955,7 +956,6 @@ export const ChatArea = ({
   // File attachments state
   const [pendingFiles, setPendingFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [activeMediaModal, setActiveMediaModal] = useState(null); // Lightbox for images
 
   // Notify parent (WindowHeader visibility) when media/avatar lightbox opens or closes
   useEffect(() => {
