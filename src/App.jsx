@@ -1138,6 +1138,16 @@ function StanduppApp() {
 
   // Modals State
   const [modalOpen, setModalOpen] = useState(false);
+  // Top window header visibility (hidden during profile photo previews / lightboxes)
+  const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    const handleAvatarPreview = (e) => {
+      setIsAvatarPreviewOpen(Boolean(e?.detail?.isOpen));
+    };
+    window.addEventListener('voys:avatar-preview', handleAvatarPreview);
+    return () => window.removeEventListener('voys:avatar-preview', handleAvatarPreview);
+  }, []);
 
   // Steam-style in-chat voice call start / join (instantly connected, no ringing)
   const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
@@ -1874,9 +1884,11 @@ function StanduppApp() {
       />
 
       {/* Top Window Bar & Header */}
-      <WindowHeader
-        pageTitle={currentPageTitle}
-      />
+      {!isAvatarPreviewOpen && (
+        <WindowHeader
+          pageTitle={currentPageTitle}
+        />
+      )}
 
       {/* Audio permission notice if mic access requires interaction */}
       {audioError && isConnected && (
@@ -1940,6 +1952,7 @@ function StanduppApp() {
             onBackToChannels={handleBackToChannels}
             onOpenSettings={openSettings}
             onClearChat={handleClearActiveChat}
+            onAvatarPreviewChange={setIsAvatarPreviewOpen}
             // Universal In-Chat Voice Call Props (Steam-style joinable session)
             isCallActive={Boolean(activeChannel && (activeChannelCall?.active || isCurrentChannelCallConnected))}
             isInCall={isCurrentChannelCallConnected}
@@ -2006,7 +2019,11 @@ function StanduppApp() {
         )}
 
         {isSettingsOpen && (
-          <SettingsModal onLogout={() => setIsLogoutModalOpen(true)} onUserDeleted={handleUserDeleted} />
+          <SettingsModal
+            onLogout={() => setIsLogoutModalOpen(true)}
+            onUserDeleted={handleUserDeleted}
+            onAvatarPreviewChange={setIsAvatarPreviewOpen}
+          />
         )}
 
         {isLogoutModalOpen && (

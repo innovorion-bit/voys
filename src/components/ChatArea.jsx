@@ -255,6 +255,7 @@ export const ChatArea = ({
   onBackToChannels,
   onOpenSettings = null,
   onClearChat = null,
+  onAvatarPreviewChange = null,
   onToggleDmCall,
   _isDmCallActive = false,
   // Universal In-Chat Voice Call Props
@@ -449,18 +450,24 @@ export const ChatArea = ({
     setSelectedUserInfoUser(null);
   }, [activeChannel, rawActiveDmFriend?.id]);
 
-  // Close inner view on Escape key
+  // Close inner view or active media modal on Escape key
   useEffect(() => {
-    if (chatInnerView === 'messages') return;
+    if (chatInnerView === 'messages' && !activeMediaModal) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        setChatInnerView('messages');
-        setSelectedUserInfoUser(null);
+        if (activeMediaModal) {
+          setActiveMediaModal(null);
+          return;
+        }
+        if (chatInnerView !== 'messages') {
+          setChatInnerView('messages');
+          setSelectedUserInfoUser(null);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [chatInnerView]);
+  }, [chatInnerView, activeMediaModal]);
 
 
   // Chat options dropdown & modals state
@@ -949,6 +956,23 @@ export const ChatArea = ({
   const [pendingFiles, setPendingFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [activeMediaModal, setActiveMediaModal] = useState(null); // Lightbox for images
+
+  // Notify parent (WindowHeader visibility) when media/avatar lightbox opens or closes
+  useEffect(() => {
+    const isOpen = Boolean(activeMediaModal);
+    onAvatarPreviewChange?.(isOpen);
+    try {
+      window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen } }));
+    } catch {}
+    return () => {
+      if (isOpen) {
+        onAvatarPreviewChange?.(false);
+        try {
+          window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen: false } }));
+        } catch {}
+      }
+    };
+  }, [activeMediaModal, onAvatarPreviewChange]);
 
   const textInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -4113,7 +4137,7 @@ export const ChatArea = ({
         return (
           <div
             onClick={() => setActiveMediaModal(null)}
-            className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 sm:p-6 select-none"
+            className="fixed inset-0 bg-black/90 z-[120] flex flex-col items-center justify-center p-4 sm:p-6 select-none animate-in fade-in duration-200"
           >
             {/* Profil fotoğraflarında sol başlık ve sağ indir/yeni sekme butonları gizlenir, sadece sağ üstte kapat (X) butonu kalır */}
             {isProfileView ? (

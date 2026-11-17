@@ -89,7 +89,7 @@ export const UKFlag = ({ className = "w-5 h-3.5" }) => (
   </svg>
 );
 
-export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
+export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarPreviewChange = null }) => {
   const { user: authUser, updateEmail, updatePassword } = useAuth();
   const {
     profile,
@@ -161,6 +161,20 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isPreviewAvatarOpen, setIsPreviewAvatarOpen] = useState(false);
   const avatarFileInputRef = useRef(null);
+
+  // Notify parent (WindowHeader visibility) when avatar preview modal toggles
+  useEffect(() => {
+    onAvatarPreviewChange?.(isPreviewAvatarOpen);
+    try {
+      window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen: isPreviewAvatarOpen } }));
+    } catch {}
+    return () => {
+      onAvatarPreviewChange?.(false);
+      try {
+        window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen: false } }));
+      } catch {}
+    };
+  }, [isPreviewAvatarOpen, onAvatarPreviewChange]);
 
   // Field editing states for Account Settings (locked by default)
   const [isEditingUsername, setIsEditingUsername] = useState(false);
@@ -667,7 +681,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null }) => {
   if (!isSettingsOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-8 z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none">
+    <div className={`fixed inset-x-0 bottom-0 ${isPreviewAvatarOpen ? 'top-0' : 'top-8'} z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none`}>
       {/* Left Category Sidebar */}
       <div className="w-[275px] border-r border-white/[0.06] bg-[#0c0c0e] voys-glass-settings-sidebar p-3.5 flex flex-col justify-between flex-shrink-0">
         <div className="flex flex-col space-y-1">
