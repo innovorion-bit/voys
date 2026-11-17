@@ -57,6 +57,7 @@ import {
   Camera,
   Upload
 } from 'lucide-react';
+import GifPicker, { GifIcon } from './GifPicker';
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
@@ -309,6 +310,7 @@ export const ChatArea = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [prevChannel, setPrevChannel] = useState(activeChannel);
   const [isMemberListOpen, setIsMemberListOpen] = useState(true);
@@ -1029,6 +1031,9 @@ export const ChatArea = ({
           setShowEmojiPicker(false);
         }
       }
+      if (!e.target.closest('.gif-picker-container') && !e.target.closest('.gif-button-trigger')) {
+        setShowGifPicker(false);
+      }
       if (!e.target.closest('.msg-options-menu') && !e.target.closest('.msg-options-trigger')) {
         setActiveMsgMenuId(null);
       }
@@ -1037,6 +1042,8 @@ export const ChatArea = ({
       if (e.key === 'Escape') {
         setActiveMsgMenuId(null);
         setActiveReactionPickerMsgId(null);
+        setShowEmojiPicker(false);
+        setShowGifPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1339,6 +1346,7 @@ export const ChatArea = ({
     setReplyingTo(null);
     clearAllPendingFiles();
     setShowEmojiPicker(false);
+    setShowGifPicker(false);
 
     if (onTyping) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -1362,6 +1370,32 @@ export const ChatArea = ({
   const addEmoji = (emoji) => {
     setInputText((prev) => prev + emoji);
     setShowEmojiPicker(false);
+  };
+
+  // Handle selecting a GIF from the GIF picker
+  const handleSelectGif = (gif) => {
+    if (!gif) return;
+    const cleanTitle = (gif.title || 'GIF').replace(/[\r\n\t]+/g, ' ').slice(0, 40).trim() || 'GIF';
+    const gifAttachment = {
+      id: `gif_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      name: `${cleanTitle}.gif`,
+      size: 0,
+      type: 'image/gif',
+      url: gif.original || gif.preview,
+      isGif: true,
+    };
+
+    onSendMessage(inputText.trim(), [gifAttachment], replyingTo);
+    setInputText('');
+    setReplyingTo(null);
+    setShowGifPicker(false);
+
+    if (onTyping) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      onTyping(false);
+    }
+
+    setTimeout(() => scrollToBottom('smooth'), 50);
   };
 
   // Handle start replying to a message
@@ -2832,6 +2866,12 @@ export const ChatArea = ({
                                         className="max-h-72 w-auto object-contain rounded-t-2xl group-hover/img:scale-[1.01] transition-transform duration-200"
                                         loading="lazy"
                                       />
+                                      {/* GIF Badge */}
+                                      {(att.isGif || att.type === 'image/gif') && (
+                                        <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase border border-white/20 pointer-events-none shadow-md z-10">
+                                          GIF
+                                        </div>
+                                      )}
                                       {/* Hover zoom overlay */}
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                         <div className="px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-semibold flex items-center space-x-1.5 border border-white/20">
@@ -2845,7 +2885,9 @@ export const ChatArea = ({
                                     <div className="p-2.5 px-3 bg-[#0c0c0e]/95 border-t border-white/5 flex items-center justify-between text-xs text-gray-300">
                                       <div className="flex flex-col min-w-0 pr-2">
                                         <span className="font-semibold text-gray-200 truncate text-[12px]">{att.name}</span>
-                                        <span className="text-[10px] text-gray-400 font-mono">{formatFileSize(att.size)}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono">
+                                          {att.isGif || att.type === 'image/gif' ? 'GIF' : formatFileSize(att.size)}
+                                        </span>
                                       </div>
                                       <button
                                         type="button"
@@ -3199,12 +3241,44 @@ export const ChatArea = ({
                     )}
                     <button
                       type="button"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="emoji-button-trigger p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition relative"
+                      onClick={() => {
+                        setShowEmojiPicker(!showEmojiPicker);
+                        setShowGifPicker(false);
+                      }}
+                      className={`emoji-button-trigger p-1.5 rounded-lg transition relative ${
+                        showEmojiPicker
+                          ? 'text-white bg-white/10'
+                          : 'text-gray-400 hover:text-white hover:bg-white/10'
+                      }`}
                       title="Emoji Ekle"
                     >
                       <Smile size={16} />
                       <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                    </button>
+                  </div>
+
+                  {/* GIF Picker Popover (between Emoji and Send button) */}
+                  <div className="relative flex-shrink-0 ml-0.5">
+                    {showGifPicker && (
+                      <GifPicker
+                        onSelectGif={handleSelectGif}
+                        onClose={() => setShowGifPicker(false)}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowGifPicker(!showGifPicker);
+                        setShowEmojiPicker(false);
+                      }}
+                      className={`gif-button-trigger p-1.5 rounded-lg transition relative ${
+                        showGifPicker
+                          ? 'text-indigo-400 bg-white/10'
+                          : 'text-gray-400 hover:text-white hover:bg-white/10'
+                      }`}
+                      title="GIF Gönder"
+                    >
+                      <GifIcon size={16} />
                     </button>
                   </div>
 
@@ -4330,8 +4404,13 @@ export const ChatArea = ({
                     <ImageIcon size={16} />
                   </div>
                   <span className="text-sm font-semibold truncate text-white">{activeMediaModal.name}</span>
-                  {activeMediaModal.size && (
+                  {activeMediaModal.size > 0 && (
                     <span className="text-xs text-gray-400 font-mono">({formatFileSize(activeMediaModal.size)})</span>
+                  )}
+                  {(activeMediaModal.isGif || activeMediaModal.type === 'image/gif') && (
+                    <span className="text-[11px] text-indigo-300 font-mono font-bold bg-indigo-500/15 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                      GIF
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
