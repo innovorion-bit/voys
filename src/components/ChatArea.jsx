@@ -444,20 +444,28 @@ export const ChatArea = ({
   const [selectedUserInfoUser, setSelectedUserInfoUser] = useState(null);
   const [copiedId, setCopiedId] = useState(false);
   const [activeMediaModal, setActiveMediaModal] = useState(null); // Lightbox for images & profile photos
+  const [isGroupInfoAddingMember, setIsGroupInfoAddingMember] = useState(false);
+  const [groupInfoAddSearch, setGroupInfoAddSearch] = useState('');
 
   // Reset inner view to 'messages' when channel or friend changes
   useEffect(() => {
     setChatInnerView('messages');
     setSelectedUserInfoUser(null);
+    setIsGroupInfoAddingMember(false);
+    setGroupInfoAddSearch('');
   }, [activeChannel, rawActiveDmFriend?.id]);
 
   // Close inner view or active media modal on Escape key
   useEffect(() => {
-    if (chatInnerView === 'messages' && !activeMediaModal) return;
+    if (chatInnerView === 'messages' && !activeMediaModal && !isGroupInfoAddingMember) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (activeMediaModal) {
           setActiveMediaModal(null);
+          return;
+        }
+        if (isGroupInfoAddingMember) {
+          setIsGroupInfoAddingMember(false);
           return;
         }
         if (chatInnerView !== 'messages') {
@@ -468,7 +476,7 @@ export const ChatArea = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [chatInnerView, activeMediaModal]);
+  }, [chatInnerView, activeMediaModal, isGroupInfoAddingMember]);
 
 
   // Chat options dropdown & modals state
@@ -928,11 +936,40 @@ export const ChatArea = ({
     });
   }, [friends, addMemberSearch]);
 
+  const groupMemberIdSet = useMemo(() => {
+    const set = new Set();
+    (effectiveMembers || []).forEach((m) => {
+      if (m.id) set.add(String(m.id));
+      if (m.user_id) set.add(String(m.user_id));
+    });
+    (liveMembers || []).forEach((m) => {
+      if (m.id) set.add(String(m.id));
+      if (m.user_id) set.add(String(m.user_id));
+    });
+    (channelMembers || []).forEach((m) => {
+      if (m.id) set.add(String(m.id));
+      if (m.user_id) set.add(String(m.user_id));
+    });
+    return set;
+  }, [effectiveMembers, liveMembers, channelMembers]);
+
+  const filteredGroupInfoFriends = useMemo(() => {
+    if (!Array.isArray(friends)) return [];
+    if (!groupInfoAddSearch.trim()) return friends;
+    const q = groupInfoAddSearch.trim().toLowerCase();
+    return friends.filter((f) => {
+      const name = (f.name || '').toLowerCase();
+      const uname = (f.username || '').toLowerCase();
+      return name.includes(q) || uname.includes(q);
+    });
+  }, [friends, groupInfoAddSearch]);
+
   const handleAddMemberFromSidebar = async (friend) => {
-    if (!friend?.id || !activeChannel || addingMemberId === friend.id) return;
+    const targetChannelId = channelData?.id || activeChannel;
+    if (!friend?.id || !targetChannelId || addingMemberId === friend.id) return;
     try {
       setAddingMemberId(friend.id);
-      const addedRow = await dbService.addChannelMember(activeChannel, friend.id, 'member');
+      const addedRow = await dbService.addChannelMember(targetChannelId, friend.id, 'member');
       toast.success('Üye Gruba Eklendi', {
         description: `${friend.name || friend.username || 'Arkadaşınız'} bu gruba eklendi.`,
       });
@@ -2110,57 +2147,190 @@ export const ChatArea = ({
                   </div>
                 </div>
 
-                {/* Bölüm 2: Grup Üyeleri */}
+                {/* Bölüm 2: Grup Üyeleri & Üye Ekle */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                      GRUP ÜYELERİ ({liveMembers.length})
+                      {isGroupInfoAddingMember
+                        ? `ÜYE EKLE (${filteredGroupInfoFriends.length} Arkadaş)`
+                        : `GRUP ÜYELERİ (${liveMembers.length})`}
                     </label>
                     <button
                       type="button"
                       onClick={() => {
-                        if (onOpenGroupAddMember) {
-                          onOpenGroupAddMember();
-                        } else {
-                          setChatInnerView('messages');
-                          setIsAddingMember(true);
-                        }
+                        setIsGroupInfoAddingMember((prev) => !prev);
+                        setGroupInfoAddSearch('');
                       }}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer"
+                      className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer ${
+                        isGroupInfoAddingMember
+                          ? 'bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10'
+                          : 'bg-[#8B51FF] hover:bg-[#773BF5] text-white'
+                      }`}
                     >
-                      <UserPlus size={13} />
-                      <span>Üye Ekle</span>
+                      {isGroupInfoAddingMember ? (
+                        <>
+                          <Users size={13} />
+                          <span>Üye Listesini Gör ({liveMembers.length})</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={13} />
+                          <span>Üye Ekle</span>
+                        </>
+                      )}
                     </button>
                   </div>
                   <div className="bg-[#111214] border border-white/10 rounded-xl overflow-hidden">
-                    <div className="divide-y divide-white/[0.04] max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                      {liveMembers.map((member) => (
-                        <div
-                          key={member.id}
-                          onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
-                          title="Seçenekler için sağ tıklayın"
-                          className="p-3 hover:bg-white/[0.03] transition flex items-center justify-between cursor-context-menu"
-                        >
-                          <div className="flex items-center space-x-3 min-w-0">
-                            <UserAvatar user={member} size="sm" showStatus={true} status={member.isOnline ? member.status : 'offline'} />
-                            <div className="min-w-0">
-                              <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
-                                <span>{member.name}</span>
-                                {member.id === currentUser?.id && (
-                                  <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">Sen</span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-gray-400 truncate">
-                                {member.isOnline && member.game ? `Oynuyor: ${member.game}` : getMemberStatusDisplay(member)}
+                    {isGroupInfoAddingMember ? (
+                      /* Inline Üye Ekleme Alanı */
+                      <div className="flex flex-col">
+                        {/* Arama Alanı */}
+                        <div className="p-3 border-b border-white/5 bg-white/[0.01]">
+                          <div className="relative">
+                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={groupInfoAddSearch}
+                              onChange={(e) => setGroupInfoAddSearch(e.target.value)}
+                              placeholder="Arkadaşlarınız arasında arayın..."
+                              className="w-full bg-[#141418] border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl pl-8 pr-8 py-2 text-xs text-white placeholder-gray-500 focus:outline-none transition"
+                              autoFocus
+                            />
+                            {groupInfoAddSearch && (
+                              <button
+                                type="button"
+                                onClick={() => setGroupInfoAddSearch('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-0.5 cursor-pointer"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Arkadaş Listesi */}
+                        <div className="divide-y divide-white/[0.04] max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                          {friends.length === 0 ? (
+                            <div className="p-6 text-center text-xs text-gray-400 space-y-1.5">
+                              <Users size={22} className="mx-auto text-indigo-400/60" />
+                              <div className="font-semibold text-gray-300">Henüz Arkadaşınız Yok</div>
+                              <div className="text-[11px] text-gray-500">Gruba eklemek için önce arkadaş listenize kişi eklemelisiniz.</div>
+                            </div>
+                          ) : filteredGroupInfoFriends.length === 0 ? (
+                            <div className="p-6 text-center text-xs text-gray-400">
+                              Aramanızla eşleşen arkadaş bulunamadı.
+                            </div>
+                          ) : (
+                            filteredGroupInfoFriends.map((friend) => {
+                              const isAlready = groupMemberIdSet.has(String(friend.id));
+                              const isAdding = addingMemberId === friend.id;
+
+                              return (
+                                <div
+                                  key={friend.id}
+                                  className="p-3 hover:bg-white/[0.03] transition flex items-center justify-between"
+                                >
+                                  <div className="flex items-center space-x-3 min-w-0">
+                                    <UserAvatar
+                                      user={friend}
+                                      size="sm"
+                                      showStatus={true}
+                                      status={friend.status}
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
+                                        <span>{friend.name || friend.username}</span>
+                                        {friend.hasCrown && (
+                                          <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                                        )}
+                                      </div>
+                                      <div className="text-[10px] text-gray-400 truncate">
+                                        {friend.isOnline && friend.game
+                                          ? `Oynuyor: ${friend.game}`
+                                          : getMemberStatusDisplay(friend)}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex-shrink-0 ml-3">
+                                    {isAlready ? (
+                                      <span className="flex items-center space-x-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded-lg select-none">
+                                        <Check size={12} />
+                                        <span>Üye</span>
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        disabled={isAdding}
+                                        onClick={() => handleAddMemberFromSidebar(friend)}
+                                        className="flex items-center space-x-1.5 px-3 py-1 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                                        title="Gruba Ekle"
+                                      >
+                                        {isAdding ? (
+                                          <>
+                                            <Loader2 size={12} className="animate-spin" />
+                                            <span>Ekleniyor...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <UserPlus size={12} />
+                                            <span>Ekle</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Alt Bar: Mevcut Üye Sayısı ve Tamam Butonu */}
+                        <div className="p-2.5 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-xs text-gray-400 px-3.5">
+                          <span className="text-[11px]">
+                            {liveMembers.length} mevcut üye
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsGroupInfoAddingMember(false)}
+                            className="px-3.5 py-1 bg-white/10 hover:bg-white/15 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                          >
+                            Tamam
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Mevcut Üyeler Listesi */
+                      <div className="divide-y divide-white/[0.04] max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                        {liveMembers.map((member) => (
+                          <div
+                            key={member.id}
+                            onContextMenu={(e) => openVoiceContextMenu(e, member, { source: 'member' })}
+                            title="Seçenekler için sağ tıklayın"
+                            className="p-3 hover:bg-white/[0.03] transition flex items-center justify-between cursor-context-menu"
+                          >
+                            <div className="flex items-center space-x-3 min-w-0">
+                              <UserAvatar user={member} size="sm" showStatus={true} status={member.isOnline ? member.status : 'offline'} />
+                              <div className="min-w-0">
+                                <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
+                                  <span>{member.name}</span>
+                                  {member.id === currentUser?.id && (
+                                    <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">Sen</span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-gray-400 truncate">
+                                  {member.isOnline && member.game ? `Oynuyor: ${member.game}` : getMemberStatusDisplay(member)}
+                                </div>
                               </div>
                             </div>
+                            <span className="text-[10px] text-gray-500 flex-shrink-0 ml-2">
+                              {member.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-gray-500 flex-shrink-0 ml-2">
-                            {member.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
