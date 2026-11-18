@@ -2797,7 +2797,7 @@ export const ChatArea = ({
                             {messageUser}
                           </span>
                           {msg.hasCrown && (
-                            <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" title="Kanal Sahibi" />
+                            <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" title="Grup Sahibi" />
                           )}
                           <span
                             className="text-[11px] font-mono text-gray-500 hover:text-gray-300 transition-colors cursor-default"

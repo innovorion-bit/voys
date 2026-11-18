@@ -77,7 +77,7 @@ export const AddMemberModal = ({
             </div>
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-white tracking-wide truncate">
-                {channelName} Kanalına Üye Ekle
+                {channelName} Grubuna Üye Ekle
               </h2>
               <p className="text-[11px] text-gray-400">Arkadaşlarınızı bu sohbet odasına davet edin</p>
             </div>

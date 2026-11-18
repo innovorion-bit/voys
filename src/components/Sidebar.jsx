@@ -2444,7 +2444,7 @@ export const Sidebar = ({
                           {chan.name}
                         </p>
                         <span className={`text-[10px] flex-shrink-0 ml-1 font-normal ${unreadCount > 0 ? 'text-[#bb94ff] font-semibold' : 'text-gray-400'}`}>
-                          {lastMessageTime || 'Kanal'}
+                          {lastMessageTime || 'Grup'}
                         </span>
                       </div>
 
@@ -2599,7 +2599,7 @@ export const Sidebar = ({
               {chatContextMenu.chat.name}
             </p>
             <p className="text-[10px] text-gray-400">
-              {chatContextMenu.chat.type === 'dm' ? 'Direkt Mesaj' : 'Kanal'}
+              {chatContextMenu.chat.type === 'dm' ? 'Direkt Mesaj' : 'Grup'}
             </p>
           </div>
 

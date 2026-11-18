@@ -31,7 +31,7 @@ export const CreateChannelModal = ({ isOpen, onClose, onCreateChannel }) => {
             </div>
             <div>
               <h2 className="text-sm font-bold tracking-wide text-white">
-                Yeni Grup / Kanal
+                Yeni Grup
               </h2>
               <p className="text-[11px] text-gray-400">Mesajlaşmak ve sesli görüşme yapmak için yeni bir grup oluşturun</p>
             </div>
@@ -49,7 +49,7 @@ export const CreateChannelModal = ({ isOpen, onClose, onCreateChannel }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-              Grup / Kanal Adı
+              Grup Adı
             </label>
             <input
               type="text"
