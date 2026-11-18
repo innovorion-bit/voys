@@ -4000,21 +4000,6 @@ export const ChatArea = ({
 
             {!isMeTarget ? (
               <div className="space-y-1">
-                {/* Primary Social Actions */}
-                {canSendDm && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelectDm(liveTarget.id);
-                      closeContextMenu();
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-indigo-500/15 hover:text-white transition text-left text-gray-100 cursor-pointer font-medium"
-                  >
-                    <MessageSquare size={14} className="text-indigo-400 flex-shrink-0" />
-                    <span>Mesaj Gönder</span>
-                  </button>
-                )}
-
                 {/* Kişi Bilgisi */}
                 {isValidRealUser && (
                   <button
@@ -4028,6 +4013,21 @@ export const ChatArea = ({
                   >
                     <User size={14} className="text-indigo-400 flex-shrink-0" />
                     <span>Kişi Bilgisi</span>
+                  </button>
+                )}
+
+                {/* Mesaj Gönder */}
+                {canSendDm && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectDm(liveTarget.id);
+                      closeContextMenu();
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-xl hover:bg-indigo-500/15 hover:text-white transition text-left text-gray-100 cursor-pointer font-medium"
+                  >
+                    <MessageSquare size={14} className="text-indigo-400 flex-shrink-0" />
+                    <span>Mesaj Gönder</span>
                   </button>
                 )}
 
