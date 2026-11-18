@@ -4,7 +4,18 @@ import {
   Download,
   Monitor,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  Headphones,
+  Users,
+  Sparkles,
+  Shield,
+  Zap,
+  Lock,
+  Cpu,
+  Code2,
+  HelpCircle,
+  Radio,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 
@@ -28,29 +39,18 @@ export const LandingPage = () => {
 
   return (
     <div
-      className="min-h-screen text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between"
+      className="w-full min-h-[3240px] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between"
       style={{
         backgroundImage: "url('/voys_hero_bg.jpg')",
         backgroundColor: '#07050f',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundSize: '1920px 3240px',
+        backgroundPosition: 'top center',
         backgroundRepeat: 'no-repeat',
       }}
     >
-      {/* Fixed Full-Size Background Layer */}
-      <div
-        className="fixed inset-0 w-full h-full pointer-events-none z-0"
-        style={{
-          backgroundImage: "url('/voys_hero_bg.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      />
-
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 bg-transparent pt-4 sm:pt-6 pb-2">
-        <div className="w-full px-6 sm:px-10 lg:px-16 h-16 sm:h-20 flex items-center justify-between relative">
+      <header className="sticky top-0 z-50 bg-[#07050f]/60 backdrop-blur-md pt-4 sm:pt-6 pb-3 border-b border-white/[0.04]">
+        <div className="w-full px-6 sm:px-10 lg:px-16 h-14 sm:h-16 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
             <div className="relative">
@@ -146,7 +146,7 @@ export const LandingPage = () => {
       )}
 
       {/* 2. Hero Section (Centered headline, subtitle and buttons) */}
-      <section className="relative z-10 flex-1 flex flex-col items-center justify-center pt-16 sm:pt-24 pb-24 sm:pb-36 px-6 sm:px-10 lg:px-16 max-w-5xl mx-auto text-center">
+      <section className="relative z-10 flex flex-col items-center justify-center pt-20 sm:pt-28 pb-28 sm:pb-36 px-6 sm:px-10 lg:px-16 max-w-5xl mx-auto text-center">
         {/* Hero Title */}
         <h1 className="max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white mb-6 leading-[1.12] text-center drop-shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
           Birlikte Konuşmak ve Paylaşmak İçin{' '}
@@ -162,7 +162,7 @@ export const LandingPage = () => {
         </p>
 
         {/* Hero CTA Buttons - Sayfaya tam ortalanmış, arka planla uyumlu aşağı kaydırılmış */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 w-full mt-4 sm:mt-8 translate-y-2 sm:translate-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 w-full mt-2 sm:mt-6">
           {/* Main Direct Download CTA - Beyaz Buton Siyah Yazı */}
           <button
             type="button"
@@ -184,6 +184,292 @@ export const LandingPage = () => {
           </button>
         </div>
       </section>
+
+      {/* 3. Keşfedin (#discover) - App Preview & Highlights */}
+      <section id="discover" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full text-center">
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/15 border border-[#8B51FF]/30 text-[#d8b4fe] text-xs font-semibold uppercase tracking-wider mb-5">
+          <Sparkles size={14} className="text-[#a36eff]" />
+          <span>Keşfedin</span>
+        </div>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          Modern ve Sade İletişim Deneyimi
+        </h2>
+        <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-300 font-normal leading-relaxed mb-12">
+          Gereksiz karmaşıklıktan arındırılmış, doğrudan ses kalitesine ve topluluğunuza odaklanan yeni nesil arayüz.
+        </p>
+
+        {/* Mock Interface Window Showcase */}
+        <div className="relative mx-auto rounded-2xl border border-white/15 bg-[#0e0920]/80 shadow-[0_20px_80px_rgba(139,81,255,0.2)] overflow-hidden backdrop-blur-xl group">
+          {/* Top Window Bar */}
+          <div className="h-10 px-4 bg-[#140e2e]/90 border-b border-white/10 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-rose-500/80" />
+              <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+              <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+            </div>
+            <span className="text-[11px] font-mono text-gray-400">Voys Desktop Client • v1.0.0</span>
+            <div className="w-12" />
+          </div>
+
+          {/* Screenshot Container */}
+          <div className="relative overflow-hidden bg-[#07050f]/80 p-2 sm:p-4">
+            <img
+              src="/mock/voys_app_screenshot.png"
+              alt="Voys App Preview"
+              className="w-full h-auto rounded-xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.01]"
+            />
+          </div>
+        </div>
+
+        {/* 3 Key Highlights Below Preview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 text-left">
+          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-[#8B51FF]/40 transition-colors backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
+              <Headphones size={20} />
+            </div>
+            <h3 className="text-base font-bold text-white mb-2">Kristal Netliğinde Ses</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Yapay zeka gürültü filtreleme teknolojisi ile mekanik klavye seslerini ve arka plan gürültülerini yok edin.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-[#8B51FF]/40 transition-colors backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
+              <Monitor size={20} />
+            </div>
+            <h3 className="text-base font-bold text-white mb-2">60 FPS Ultra Akıcı Yayın</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Oyunlarınızı veya masaüstünüzü 1080p 60 FPS hızında arkadaşlarınızla donma olmadan paylaşın.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-[#8B51FF]/40 transition-colors backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
+              <Zap size={20} />
+            </div>
+            <h3 className="text-base font-bold text-white mb-2">Ultra Düşük Gecikme</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Optimize edilmiş WebRTC doğrudan eşler arası bağlantı altyapısıyla 25ms'nin altında anlık iletişim.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Özellikler (#features) */}
+      <section id="features" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/15 border border-[#8B51FF]/30 text-[#d8b4fe] text-xs font-semibold uppercase tracking-wider mb-5">
+            <Radio size={14} className="text-[#a36eff]" />
+            <span>Özellikler</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+            İhtiyacınız Olan Her Şey Bir Arada
+          </h2>
+          <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-300 font-normal leading-relaxed">
+            Hem sıkı oyuncular hem de üretken ekipler için tasarlanan gelişmiş iletişim araçları.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/50 hover:bg-white/[0.05] transition-all duration-300 backdrop-blur-sm">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-5">
+              <Headphones size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2.5">RNNoise Yapay Zeka Filtresi</h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Sinir ağları ile eğitilmiş gürültü filtreleme modeli klavye vuruşlarını, vantilatör uğultusunu ve çevresel gürültüyü sesinizden otomatik olarak ayrıştırır.
+            </p>
+          </div>
+
+          <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/50 hover:bg-white/[0.05] transition-all duration-300 backdrop-blur-sm">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-5">
+              <Users size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2.5">Grup ve Özel Sohbet Odaları</h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Arkadaşlarınızla bire bir doğrudan mesajlaşın veya dilediğiniz büyüklükte grup sohbetleri kurun. Sesli odalara tek tıklamayla anında katılın.
+            </p>
+          </div>
+
+          <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/50 hover:bg-white/[0.05] transition-all duration-300 backdrop-blur-sm">
+            <div className="w-12 h-12 rounded-2xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-violet-400 mb-5">
+              <Monitor size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2.5">Pencere ve Ekran Yayını</h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              İster sadece oyun pencerenizi, ister tüm ekranınızı paylaşın. Sistem sesi paylaşımı ve ayarlanabilir çözünürlük seçenekleri parmaklarınızın ucunda.
+            </p>
+          </div>
+
+          <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/50 hover:bg-white/[0.05] transition-all duration-300 backdrop-blur-sm">
+            <div className="w-12 h-12 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-5">
+              <Sparkles size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2.5">Özelleştirilebilir Profil & Durum</h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Özel profil fotoğrafları, biyografi, durum rozetleri ve oynadığınız oyunu gösteren zengin durum bilgisiyle profilinizi kendinize göre şekillendirin.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Güvenlik (#security) & Performans (#performance) */}
+      <section className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Güvenlik Kartı */}
+          <div id="security" className="p-8 rounded-3xl bg-[#0e0920]/70 border border-white/10 shadow-xl backdrop-blur-md flex flex-col justify-between">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-6">
+                <Shield size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Tavizsiz Veri Güvenliği</h3>
+              <p className="text-sm text-gray-300 leading-relaxed mb-6">
+                Kişisel verileriniz ve iletişim geçmişiniz en üst düzey endüstri standartlarında şifrelenir. Verileriniz asla üçüncü şahıslarla paylaşılmaz veya reklam amaçlı taranmaz.
+              </p>
+              <ul className="space-y-3 text-xs sm:text-sm text-gray-300">
+                <li className="flex items-center space-x-2.5">
+                  <Check size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span>Şifreli P2P doğrudan ses ve veri akışı</span>
+                </li>
+                <li className="flex items-center space-x-2.5">
+                  <Check size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span>Supabase güvenli kurumsal kimlik doğrulama</span>
+                </li>
+                <li className="flex items-center space-x-2.5">
+                  <Check size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span>Sıfır veri satışı ve gizlilik odaklı altyapı</span>
+                </li>
+              </ul>
+            </div>
+            <div className="pt-6 mt-6 border-t border-white/[0.08] flex items-center justify-between text-xs text-gray-400">
+              <span className="flex items-center space-x-1.5">
+                <Lock size={13} className="text-emerald-400" />
+                <span>256-bit SSL / TLS Şifreleme</span>
+              </span>
+              <span className="text-emerald-400 font-semibold">%100 Güvenli</span>
+            </div>
+          </div>
+
+          {/* Performans Kartı */}
+          <div id="performance" className="p-8 rounded-3xl bg-[#0e0920]/70 border border-white/10 shadow-xl backdrop-blur-md flex flex-col justify-between">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-6">
+                <Zap size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Üst Düzey Donanım Verimliliği</h3>
+              <p className="text-sm text-gray-300 leading-relaxed mb-6">
+                Voys, arka planda çalışırken oyun performansınızdan ödün vermemeniz için minimum bellek (RAM) ve işlemci kaynağı tüketecek şekilde optimize edilmiştir.
+              </p>
+              <ul className="space-y-3 text-xs sm:text-sm text-gray-300">
+                <li className="flex items-center space-x-2.5">
+                  <Check size={16} className="text-[#a36eff] flex-shrink-0" />
+                  <span>25ms altı ultra düşük ses gecikmesi</span>
+                </li>
+                <li className="flex items-center space-x-2.5">
+                  <Check size={16} className="text-[#a36eff] flex-shrink-0" />
+                  <span>Minimum RAM tüketimi ve sıfır FPS kaybı</span>
+                </li>
+                <li className="flex items-center space-x-2.5">
+                  <Check size={16} className="text-[#a36eff] flex-shrink-0" />
+                  <span>Yüksek kaliteli 48kHz Opus ses kodeği</span>
+                </li>
+              </ul>
+            </div>
+            <div className="pt-6 mt-6 border-t border-white/[0.08] flex items-center justify-between text-xs text-gray-400">
+              <span className="flex items-center space-x-1.5">
+                <Cpu size={13} className="text-[#a36eff]" />
+                <span>WebRTC Donanım Hızlandırması</span>
+              </span>
+              <span className="text-[#c084fc] font-semibold">60 FPS Akıcılık</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Geliştiriciler (#developers) & Destek (#support) */}
+      <section className="relative z-10 py-20 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Geliştiriciler */}
+          <div id="developers" className="p-7 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4">
+              <Code2 size={20} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Geliştiriciler İçin</h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
+              Açık standartlar, modern API mimarisi ve topluluk botları için hazır altyapı ile kendi deneyimlerinizi Voys ekosistemine entegre edin.
+            </p>
+            <div className="flex items-center space-x-2 text-xs font-semibold text-[#c084fc]">
+              <span>API ve SDK belgeleri yakında</span>
+              <ArrowRight size={13} />
+            </div>
+          </div>
+
+          {/* Destek */}
+          <div id="support" className="p-7 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
+              <HelpCircle size={20} />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">7/24 Kesintisiz Destek</h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
+              Sorularınız, teknik sorunlarınız veya geri bildirimleriniz için yardım merkezi ve topluluk kanallarımız her zaman yanınızda.
+            </p>
+            <div className="flex items-center space-x-2 text-xs font-semibold text-indigo-300">
+              <span>Topluluk rehberleri ve yardım merkezi</span>
+              <ArrowRight size={13} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. Bottom Final CTA & Footer */}
+      <footer className="relative z-10 pt-16 pb-12 px-6 sm:px-10 lg:px-16 border-t border-white/[0.06] bg-[#07050f]/70 backdrop-blur-lg">
+        <div className="max-w-6xl mx-auto flex flex-col items-center text-center">
+          {/* Final CTA Box */}
+          <div className="w-full max-w-3xl mb-16 p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-[#180e3b] to-[#0c0820] border border-[#8B51FF]/30 shadow-2xl">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3">
+              Voys Deneyimine Bugün Katılın
+            </h2>
+            <p className="text-sm text-gray-300 mb-8 max-w-lg mx-auto">
+              Hemen ücretsiz indirin veya tarayıcınızdan saniyeler içinde arkadaşlarınızla iletişime geçin.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => handleDownloadClick(directExeUrl)}
+                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-bold text-sm shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <Download size={16} />
+                <span>Windows için İndir</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(isAuthenticated ? '/channel/home' : '/login')}
+                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#8B51FF] hover:bg-[#7a3ef2] text-white font-bold text-sm shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <span>Tarayıcıda Başlat</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          </div>
+
+          {/* Footer Bottom Details */}
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-white/[0.06] text-xs text-gray-500 gap-4">
+            <div className="flex items-center space-x-3">
+              <img src="/voys_logo.png" alt="Voys" className="w-6 h-6 object-contain" />
+              <span className="font-semibold text-gray-300">Voys</span>
+              <span>•</span>
+              <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
+            </div>
+
+            <div className="flex items-center space-x-6">
+              <a href="#discover" className="hover:text-gray-300 transition-colors">Keşfedin</a>
+              <a href="#features" className="hover:text-gray-300 transition-colors">Özellikler</a>
+              <a href="#security" className="hover:text-gray-300 transition-colors">Güvenlik</a>
+              <a href="#performance" className="hover:text-gray-300 transition-colors">Performans</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
