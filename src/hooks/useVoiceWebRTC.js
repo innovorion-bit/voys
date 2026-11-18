@@ -310,10 +310,8 @@ export const useVoiceWebRTC = () => {
     peerService.setMicrophoneEnabled(!nextMuted);
 
     if (nextMuted) {
-      sounds.playMute();
       setIsSpeaking(false);
     } else {
-      sounds.playUnmute();
       if (isDeafened) {
         setIsDeafened(false);
       }
@@ -321,15 +319,13 @@ export const useVoiceWebRTC = () => {
   }, [isConnected, isMuted, isDeafened]);
 
   // Set microphone muted state explicitly (used by Push-to-Talk)
-  const setMuted = useCallback((muted, playAudioFeedback = false) => {
+  const setMuted = useCallback((muted) => {
     setIsMuted(muted);
     peerService.setMicrophoneEnabled(!muted);
     if (muted) {
       setIsSpeaking(false);
-      if (playAudioFeedback) sounds.playMute();
     } else {
       if (isDeafened) setIsDeafened(false);
-      if (playAudioFeedback) sounds.playUnmute();
     }
   }, [isDeafened]);
 
@@ -344,12 +340,10 @@ export const useVoiceWebRTC = () => {
       setIsMuted(true);
       peerService.setMicrophoneEnabled(false);
       setIsSpeaking(false);
-      sounds.playDeafen();
     } else {
       // Undeafen restores the microphone
       setIsMuted(false);
       peerService.setMicrophoneEnabled(true);
-      sounds.playUndeafen();
     }
   }, [isConnected, isDeafened]);
 

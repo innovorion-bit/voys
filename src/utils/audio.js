@@ -1,18 +1,12 @@
 // UI Sound Effects Engine with open-source WAV assets and Web Audio API fallback
 export const DEFAULT_SOUND_CATEGORIES = {
-  ptt: false,
   voiceConnection: true,
-  voiceActions: true,
   message: true,
 };
 
 const SOUND_DEFAULT_CATEGORIES = {
   join: 'voiceConnection',
   leave: 'voiceConnection',
-  mute: 'voiceActions',
-  unmute: 'voiceActions',
-  deafen: 'voiceActions',
-  undeafen: 'voiceActions',
   message: 'message',
 };
 
@@ -47,10 +41,6 @@ class SoundEffects {
       join: '/sounds/join.wav',
       leave: '/sounds/leave.wav',
       message: '/sounds/message.wav',
-      mute: '/sounds/mute.wav',
-      unmute: '/sounds/unmute.wav',
-      deafen: '/sounds/deafen.wav',
-      undeafen: '/sounds/undeafen.wav',
     };
   }
 
@@ -320,11 +310,11 @@ class SoundEffects {
   }
 
   playMute() {
-    this.play('mute', { category: 'voiceActions' });
+    // Disabled: Mute sound removed from app
   }
 
   playUnmute() {
-    this.play('unmute', { category: 'voiceActions' });
+    // Disabled: Unmute sound removed from app
   }
 
   playPttMute() {
@@ -336,11 +326,11 @@ class SoundEffects {
   }
 
   playDeafen() {
-    this.play('deafen', { category: 'voiceActions' });
+    // Disabled: Deafen sound removed from app
   }
 
   playUndeafen() {
-    this.play('undeafen', { category: 'voiceActions' });
+    // Disabled: Undeafen sound removed from app
   }
 
   playConnect() {

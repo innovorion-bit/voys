@@ -1754,7 +1754,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                     SES EFEKTLERİ VE BİLDİRİM SESLERİ
                   </label>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Arama, katılım, mikrofon ve mesaj seslerini tek panelden yönetin.
+                    Odaya katılma, ayrılma ve yeni mesaj seslerini yönetin.
                   </p>
                 </div>
 
@@ -1774,7 +1774,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                         </span>
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">
                           {soundEffectsEnabled
-                            ? 'Arama, katılım, mikrofon ve mesaj sesleri aktif'
+                            ? 'Katılma, ayrılma ve yeni mesaj sesleri aktif'
                             : 'Uygulamadaki tüm ses efektleri kapalı'}
                         </p>
                       </div>
