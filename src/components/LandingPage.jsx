@@ -99,14 +99,11 @@ export const LandingPage = () => {
         <div className="w-full px-6 sm:px-10 lg:px-16 h-14 sm:h-16 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
-            <div className="relative">
-              <img
-                src="/voys_logo.png"
-                alt="Voys Logo"
-                className="w-9 h-9 object-contain transition-transform group-hover:scale-105"
-              />
-              <div className="absolute -inset-1 bg-[#8B51FF]/30 blur-sm rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+            <img
+              src="/voys_weblogo.png"
+              alt="Voys"
+              className="h-7 sm:h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+            />
           </Link>
 
           {/* Nav Links - Sade, Zarif ve Akıcı Floating Capsule Menu */}
@@ -837,8 +834,7 @@ export const LandingPage = () => {
           {/* Footer Bottom Details */}
           <div className="w-full flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-white/[0.06] text-xs text-gray-500 gap-4">
             <div className="flex items-center space-x-3">
-              <img src="/voys_logo.png" alt="Voys" className="w-6 h-6 object-contain" />
-              <span className="font-semibold text-gray-300">Voys</span>
+              <img src="/voys_weblogo.png" alt="Voys" className="h-5 sm:h-6 w-auto object-contain opacity-90" />
               <span>•</span>
               <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
             </div>
