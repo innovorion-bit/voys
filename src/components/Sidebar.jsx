@@ -2182,9 +2182,9 @@ export const Sidebar = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('all')}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer ${filterTab === 'all'
-                  ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
-                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer bg-[#141418] hover:bg-[#1a1a20] border border-white/[0.08] ${filterTab === 'all'
+                  ? 'text-[#bb94ff]'
+                  : 'text-gray-400 hover:text-gray-200'
                   }`}
               >
                 <span>Tümü</span>
@@ -2198,9 +2198,9 @@ export const Sidebar = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('dms')}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer ${filterTab === 'dms'
-                  ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
-                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer bg-[#141418] hover:bg-[#1a1a20] border border-white/[0.08] ${filterTab === 'dms'
+                  ? 'text-[#bb94ff]'
+                  : 'text-gray-400 hover:text-gray-200'
                   }`}
               >
                 <span>Kişiler</span>
@@ -2214,9 +2214,9 @@ export const Sidebar = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('channels')}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer ${filterTab === 'channels'
-                  ? 'bg-[#8B51FF]/20 text-[#bb94ff] border border-[#8B51FF]/40 shadow-sm'
-                  : 'bg-[#141418] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a20] border border-white/[0.08]'
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 flex items-center space-x-1.5 cursor-pointer bg-[#141418] hover:bg-[#1a1a20] border border-white/[0.08] ${filterTab === 'channels'
+                  ? 'text-[#bb94ff]'
+                  : 'text-gray-400 hover:text-gray-200'
                   }`}
               >
                 <span>Gruplar</span>
