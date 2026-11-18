@@ -3223,14 +3223,14 @@ export const ChatArea = ({
               {/* Bottom Message Input Bar */}
               <div className={`${replyingTo ? 'pt-2 px-3 pb-3 md:px-4 md:pb-4' : 'p-3 md:p-4'} bg-[#08080a] voys-chat-input-bar flex items-center space-x-2 md:space-x-3 relative z-10 flex-shrink-0`}>
 
-                {/* File Attachment '+' Button placed directly to the left of the input box */}
+                {/* File Attachment Button placed directly to the left of the input box */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Dosya veya Medya Paylaş (+)"
-                  className="w-10 h-10 text-indigo-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-500/40 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
+                  title="Dosya veya Medya Paylaş"
+                  className="w-10 h-10 text-white hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Plus size={18} className="group-hover:scale-110 transition-transform" />
+                  <File size={18} className="text-white group-hover:scale-110 transition-transform" />
                 </button>
 
                 {/* Input Wrapper */}
