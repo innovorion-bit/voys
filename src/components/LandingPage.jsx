@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Download,
@@ -23,6 +23,7 @@ export const LandingPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const bgLayerRef = useRef(null);
 
   const directExeUrl = '/Voys_1.0.0_x64-setup.exe';
 
@@ -37,17 +38,74 @@ export const LandingPage = () => {
     document.body.removeChild(link);
   };
 
+  // Discord-style background parallax descent:
+  // As the user scrolls down the webpage, the 3240px background slowly and smoothly
+  // pans down through its celestial layers, aligning with each section of content.
+  useEffect(() => {
+    let ticking = false;
+    let currentScale = Math.max(1, window.innerWidth / 1920);
+    let bgW = 1920 * currentScale;
+    let bgH = 3240 * currentScale;
+
+    const updateDimensionsAndPosition = () => {
+      currentScale = Math.max(1, window.innerWidth / 1920);
+      bgW = 1920 * currentScale;
+      bgH = 3240 * currentScale;
+      if (bgLayerRef.current) {
+        bgLayerRef.current.style.width = `${bgW}px`;
+        bgLayerRef.current.style.height = `${bgH}px`;
+      }
+      onScroll();
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (bgLayerRef.current) {
+            const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight;
+            const clientHeight = window.innerHeight;
+            const maxScroll = Math.max(1, scrollHeight - clientHeight);
+            const progress = Math.min(1, Math.max(0, scrollY / maxScroll));
+            const maxTravel = Math.max(0, bgH - clientHeight);
+            const targetY = -progress * maxTravel;
+            bgLayerRef.current.style.transform = `translate3d(-50%, ${targetY}px, 0)`;
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    updateDimensionsAndPosition();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', updateDimensionsAndPosition);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', updateDimensionsAndPosition);
+    };
+  }, []);
+
   return (
-    <div
-      className="w-full min-h-[3240px] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between"
-      style={{
-        backgroundImage: "url('/voys_hero_bg.jpg')",
-        backgroundColor: '#07050f',
-        backgroundSize: '1920px 3240px',
-        backgroundPosition: 'top center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <div className="w-full min-h-[3240px] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between bg-[#07050f] scroll-smooth">
+      {/* Discord-style Parallax Background: Fixed viewport canvas that slowly descends as user scrolls */}
+      <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
+        <div
+          ref={bgLayerRef}
+          className="absolute left-1/2 will-change-transform"
+          style={{
+            width: '1920px',
+            height: '3240px',
+            backgroundImage: "url('/voys_hero_bg.jpg')",
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            transform: 'translate3d(-50%, 0px, 0)',
+          }}
+        />
+        {/* Subtle ambient lighting vignette overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07050f]/60 pointer-events-none" />
+      </div>
       {/* 1. Header / Navbar */}
       <header className="sticky top-0 z-50 bg-[#07050f]/60 backdrop-blur-md pt-4 sm:pt-6 pb-3 border-b border-white/[0.04]">
         <div className="w-full px-6 sm:px-10 lg:px-16 h-14 sm:h-16 flex items-center justify-between relative">
