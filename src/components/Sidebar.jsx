@@ -1466,7 +1466,7 @@ export const Sidebar = ({
               <div className="flex items-center space-x-2">
                 <Users size={16} className="text-[#8B51FF]" />
                 <h2 className="text-sm font-bold text-white tracking-wide">
-                  Arkadaşlar ({friends?.length || 0})
+                  Arkadaşlar
                 </h2>
               </div>
             </div>
@@ -1475,7 +1475,7 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={openAddFriendView}
-              className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-indigo-400 text-xs font-semibold rounded-lg border border-indigo-500/30 flex items-center space-x-1 transition cursor-pointer"
+              className="px-2.5 py-1 bg-[#8B51FF] hover:bg-[#773BF5] text-white text-xs font-semibold rounded-lg flex items-center space-x-1 transition cursor-pointer shadow-sm active:scale-95"
               title="Yeni Arkadaş Ekle"
             >
               <UserPlus size={13} />
@@ -1507,7 +1507,7 @@ export const Sidebar = ({
           </div>
 
           {/* Friends List Body */}
-          <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04] custom-scrollbar min-h-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
             {filteredAllFriends.length === 0 ? (
               <div className="p-8 text-center text-xs text-gray-400 flex flex-col items-center justify-center space-y-3">
                 <div className="w-12 h-12 rounded-full bg-[#141418] flex items-center justify-center text-gray-500">
@@ -1577,7 +1577,7 @@ export const Sidebar = ({
                         onSelectDm?.(friend.id);
                         setSidebarView('chats');
                       }}
-                      className="px-2.5 py-1 bg-white/5 hover:bg-[#8B51FF]/20 hover:text-[#bb94ff] text-gray-300 rounded-lg text-xs font-semibold border border-white/5 hover:border-[#8B51FF]/30 transition cursor-pointer"
+                      className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-[#bb94ff] rounded-lg text-xs font-semibold border border-white/5 transition cursor-pointer"
                       title="Sohbeti Aç"
                     >
                       Mesaj
