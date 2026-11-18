@@ -2181,7 +2181,7 @@ export const ChatArea = ({
                         {channelData?.name || (typeof activeChannel === 'string' ? activeChannel.replace(/^(text-|voice-)/, '') : 'Grup')}
                       </h3>
                       <p className="text-xs text-gray-400">
-                        {liveMembers.length} Aktif Katılımcı
+                        Önerilen formatlar: PNG, JPG, WebP veya GIF.
                       </p>
                       <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                         <button
