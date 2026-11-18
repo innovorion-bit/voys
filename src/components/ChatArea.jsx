@@ -3255,24 +3255,14 @@ export const ChatArea = ({
                   {/* Emoji Picker Popover */}
                   <div className="relative flex-shrink-0 ml-1">
                     {showEmojiPicker && (
-                      <div className="emoji-picker-container absolute bottom-12 right-0 shadow-xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50">
-                        <div className="bg-white/[0.02] p-2 px-3 border-b border-white/10 flex items-center justify-between text-xs text-gray-300">
-                          <span className="font-semibold text-[11px] text-gray-200">Emoji Seç</span>
-                          <button
-                            type="button"
-                            onClick={() => setShowEmojiPicker(false)}
-                            className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                        <Suspense fallback={<div className="w-[300px] h-[360px] flex items-center justify-center text-xs text-gray-500">Yükleniyor...</div>}>
+                      <div className="emoji-picker-container absolute bottom-12 right-[-64px] shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-[#121216] z-50">
+                        <Suspense fallback={<div className="w-[280px] h-[330px] flex items-center justify-center text-xs text-gray-500">Yükleniyor...</div>}>
                           <EmojiPicker
                             theme={chatSettings?.theme === 'light' ? 'light' : 'dark'}
                             onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
                             searchPlaceHolder="Emoji ara..."
-                            width={300}
-                            height={360}
+                            width={280}
+                            height={330}
                             lazyLoadEmojis
                             skinTonesDisabled
                             previewConfig={{ showPreview: false }}
