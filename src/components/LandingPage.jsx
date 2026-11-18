@@ -97,7 +97,7 @@ export const LandingPage = () => {
           style={{
             width: '1920px',
             height: '3240px',
-            backgroundImage: "url('/voys_hero_bg.jpg')",
+            backgroundImage: "url('/voys_hero_bg.jpg?v=3')",
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
             transform: 'translate3d(-50%, 0px, 0)',
