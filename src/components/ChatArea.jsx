@@ -2450,7 +2450,7 @@ export const ChatArea = ({
                                     <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" title="Grup Yöneticisi" />
                                   )}
                                   {member.id === currentUser?.id && (
-                                    <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">Sen</span>
+                                    <span className="text-[10px] text-gray-400 font-semibold flex-shrink-0">(Sen)</span>
                                   )}
                                 </div>
                                 <div className="text-[10px] text-gray-400 truncate">
@@ -3839,7 +3839,7 @@ export const ChatArea = ({
                               <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" title="Grup Yöneticisi" />
                             )}
                             {member.id === currentUser?.id && (
-                              <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">Sen</span>
+                              <span className="text-[10px] text-gray-400 font-semibold flex-shrink-0">(Sen)</span>
                             )}
                           </div>
 

@@ -1541,8 +1541,8 @@ export const Sidebar = ({
                           {friend.name}
                         </span>
                         {friend.isSelf && (
-                          <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">
-                            Sen
+                          <span className="text-[10px] text-gray-400 font-semibold flex-shrink-0">
+                            (Sen)
                           </span>
                         )}
                       </div>
@@ -2317,8 +2317,8 @@ export const Sidebar = ({
                               {friend.name}
                             </p>
                             {friend.isSelf && (
-                              <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">
-                                Sen
+                              <span className="text-[10px] text-gray-400 font-semibold flex-shrink-0">
+                                (Sen)
                               </span>
                             )}
                           </div>
