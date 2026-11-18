@@ -107,7 +107,7 @@ export const LandingPage = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07050f]/60 pointer-events-none" />
       </div>
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-50 bg-[#07050f]/60 backdrop-blur-md pt-4 sm:pt-6 pb-3 border-b border-white/[0.04]">
+      <header className="sticky top-0 z-50 bg-transparent pt-4 sm:pt-6 pb-2">
         <div className="w-full px-6 sm:px-10 lg:px-16 h-14 sm:h-16 flex items-center justify-between relative">
           {/* Logo & Brand (Far Left) */}
           <Link to="/" className="flex items-center group shrink-0 z-10" title="Voys">
@@ -121,7 +121,7 @@ export const LandingPage = () => {
             </div>
           </Link>
 
-          {/* Nav Links - Yeni Menüler (True Center with Purple Button Hover Animation) */}
+          {/* Nav Links - True Center with Purple Button Hover Animation */}
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 xl:space-x-2.5 text-sm font-medium absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
             <a
               href="#discover"
@@ -136,28 +136,16 @@ export const LandingPage = () => {
               Güvenlik
             </a>
             <a
-              href="#features"
+              href="#performance"
               className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
             >
-              Özellikler
+              Performans
             </a>
             <a
               href="#support"
               className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
             >
               Destek
-            </a>
-            <a
-              href="#developers"
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
-            >
-              Geliştiriciler
-            </a>
-            <a
-              href="#performance"
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
-            >
-              Performans
             </a>
             <button
               type="button"
@@ -521,9 +509,9 @@ export const LandingPage = () => {
 
             <div className="flex items-center space-x-6">
               <a href="#discover" className="hover:text-gray-300 transition-colors">Keşfedin</a>
-              <a href="#features" className="hover:text-gray-300 transition-colors">Özellikler</a>
               <a href="#security" className="hover:text-gray-300 transition-colors">Güvenlik</a>
               <a href="#performance" className="hover:text-gray-300 transition-colors">Performans</a>
+              <a href="#support" className="hover:text-gray-300 transition-colors">Destek</a>
             </div>
           </div>
         </div>
