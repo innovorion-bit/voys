@@ -2442,6 +2442,13 @@ export const ChatArea = ({
                               <div className="min-w-0">
                                 <div className="text-xs font-medium text-white truncate flex items-center space-x-1.5">
                                   <span>{member.name}</span>
+                                  {Boolean(
+                                    member.role === 'admin' ||
+                                    member.hasCrown ||
+                                    (channelData?.created_by && (String(member.id) === String(channelData.created_by) || String(member.user_id) === String(channelData.created_by)))
+                                  ) && (
+                                    <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" title="Grup Yöneticisi" />
+                                  )}
                                   {member.id === currentUser?.id && (
                                     <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">Sen</span>
                                   )}
@@ -3824,8 +3831,12 @@ export const ChatArea = ({
                             <span className="text-xs font-semibold text-gray-200 group-hover:text-white truncate">
                               {member.name}
                             </span>
-                            {member.role === 'admin' && (
-                              <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                            {Boolean(
+                              member.role === 'admin' ||
+                              member.hasCrown ||
+                              (channelData?.created_by && (String(member.id) === String(channelData.created_by) || String(member.user_id) === String(channelData.created_by)))
+                            ) && (
+                              <Crown size={12} className="text-amber-400 fill-amber-400 flex-shrink-0" title="Grup Yöneticisi" />
                             )}
                             {member.id === currentUser?.id && (
                               <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold flex-shrink-0">Sen</span>
