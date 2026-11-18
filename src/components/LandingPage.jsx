@@ -800,51 +800,20 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* 7. Bottom Final CTA & Footer */}
-      <footer className="relative z-10 pt-16 pb-12 px-6 sm:px-10 lg:px-16 border-t border-white/[0.06] bg-[#07050f]/70 backdrop-blur-lg">
-        <div className="max-w-6xl mx-auto flex flex-col items-center text-center">
-          {/* Final CTA Box */}
-          <div className="w-full max-w-3xl mb-16 p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-[#180e3b] to-[#0c0820] border border-[#8B51FF]/30 shadow-2xl">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3">
-              Voys Deneyimine Bugün Katılın
-            </h2>
-            <p className="text-sm text-gray-300 mb-8 max-w-lg mx-auto">
-              Hemen ücretsiz indirin veya tarayıcınızdan saniyeler içinde arkadaşlarınızla iletişime geçin.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => handleDownloadClick(directExeUrl)}
-                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-bold text-sm shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer"
-              >
-                <Download size={16} />
-                <span>Windows için İndir</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(isAuthenticated ? '/channel/home' : '/login')}
-                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#8B51FF] hover:bg-[#7a3ef2] text-white font-bold text-sm shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer"
-              >
-                <span>Tarayıcıda Başlat</span>
-                <ArrowRight size={15} />
-              </button>
-            </div>
+      {/* 7. Footer */}
+      <footer className="relative z-10 py-10 px-6 sm:px-10 lg:px-16 border-t border-white/[0.06] bg-[#07050f]/70 backdrop-blur-lg">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
+          <div className="flex items-center space-x-3">
+            <img src="/voys_weblogo.png" alt="Voys" className="h-5 sm:h-6 w-auto object-contain opacity-90" />
+            <span>•</span>
+            <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
           </div>
 
-          {/* Footer Bottom Details */}
-          <div className="w-full flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-white/[0.06] text-xs text-gray-500 gap-4">
-            <div className="flex items-center space-x-3">
-              <img src="/voys_weblogo.png" alt="Voys" className="h-5 sm:h-6 w-auto object-contain opacity-90" />
-              <span>•</span>
-              <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
-            </div>
-
-            <div className="flex items-center space-x-6 text-xs sm:text-sm text-gray-400 font-medium">
-              <a href="#discover" className="hover:text-white transition-colors duration-200">Keşfedin</a>
-              <a href="#security" className="hover:text-white transition-colors duration-200">Güvenlik</a>
-              <a href="#performance" className="hover:text-white transition-colors duration-200">Performans</a>
-              <a href="#support" className="hover:text-white transition-colors duration-200">Destek</a>
-            </div>
+          <div className="flex items-center space-x-6 text-xs sm:text-sm text-gray-400 font-medium">
+            <a href="#discover" className="hover:text-white transition-colors duration-200">Keşfedin</a>
+            <a href="#security" className="hover:text-white transition-colors duration-200">Güvenlik</a>
+            <a href="#performance" className="hover:text-white transition-colors duration-200">Performans</a>
+            <a href="#support" className="hover:text-white transition-colors duration-200">Destek</a>
           </div>
         </div>
       </footer>
