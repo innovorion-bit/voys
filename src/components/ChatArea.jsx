@@ -3229,9 +3229,9 @@ export const ChatArea = ({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   title="Dosya veya Medya Paylaş"
-                  className="w-10 h-10 text-white hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
+                  className="w-10 h-10 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Paperclip size={16} className="text-white group-hover:scale-110 transition-transform" />
+                  <Paperclip size={16} className="text-gray-400 group-hover:text-white group-hover:scale-110 transition" />
                 </button>
 
                 {/* Input Wrapper */}
@@ -3284,7 +3284,6 @@ export const ChatArea = ({
                       title="Emoji Ekle"
                     >
                       <Smile size={16} />
-                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
                     </button>
                   </div>
 
