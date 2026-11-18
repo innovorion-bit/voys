@@ -4,7 +4,6 @@ export const DEFAULT_SOUND_CATEGORIES = {
   voiceConnection: true,
   voiceActions: true,
   message: true,
-  ringtone: true,
 };
 
 const SOUND_DEFAULT_CATEGORIES = {
@@ -53,11 +52,6 @@ class SoundEffects {
       deafen: '/sounds/deafen.wav',
       undeafen: '/sounds/undeafen.wav',
     };
-
-    // Ringing state tracking
-    this.activeRingTimeout = null;
-    this.activeRingNodes = [];
-    this.isRinging = false;
   }
 
   // Volume & Enabled Control
@@ -360,117 +354,6 @@ class SoundEffects {
   // Explicit hardware speaker test tone (works even when UI sound effects are muted)
   playTestTone() {
     this.play('join', { ignoreEnabled: true, minVolume: 0.6 });
-  }
-
-  // Web Audio Ringtone Generator (Discord-style incoming and outgoing ringtones)
-  playSingleRing(type = 'incoming') {
-    if (!this.canPlay({ category: 'ringtone' })) return;
-    this.initWebAudio();
-    if (!this.ctx) return;
-
-    try {
-      const now = this.ctx.currentTime;
-      const masterGain = this.volume * 0.16;
-
-      if (type === 'incoming') {
-        // Melodic Discord style incoming call chime (C5 -> D5 -> G5 -> E5 -> C6 chime)
-        const notes = [
-          { freq: 523.25, start: 0, dur: 0.16 },
-          { freq: 587.33, start: 0.16, dur: 0.16 },
-          { freq: 783.99, start: 0.32, dur: 0.22 },
-          { freq: 659.25, start: 0.54, dur: 0.35 },
-          { freq: 1046.50, start: 0.85, dur: 0.30 },
-        ];
-
-        notes.forEach(({ freq, start, dur }) => {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, now + start);
-
-          gain.gain.setValueAtTime(0.001, now + start);
-          gain.gain.exponentialRampToValueAtTime(masterGain, now + start + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
-
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-
-          osc.start(now + start);
-          osc.stop(now + start + dur);
-
-          this.activeRingNodes.push(osc);
-        });
-      } else {
-        // Soft outgoing telephone call ring tone (dual 440Hz + 480Hz tone)
-        const freqs = [440, 480];
-        freqs.forEach((f) => {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(f, now);
-
-          gain.gain.setValueAtTime(0.001, now);
-          gain.gain.exponentialRampToValueAtTime(masterGain * 0.45, now + 0.06);
-          gain.gain.setValueAtTime(masterGain * 0.45, now + 1.15);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.30);
-
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-
-          osc.start(now);
-          osc.stop(now + 1.30);
-
-          this.activeRingNodes.push(osc);
-        });
-      }
-    } catch (err) {
-      console.warn('Ring tone error:', err);
-    }
-  }
-
-  startRinging({ type = 'incoming', maxRings = 3, onRing = null, onFinish = null } = {}) {
-    this.stopRinging();
-    this.isRinging = true;
-
-    let current = 0;
-    const ringInterval = type === 'incoming' ? 2400 : 2800;
-
-    const ringStep = () => {
-      if (!this.isRinging) return;
-      current += 1;
-      onRing?.(current);
-      this.playSingleRing(type);
-
-      if (current >= maxRings) {
-        this.activeRingTimeout = setTimeout(() => {
-          if (this.isRinging) {
-            this.stopRinging();
-            onFinish?.();
-          }
-        }, ringInterval);
-      } else {
-        this.activeRingTimeout = setTimeout(ringStep, ringInterval);
-      }
-    };
-
-    ringStep();
-  }
-
-  stopRinging() {
-    this.isRinging = false;
-    if (this.activeRingTimeout) {
-      clearTimeout(this.activeRingTimeout);
-      this.activeRingTimeout = null;
-    }
-    if (this.activeRingNodes && this.activeRingNodes.length > 0) {
-      this.activeRingNodes.forEach((node) => {
-        try {
-          node.stop();
-          node.disconnect();
-        } catch {}
-      });
-      this.activeRingNodes = [];
-    }
   }
 }
 
