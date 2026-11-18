@@ -2673,9 +2673,15 @@ export const ChatArea = ({
                       )}
                       <div
                         id={`msg-${msg.id}`}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setActiveReactionPickerMsgId(null);
+                          setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
+                        }}
                         className="relative group/msg flex flex-col w-full py-1.5 px-2 sm:px-3 hover:bg-white/[0.025] transition-colors rounded-xl"
                       >
-                      {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + Reply + 3 Dots More */}
+                      {/* Hover Floating Action Bar: Quick Reactions + Full Emoji Picker + 3 Dots More */}
                       <div
                         className={`voys-msg-action-bar absolute right-2 sm:right-3 ${
                           isFirstMsg && !showDateDivider ? 'top-0.5' : '-top-3'
@@ -2720,23 +2726,6 @@ export const ChatArea = ({
                           title="Tüm Emojilerle Tepki Ekle"
                         >
                           <SmilePlus size={13} />
-                        </button>
-
-                        <div className="w-px h-3.5 bg-white/10 mx-0.5" />
-
-                        {/* "Yanıtla" Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveMsgMenuId(null);
-                            setActiveReactionPickerMsgId(null);
-                            handleStartReply(msg, messageUser, isMe);
-                          }}
-                          className="h-6 px-2 hover:bg-[#8B51FF]/20 text-gray-300 hover:text-white rounded-md transition flex items-center gap-1 text-xs font-medium cursor-pointer group/replybtn"
-                          title="Mesajı Yanıtla"
-                        >
-                          <Reply size={13} className="text-[#a36eff] group-hover/replybtn:text-white transition-colors" />
-                          <span className="hidden sm:inline text-[11px]">Yanıtla</span>
                         </button>
 
                         <div className="w-px h-3.5 bg-white/10 mx-0.5" />
