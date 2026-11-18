@@ -55,7 +55,8 @@ import {
   Check,
   Copy,
   Camera,
-  Upload
+  Upload,
+  Paperclip
 } from 'lucide-react';
 import GifPicker, { GifIcon } from './GifPicker';
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
@@ -3230,7 +3231,7 @@ export const ChatArea = ({
                   title="Dosya veya Medya Paylaş"
                   className="w-10 h-10 text-white hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition flex items-center justify-center flex-shrink-0 group shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <File size={18} className="text-white group-hover:scale-110 transition-transform" />
+                  <Paperclip size={16} className="text-white group-hover:scale-110 transition-transform" />
                 </button>
 
                 {/* Input Wrapper */}
