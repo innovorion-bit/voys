@@ -154,7 +154,7 @@ export const AddMemberModal = ({
 
                   {/* Add button / already added label */}
                   {isAlreadyMember ? (
-                    <span className="flex items-center space-x-1 px-3 py-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded-xl">
+                    <span className="flex items-center space-x-1 text-xs font-medium text-emerald-400 select-none pr-1">
                       <Check size={12} />
                       <span>Üye</span>
                     </span>

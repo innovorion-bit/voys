@@ -2379,7 +2379,7 @@ export const ChatArea = ({
 
                                   <div className="flex-shrink-0 ml-3">
                                     {isAlready ? (
-                                      <span className="flex items-center space-x-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded-lg select-none">
+                                      <span className="flex items-center space-x-1 text-xs font-medium text-emerald-400 select-none pr-1">
                                         <Check size={12} />
                                         <span>Üye</span>
                                       </span>
@@ -3723,8 +3723,8 @@ export const ChatArea = ({
                           </div>
 
                           {isAlready ? (
-                            <span className="flex-shrink-0 flex items-center space-x-0.5 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-                              <Check size={10} />
+                            <span className="flex-shrink-0 flex items-center space-x-1 text-[11px] font-medium text-emerald-400 select-none pr-1">
+                              <Check size={11} />
                               <span>Üye</span>
                             </span>
                           ) : (
