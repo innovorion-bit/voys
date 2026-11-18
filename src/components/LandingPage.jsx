@@ -244,13 +244,322 @@ export const LandingPage = () => {
             <div className="w-12" />
           </div>
 
-          {/* Screenshot Container */}
-          <div className="relative overflow-hidden bg-[#07050f]/80 p-2 sm:p-4">
-            <img
-              src="/mock/voys_app_screenshot.png"
-              alt="Voys App Preview"
-              className="w-full h-auto rounded-xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.01]"
-            />
+          {/* Vector UI Graphic Illustration of Voys Client */}
+          <div className="relative overflow-hidden bg-[#080514]/95 p-2 sm:p-4 text-left select-none">
+            {/* Inner App Frame */}
+            <div className="w-full rounded-xl border border-white/10 bg-[#0c081c] shadow-2xl overflow-hidden flex flex-col md:grid md:grid-cols-12 min-h-[460px] sm:min-h-[500px]">
+              
+              {/* 1. Left Channel & Chat Sidebar (col-span-3) */}
+              <div className="hidden lg:flex lg:col-span-3 flex-col justify-between bg-[#090616]/95 border-r border-white/[0.08] p-3 text-xs">
+                <div>
+                  {/* Search Bar Vector */}
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-gray-400 mb-3">
+                    <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span className="text-[11px] text-gray-400 truncate">Sohbet veya kanal arayın...</span>
+                  </div>
+
+                  {/* Filter Tabs */}
+                  <div className="flex items-center space-x-1.5 mb-3">
+                    <span className="px-2.5 py-1 rounded-lg bg-[#8B51FF]/20 border border-[#8B51FF]/40 text-[#d8b4fe] font-semibold text-[11px]">
+                      Tümü
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-gray-400 hover:text-white text-[11px]">
+                      Kişiler
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-gray-400 hover:text-white text-[11px]">
+                      Gruplar
+                    </span>
+                  </div>
+
+                  {/* Channel / Chat List */}
+                  <div className="space-y-1">
+                    {/* Active Selected Channel: Game Fedaileri */}
+                    <div className="p-2 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 text-white flex items-center space-x-2.5">
+                      <div className="relative w-8 h-8 rounded-lg bg-gradient-to-tr from-[#8B51FF] to-[#c084fc] flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-md">
+                        GF
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0c081c]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-xs text-white truncate">Game Fedaileri</span>
+                          <span className="text-[10px] text-emerald-400 font-mono">18:24</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-[11px] text-[#d8b4fe]/80 truncate">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-ping" />
+                          <span className="truncate">Sesli Kanal Aktif</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Channel 2 */}
+                    <div className="p-2 rounded-xl hover:bg-white/[0.04] text-gray-400 hover:text-gray-200 flex items-center space-x-2.5 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-xs text-white shrink-0">
+                        YT
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-xs text-gray-300 truncate">Yazılım & Tasarım</span>
+                          <span className="text-[10px] text-gray-400 font-mono">16:40</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate">Haftalık planlama tamamlandı</p>
+                      </div>
+                    </div>
+
+                    {/* Channel 3 */}
+                    <div className="p-2 rounded-xl hover:bg-white/[0.04] text-gray-400 hover:text-gray-200 flex items-center space-x-2.5 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-fuchsia-600 to-pink-500 flex items-center justify-center font-bold text-xs text-white shrink-0">
+                        TE
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-xs text-gray-300 truncate">Turnuva Ekibi</span>
+                          <span className="text-[10px] text-gray-400 font-mono">Dün</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate">60 FPS yayın test edildi</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom User Bar */}
+                <div className="pt-2 mt-2 border-t border-white/[0.08] flex items-center justify-between">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <div className="relative w-7 h-7 rounded-full bg-gradient-to-tr from-[#a855f7] to-[#ec4899] flex items-center justify-center font-bold text-[11px] text-white shrink-0">
+                      L
+                      <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-[#0c081c]" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">Lyring</div>
+                      <div className="text-[10px] text-gray-400 truncate">@lyring</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-1.5 text-gray-400">
+                    <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <svg className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 18v-6a9 9 0 0118 0v6M3 18a3 3 0 003 3h1a2 2 0 002-2v-4a2 2 0 00-2-2H4a1 1 0 00-1 1v4zm18 0a3 3 0 01-3 3h-1a2 2 0 01-2-2v-4a2 2 0 012-2h3a1 1 0 011 1v4z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Main Center Chat & Call Canvas */}
+              <div className="md:col-span-12 lg:col-span-6 flex flex-col justify-between bg-[#080512] min-h-[460px]">
+                {/* Chat Top Header */}
+                <div className="h-12 px-4 bg-[#0d091e]/90 border-b border-white/[0.08] flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="text-gray-400 font-bold text-sm">#</span>
+                    <span className="font-bold text-sm text-white">Game Fedaileri</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-medium hidden sm:inline-block">
+                      4 Katılımcı
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Sesli Kanal Aktif</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Chat Content Stream */}
+                <div className="p-4 space-y-3 flex-1 flex flex-col justify-end">
+                  {/* Active Voice Stream Frosted Card */}
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#170e35]/90 via-[#130b2e]/90 to-[#0e0724]/90 border border-[#8B51FF]/30 shadow-lg backdrop-blur-md">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-white">WebRTC P2P Canlı Ses Odası</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono">
+                          18ms • 48 kHz Opus
+                        </span>
+                      </div>
+                      {/* Audio frequency wave visualizer */}
+                      <div className="flex items-end space-x-1 h-3.5">
+                        <span className="w-1 bg-[#a36eff] h-2 rounded-full animate-pulse" />
+                        <span className="w-1 bg-emerald-400 h-3.5 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1 bg-[#c084fc] h-1.5 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                        <span className="w-1 bg-emerald-400 h-3 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                        <span className="w-1 bg-[#a36eff] h-2.5 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+                      </div>
+                    </div>
+
+                    {/* Participant Avatars in Voice */}
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1.5">
+                        <div className="relative">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center font-bold text-[10px] text-white ring-2 ring-emerald-500 shadow-md">
+                            D
+                          </div>
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400" />
+                        </div>
+                        <span className="text-xs text-gray-200 font-medium">Deniz</span>
+                      </div>
+
+                      <div className="flex items-center space-x-1.5">
+                        <div className="relative">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 flex items-center justify-center font-bold text-[10px] text-white ring-2 ring-emerald-500 shadow-md">
+                            M
+                          </div>
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400" />
+                        </div>
+                        <span className="text-xs text-gray-200 font-medium">Mafikk</span>
+                      </div>
+
+                      <div className="flex items-center space-x-1.5">
+                        <div className="relative">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#8B51FF] to-[#c084fc] flex items-center justify-center font-bold text-[10px] text-white ring-2 ring-emerald-500 shadow-md">
+                            L
+                          </div>
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400" />
+                        </div>
+                        <span className="text-xs text-white font-semibold">Lyring (Sen)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message 1 */}
+                  <div className="flex items-start space-x-2.5 text-xs">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 flex items-center justify-center font-bold text-[10px] text-white shrink-0 mt-0.5">
+                      D
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline space-x-2 mb-1">
+                        <span className="font-semibold text-white">Deniz</span>
+                        <span className="text-[10px] text-gray-400">18:22</span>
+                      </div>
+                      <div className="p-2.5 rounded-2xl rounded-tl-sm bg-white/[0.04] border border-white/[0.06] text-gray-200 leading-relaxed inline-block max-w-[90%]">
+                        RNNoise yapay zeka gürültü filtresi efsane çalışıyor, arkadaki klavye sesini tamamen sildi 🎙️✨
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message 2 */}
+                  <div className="flex items-start space-x-2.5 text-xs">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-fuchsia-500 to-purple-600 flex items-center justify-center font-bold text-[10px] text-white shrink-0 mt-0.5">
+                      M
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline space-x-2 mb-1">
+                        <span className="font-semibold text-white">Mafikk</span>
+                        <span className="text-[10px] text-gray-400">18:24</span>
+                      </div>
+                      <div className="p-2.5 rounded-2xl rounded-tl-sm bg-white/[0.04] border border-white/[0.06] text-gray-200 leading-relaxed inline-block max-w-[90%]">
+                        Ses gecikmesi 18ms'ye kadar indi, stüdyo kalitesinde geliyor. Yayın açıyorum! ⚡
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message 3 (Current user) */}
+                  <div className="flex items-start space-x-2.5 text-xs">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#8B51FF] to-[#c084fc] flex items-center justify-center font-bold text-[10px] text-white shrink-0 mt-0.5 shadow-md">
+                      L
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline space-x-2 mb-1">
+                        <span className="font-semibold text-[#d8b4fe]">Lyring (Sen)</span>
+                        <span className="text-[10px] text-gray-400">18:25</span>
+                        <span className="px-1.5 py-0.5 rounded bg-[#8B51FF]/25 text-[#d8b4fe] text-[9px] font-bold">YÖNETİCİ</span>
+                      </div>
+                      <div className="p-2.5 rounded-2xl rounded-tl-sm bg-[#8B51FF]/15 border border-[#8B51FF]/30 text-white leading-relaxed inline-block max-w-[90%]">
+                        1080p 60 FPS ekran paylaşımı hazır. Oyun odasında buluşalım! 🎮🚀
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Input Area */}
+                <div className="p-3 bg-[#0d091e]/90 border-t border-white/[0.08]">
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+                    <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center text-gray-400 hover:text-white cursor-pointer text-xs font-bold">
+                      +
+                    </div>
+                    <span className="text-xs text-gray-400 flex-1 truncate">
+                      #Game Fedaileri kanalına mesaj gönder...
+                    </span>
+                    <div className="flex items-center space-x-2 text-gray-400">
+                      <span className="text-sm cursor-pointer hover:scale-110 transition-transform">😊</span>
+                      <div className="w-6 h-6 rounded-lg bg-[#8B51FF] hover:bg-[#7a3ef2] text-white flex items-center justify-center cursor-pointer transition-colors shadow-sm">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Right Group Members Sidebar (col-span-3) */}
+              <div className="hidden lg:flex lg:col-span-3 flex-col bg-[#090616]/95 p-3.5 text-xs">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
+                  Grup Üyeleri (4)
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Member 1 */}
+                  <div className="flex items-center space-x-2.5 p-1.5 rounded-xl hover:bg-white/[0.03] transition-colors">
+                    <div className="relative">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#8B51FF] to-[#c084fc] flex items-center justify-center font-bold text-[10px] text-white ring-2 ring-emerald-500">
+                        L
+                      </div>
+                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-[#0c081c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-1">
+                        <span className="font-semibold text-xs text-white truncate">Lyring</span>
+                        <span className="text-[10px] text-amber-400">👑</span>
+                      </div>
+                      <div className="text-[10px] text-emerald-400 truncate">Konuşuyor...</div>
+                    </div>
+                  </div>
+
+                  {/* Member 2 */}
+                  <div className="flex items-center space-x-2.5 p-1.5 rounded-xl hover:bg-white/[0.03] transition-colors">
+                    <div className="relative">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 flex items-center justify-center font-bold text-[10px] text-white ring-2 ring-emerald-500">
+                        D
+                      </div>
+                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-[#0c081c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-xs text-gray-200 truncate block">Deniz</span>
+                      <div className="text-[10px] text-emerald-400 truncate">Sesli Odada</div>
+                    </div>
+                  </div>
+
+                  {/* Member 3 */}
+                  <div className="flex items-center space-x-2.5 p-1.5 rounded-xl hover:bg-white/[0.03] transition-colors">
+                    <div className="relative">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-fuchsia-500 to-purple-600 flex items-center justify-center font-bold text-[10px] text-white">
+                        M
+                      </div>
+                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-[#0c081c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-xs text-gray-200 truncate block">Mafikk</span>
+                      <div className="text-[10px] text-[#c084fc] truncate">60 FPS Yayında</div>
+                    </div>
+                  </div>
+
+                  {/* Member 4 */}
+                  <div className="flex items-center space-x-2.5 p-1.5 rounded-xl hover:bg-white/[0.03] transition-colors opacity-70">
+                    <div className="relative">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center font-bold text-[10px] text-gray-300">
+                        H
+                      </div>
+                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-gray-500 border border-[#0c081c]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium text-xs text-gray-400 truncate block">Hollie</span>
+                      <div className="text-[10px] text-gray-500 truncate">Çevrimdışı</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
