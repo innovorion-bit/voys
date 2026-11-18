@@ -2,20 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Download,
-  Monitor,
   ArrowRight,
-  CheckCircle2,
-  Headphones,
-  Users,
-  Sparkles,
-  Shield,
-  Zap,
-  Lock,
-  Cpu,
-  Code2,
-  HelpCircle,
-  Radio,
-  Check
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 
@@ -121,36 +109,36 @@ export const LandingPage = () => {
             </div>
           </Link>
 
-          {/* Nav Links - True Center with Purple Button Hover Animation */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 xl:space-x-2.5 text-sm font-medium absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+          {/* Nav Links - Sade, Zarif ve Akıcı Floating Capsule Menu */}
+          <nav className="hidden md:flex items-center px-1.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md shadow-lg shadow-black/20 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
             <a
               href="#discover"
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
             >
               Keşfedin
             </a>
             <a
               href="#security"
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
             >
               Güvenlik
             </a>
             <a
               href="#performance"
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
             >
               Performans
             </a>
             <a
               href="#support"
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
             >
               Destek
             </a>
             <button
               type="button"
               onClick={() => handleDownloadClick(directExeUrl)}
-              className="px-3.5 py-1.5 rounded-xl text-gray-200 hover:text-white hover:bg-[#8B51FF] hover:shadow-lg hover:shadow-[#8B51FF]/30 transition-all duration-200 ease-out cursor-pointer"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200 cursor-pointer"
             >
               İndir
             </button>
@@ -162,7 +150,7 @@ export const LandingPage = () => {
               <button
                 type="button"
                 onClick={() => navigate('/channel/home')}
-                className="text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-gray-100 text-gray-900 shadow-md hover:shadow-lg transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
+                className="text-xs sm:text-sm font-medium px-5 py-2 rounded-full bg-white hover:bg-gray-100 text-gray-950 shadow-sm hover:shadow transition-all duration-200 flex items-center space-x-1.5 cursor-pointer active:scale-95"
               >
                 <span>Uygulamaya Git</span>
                 <ArrowRight size={14} />
@@ -171,7 +159,7 @@ export const LandingPage = () => {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="text-xs sm:text-sm font-bold px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-gray-100 text-gray-900 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+                className="text-xs sm:text-sm font-medium px-5 py-2 rounded-full bg-white hover:bg-gray-100 text-gray-950 shadow-sm hover:shadow transition-all duration-200 cursor-pointer active:scale-95"
               >
                 Giriş Yap
               </button>
@@ -233,9 +221,8 @@ export const LandingPage = () => {
 
       {/* 3. Keşfedin (#discover) - App Preview & Highlights */}
       <section id="discover" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full text-center scroll-mt-20">
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/15 border border-[#8B51FF]/30 text-[#d8b4fe] text-xs font-semibold uppercase tracking-wider mb-5">
-          <Sparkles size={14} className="text-[#a36eff]" />
-          <span>Keşfedin</span>
+        <div className="inline-block px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          Keşfedin
         </div>
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
           Modern ve Sade İletişim Deneyimi
@@ -270,9 +257,6 @@ export const LandingPage = () => {
         {/* 3 Key Highlights Below Preview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 text-left">
           <div className="p-6 rounded-2xl bg-[#0e0920]/60 border border-white/[0.08] hover:border-[#8B51FF]/40 transition-colors backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
-              <Headphones size={22} />
-            </div>
             <h3 className="text-base font-bold text-white mb-2">Kristal Netliğinde Ses</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               RNNoise yapay zeka gürültü engelleme teknolojisi ile mekanik klavye seslerini, oda yankısını ve arka plan gürültülerini tamamen yok edin.
@@ -280,9 +264,6 @@ export const LandingPage = () => {
           </div>
 
           <div className="p-6 rounded-2xl bg-[#0e0920]/60 border border-white/[0.08] hover:border-[#8B51FF]/40 transition-colors backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
-              <Users size={22} />
-            </div>
             <h3 className="text-base font-bold text-white mb-2">Grup ve Özel Odalar</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               Arkadaşlarınızla bire bir doğrudan mesajlaşın veya dilediğiniz büyüklükte arkadaş grupları kurup sesli odalara tek tıklamayla anında katılın.
@@ -290,9 +271,6 @@ export const LandingPage = () => {
           </div>
 
           <div className="p-6 rounded-2xl bg-[#0e0920]/60 border border-white/[0.08] hover:border-[#8B51FF]/40 transition-colors backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
-              <Monitor size={22} />
-            </div>
             <h3 className="text-base font-bold text-white mb-2">60 FPS Ultra Akıcı Yayın</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               Oyunlarınızı veya tüm masaüstünüzü 1080p 60 FPS hızında, sistem sesiyle birlikte donma ve takılma olmadan arkadaşlarınızla paylaşın.
@@ -304,9 +282,8 @@ export const LandingPage = () => {
       {/* 4. Güvenlik (#security) */}
       <section id="security" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-5">
-            <Shield size={14} className="text-emerald-400" />
-            <span>Güvenlik & Gizlilik</span>
+          <div className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+            Güvenlik & Gizlilik
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
             Tavizsiz Veri Güvenliği, Mutlak Gizlilik
@@ -320,78 +297,56 @@ export const LandingPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-emerald-500/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-6">
-                <Lock size={24} />
-              </div>
               <h3 className="text-xl font-bold text-white mb-3">Uçtan Uca Şifreli P2P</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Ses ve ekran paylaşımı doğrudan eşler arası (Peer-to-Peer) WebRTC altyapısıyla iletilir. DTLS-SRTP 256-bit şifreleme sayesinde görüşmeleriniz sunucularda asla saklanmaz veya dinlenemez.
               </p>
             </div>
-            <div className="pt-4 border-t border-white/[0.08] flex items-center space-x-2 text-xs text-emerald-400 font-medium">
-              <Check size={14} />
-              <span>DTLS / SRTP Kriptolama</span>
+            <div className="pt-4 border-t border-white/[0.08] text-xs text-emerald-400 font-medium">
+              DTLS / SRTP Kriptolama
             </div>
           </div>
 
           <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-emerald-500/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-6">
-                <Shield size={24} />
-              </div>
               <h3 className="text-xl font-bold text-white mb-3">Kurumsal Kimlik Doğrulama</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Supabase destekli güvenli oturum yönetimi, kriptografik JWT token yapısı ve veritabanı düzeyinde Row-Level Security (RLS) politikalarıyla kullanıcı hesabınız tam koruma altındadır.
               </p>
             </div>
-            <div className="pt-4 border-t border-white/[0.08] flex items-center space-x-2 text-xs text-emerald-400 font-medium">
-              <Check size={14} />
-              <span>Row-Level Security & JWT</span>
+            <div className="pt-4 border-t border-white/[0.08] text-xs text-emerald-400 font-medium">
+              Row-Level Security & JWT
             </div>
           </div>
 
           <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-emerald-500/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-6">
-                <CheckCircle2 size={24} />
-              </div>
               <h3 className="text-xl font-bold text-white mb-3">Sıfır Veri Satışı & İzleyici</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Voys'ta sizi takip eden reklam kodları veya analiz izleyicileri bulunmaz. Profil bilgileriniz ve yazışmalarınız üçüncü taraf şirketlere asla satılmaz veya taranmaz.
               </p>
             </div>
-            <div className="pt-4 border-t border-white/[0.08] flex items-center space-x-2 text-xs text-emerald-400 font-medium">
-              <Check size={14} />
-              <span>%100 İzleyicisiz ve Reklamsız</span>
+            <div className="pt-4 border-t border-white/[0.08] text-xs text-emerald-400 font-medium">
+              %100 İzleyicisiz ve Reklamsız
             </div>
           </div>
         </div>
 
         {/* Security Trust Banner */}
-        <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm flex flex-wrap items-center justify-around gap-4 text-xs sm:text-sm text-gray-300">
-          <div className="flex items-center space-x-2">
-            <Lock size={16} className="text-emerald-400" />
-            <span>256-bit SSL / TLS Güvenli Bağlantı</span>
-          </div>
-          <div className="hidden sm:block text-gray-600">•</div>
-          <div className="flex items-center space-x-2">
-            <Shield size={16} className="text-emerald-400" />
-            <span>Katı Gizlilik Standartları</span>
-          </div>
-          <div className="hidden sm:block text-gray-600">•</div>
-          <div className="flex items-center space-x-2">
-            <CheckCircle2 size={16} className="text-emerald-400" />
-            <span>Sıfır Günlük / Sıfır Ses Kaydı</span>
-          </div>
+        <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm flex flex-wrap items-center justify-around gap-4 text-xs sm:text-sm text-gray-300 font-medium">
+          <span>256-bit SSL / TLS Güvenli Bağlantı</span>
+          <span className="hidden sm:block text-gray-600">•</span>
+          <span>Katı Gizlilik Standartları</span>
+          <span className="hidden sm:block text-gray-600">•</span>
+          <span>Sıfır Günlük / Sıfır Ses Kaydı</span>
         </div>
       </section>
 
       {/* 5. Performans (#performance) */}
       <section id="performance" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#8B51FF]/15 border border-[#8B51FF]/30 text-[#d8b4fe] text-xs font-semibold uppercase tracking-wider mb-5">
-            <Zap size={14} className="text-[#a36eff]" />
-            <span>Performans & Hız</span>
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+            Performans & Hız
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
             Ultra Düşük Gecikme, Maksimum Verimlilik
@@ -439,9 +394,6 @@ export const LandingPage = () => {
         {/* 2 Detailed Technical Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-sm">
-            <div className="w-11 h-11 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
-              <Cpu size={22} />
-            </div>
             <h3 className="text-lg font-bold text-white mb-2">Donanım Hızlandırmalı Medya Hattı</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               Voys masaüstü uygulaması, ekran yakalama ve ses filtreleme görevlerini modern GPU ve CPU komut setleriyle paralel işler. Rekabetçi oyunlarınızda mikro gecikmeler veya takılmalar yaşamazsınız.
@@ -449,9 +401,6 @@ export const LandingPage = () => {
           </div>
 
           <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-sm">
-            <div className="w-11 h-11 rounded-xl bg-[#8B51FF]/15 border border-[#8B51FF]/30 flex items-center justify-center text-[#c084fc] mb-4">
-              <Zap size={22} />
-            </div>
             <h3 className="text-lg font-bold text-white mb-2">Hafif Bellek (RAM) Ayak İzi</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               Hantal ve bellek sızdıran geleneksel sohbet uygulamalarının aksine, Voys optimize edilmiş hafif mimarisi sayesinde arka planda sessizce çalışır, bilgisayarınızı asla yavaşlatmaz.
@@ -463,9 +412,8 @@ export const LandingPage = () => {
       {/* 6. Destek (#support) */}
       <section id="support" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-5">
-            <HelpCircle size={14} className="text-indigo-400" />
-            <span>Destek & Yardım</span>
+          <div className="inline-block px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+            Destek & Yardım
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
             Her Zaman Yanınızdayız
@@ -477,45 +425,39 @@ export const LandingPage = () => {
 
         {/* 3 Support Channels */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
-              <Users size={22} />
+          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">Topluluk Kanalları</h3>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
+                Voys sesli ve yazılı topluluk kanallarına katılarak diğer kullanıcılarla tanışın, deneyimlerinizi paylaşın ve anlık yardım alın.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Topluluk Kanalları</h3>
-            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
-              Voys sesli ve yazılı topluluk kanallarına katılarak diğer kullanıcılarla tanışın, deneyimlerinizi paylaşın ve anlık yardım alın.
-            </p>
-            <div className="flex items-center space-x-1.5 text-xs font-semibold text-indigo-300">
-              <span>Topluluğa Katıl</span>
-              <ArrowRight size={13} />
+            <div className="text-xs font-semibold text-indigo-300">
+              Topluluğa Katıl
             </div>
           </div>
 
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
-              <HelpCircle size={22} />
+          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">Yardım & Rehberler</h3>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
+                Mikrofon yapılandırması, yapay zeka gürültü filtresi kalibrasyonu ve ekran paylaşımı ayarlarını optimize etmek için detaylı kılavuzlar.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Yardım & Rehberler</h3>
-            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
-              Mikrofon yapılandırması, yapay zeka gürültü filtresi kalibrasyonu ve ekran paylaşımı ayarlarını optimize etmek için detaylı kılavuzlar.
-            </p>
-            <div className="flex items-center space-x-1.5 text-xs font-semibold text-indigo-300">
-              <span>Rehberleri İncele</span>
-              <ArrowRight size={13} />
+            <div className="text-xs font-semibold text-indigo-300">
+              Rehberleri İncele
             </div>
           </div>
 
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
-              <CheckCircle2 size={22} />
+          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">Geri Bildirim & İletişim</h3>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
+                Karşılaştığınız bir hatayı bildirmek veya yeni bir özellik önermek mi istiyorsunuz? Geri bildirimleriniz doğrudan geliştiricilere iletilir.
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Geri Bildirim & İletişim</h3>
-            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
-              Karşılaştığınız bir hatayı bildirmek veya yeni bir özellik önermek mi istiyorsunuz? Geri bildirimleriniz doğrudan geliştiricilere iletilir.
-            </p>
-            <div className="flex items-center space-x-1.5 text-xs font-semibold text-indigo-300">
-              <span>Hata veya Öneri Bildir</span>
-              <ArrowRight size={13} />
+            <div className="text-xs font-semibold text-indigo-300">
+              Hata veya Öneri Bildir
             </div>
           </div>
         </div>
@@ -592,11 +534,11 @@ export const LandingPage = () => {
               <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
             </div>
 
-            <div className="flex items-center space-x-6">
-              <a href="#discover" className="hover:text-gray-300 transition-colors">Keşfedin</a>
-              <a href="#security" className="hover:text-gray-300 transition-colors">Güvenlik</a>
-              <a href="#performance" className="hover:text-gray-300 transition-colors">Performans</a>
-              <a href="#support" className="hover:text-gray-300 transition-colors">Destek</a>
+            <div className="flex items-center space-x-6 text-xs sm:text-sm text-gray-400 font-medium">
+              <a href="#discover" className="hover:text-white transition-colors duration-200">Keşfedin</a>
+              <a href="#security" className="hover:text-white transition-colors duration-200">Güvenlik</a>
+              <a href="#performance" className="hover:text-white transition-colors duration-200">Performans</a>
+              <a href="#support" className="hover:text-white transition-colors duration-200">Destek</a>
             </div>
           </div>
         </div>
