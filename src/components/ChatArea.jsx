@@ -2457,36 +2457,12 @@ export const ChatArea = ({
                                 </div>
                               </div>
                             </div>
-                            <span className="text-[10px] text-gray-500 flex-shrink-0 ml-2">
-                              {member.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
-                            </span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
-
-                {/* Bölüm 3: Tehlikeli Bölge */}
-                {activeChannel !== 'home' && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-rose-400 uppercase tracking-wider block">
-                        TEHLİKELİ BÖLGE
-                      </label>
-                    </div>
-                    <div className="flex justify-start">
-                      <button
-                        type="button"
-                        onClick={() => setIsConfirmDeleteGroupOpen(true)}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold shadow transition active:scale-95 cursor-pointer flex items-center space-x-1.5 flex-shrink-0"
-                      >
-                        <Trash2 size={13} />
-                        <span>Grubu Sil</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </>
             );
           })()}
