@@ -1955,21 +1955,8 @@ export const ChatArea = ({
 
       {/* Main Content Area OR Inline User/Group Info */}
       {chatInnerView === 'userInfo' && hasActiveChat ? (
-        /* Inline Kişi Bilgisi / Kanal Bilgisi (Hesap Ayarları Düzeni) - Üst bar tamamen kaldırıldı, sadece sağ üstte kapat butonu */
+        /* Inline Kişi Bilgisi / Kanal Bilgisi (Hesap Ayarları Düzeni) */
         <div className="relative flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#08080a]">
-          {/* Sadece sağ üstte çarpı butonu */}
-          <button
-            type="button"
-            onClick={() => {
-              setChatInnerView('messages');
-              setSelectedUserInfoUser(null);
-            }}
-            className="absolute top-4 right-4 sm:top-5 sm:right-6 z-40 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-md"
-            title="Kapat (ESC)"
-          >
-            <X size={16} />
-          </button>
-
           <div className="flex-1 flex flex-col h-full min-h-0 overflow-y-auto custom-scrollbar px-6 md:px-10 py-8 select-none">
             <div className="max-w-2xl mx-auto w-full space-y-6">
             {/* Header: Kişi Bilgisi veya Grup Bilgisi */}
@@ -1984,6 +1971,17 @@ export const ChatArea = ({
                     : 'Grup profili, katılımcı yönetimi ve grup ayarları.'}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setChatInnerView('messages');
+                  setSelectedUserInfoUser(null);
+                }}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-md flex-shrink-0 ml-4"
+                title="Kapat (ESC)"
+              >
+                <X size={16} />
+              </button>
             </div>
 
             {(() => {
