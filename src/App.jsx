@@ -1053,14 +1053,11 @@ function StanduppApp() {
     };
   }, []);
 
-  const prevPttActiveRef = useRef(isPttActive);
   const prevInputModeRef = useRef(inputMode);
 
-  // Push-to-Talk (PTT) Synchronization with WebRTC Audio Stream
+  // Push-to-Talk (PTT) Synchronization with WebRTC Audio Stream (Silent, no sound effects)
   useEffect(() => {
-    const wasPttActive = prevPttActiveRef.current;
     const prevMode = prevInputModeRef.current;
-    prevPttActiveRef.current = isPttActive;
     prevInputModeRef.current = inputMode;
 
     if (!isConnected) return;
@@ -1069,11 +1066,9 @@ function StanduppApp() {
       if (isPttActive) {
         if (isMuted && !isDeafened) {
           setMuted(false, false);
-          if (!wasPttActive) sounds.playPttUnmute();
         }
       } else if (!isMuted) {
         setMuted(true, false);
-        if (wasPttActive) sounds.playPttMute();
       }
     } else if (prevMode === 'ptt' && isMuted && !isDeafened) {
       setMuted(false, false);

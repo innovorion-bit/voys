@@ -1,6 +1,6 @@
 // UI Sound Effects Engine with open-source WAV assets and Web Audio API fallback
 export const DEFAULT_SOUND_CATEGORIES = {
-  ptt: true,
+  ptt: false,
   voiceConnection: true,
   voiceActions: true,
   message: true,
@@ -334,11 +334,11 @@ class SoundEffects {
   }
 
   playPttMute() {
-    this.play('mute', { category: 'ptt' });
+    // Disabled: PTT sound effects completely removed from app
   }
 
   playPttUnmute() {
-    this.play('unmute', { category: 'ptt' });
+    // Disabled: PTT sound effects completely removed from app
   }
 
   playDeafen() {
