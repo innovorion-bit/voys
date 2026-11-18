@@ -74,7 +74,11 @@ export const ScreenShareModal = ({
   return (
     <div className="absolute inset-0 z-30 bg-[#0b0c10] flex flex-col justify-between text-gray-200 select-none overflow-y-auto">
       {/* Header Bar */}
-      <div className="flex items-center justify-end px-6 py-4 flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-5 flex-shrink-0">
+        <div>
+          <h2 className="text-sm font-bold text-white tracking-wide">Ekran Paylaşımı</h2>
+          <p className="text-xs text-gray-400">Yayın çözünürlüğü ve kare hızını seçin</p>
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -140,7 +144,7 @@ export const ScreenShareModal = ({
         </div>
 
         {/* Sistem Sesi */}
-        <div className="w-full p-3.5 rounded-xl bg-[#15161d] border border-white/5 flex items-center justify-between">
+        <div className="w-full px-1 py-1 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-white">Sistem Sesi</p>
             <p className="text-[11px] text-gray-400">Oyun ve uygulama seslerini odaya ilet</p>
@@ -157,7 +161,7 @@ export const ScreenShareModal = ({
       </div>
 
       {/* Footer Bar */}
-      <div className="flex items-center justify-end px-6 py-4 border-t border-white/10 bg-[#101116] flex-shrink-0">
+      <div className="flex items-center justify-end px-6 py-5 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <button
             type="button"
