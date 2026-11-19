@@ -27,10 +27,10 @@ export const LandingPage = () => {
 
   return (
     <div
-      className="w-full min-h-[3240px] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between bg-[#07050f] scroll-smooth"
+      className="w-full min-h-[4320px] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between bg-[#07050f] scroll-smooth"
       style={{
-        backgroundImage: "url('/voys_hero_bg.jpg?v=3')",
-        backgroundSize: '1920px 3240px',
+        backgroundImage: "url('/voys_hero_bg.jpg?v=5')",
+        backgroundSize: '1920px 4320px',
         backgroundPosition: 'top center',
         backgroundRepeat: 'no-repeat',
       }}
