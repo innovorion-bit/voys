@@ -48,6 +48,7 @@ import {
   resolveMemberPresence,
   resolveChannelCall,
   isChannelMatch,
+  canonicalChannelId,
   mergeVoiceAndCallMembers,
 } from './utils/userDisplay';
 import { MAX_VOLUME_PERCENT, clampVolumePercent } from './utils/remoteAudioGain';
@@ -334,17 +335,26 @@ function StanduppApp() {
     };
   }, [activeUserProfile?.id]);
 
-  // Periodic presence heartbeat so other clients know we are active
+  // Periodic presence heartbeat so other clients know we are active and in which voice channel
   useEffect(() => {
     if (!activeUserProfile?.id || activeUserProfile.id === 'you') return;
-    chatService.updatePresence(activeUserProfile);
-    const interval = setInterval(() => {
-      chatService.updatePresence(activeUserProfile);
-    }, 15000);
+
+    const sendHeartbeat = () => {
+      const snap = voiceCallSnapshotRef.current;
+      const voiceChan = (snap?.isConnected && snap?.activeCallChannelId) ? String(snap.activeCallChannelId) : null;
+      chatService.updatePresence({
+        ...activeUserProfile,
+        voiceChannelId: voiceChan,
+      });
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 15000);
 
     const handleFocus = () => {
-      chatService.updatePresence(activeUserProfile);
+      sendHeartbeat();
       chatService.requestPresences?.();
+      chatService.requestCallStatus?.(activeChannelRef.current);
     };
     window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleFocus);
@@ -356,21 +366,30 @@ function StanduppApp() {
     };
   }, [activeUserProfile]);
 
-  // Stale presence sweeper: if a non-self user hasn't sent a heartbeat in 45s, mark them offline
+  // Stale presence sweeper: mark inactive users offline while strictly protecting active voice participants
   useEffect(() => {
     const sweepInterval = setInterval(() => {
       const now = Date.now();
-      const STALE_THRESHOLD = 45000;
+      const STALE_THRESHOLD = 150000; // 2.5 minutes grace to accommodate browser background throttling
       const selfId = activeUserProfile?.id ? String(activeUserProfile.id).toLowerCase() : null;
 
       setPresences((prev) => {
         let changed = false;
         const next = { ...prev };
+        const snap = voiceCallSnapshotRef.current;
 
         Object.entries(prev).forEach(([key, entry]) => {
           if (!entry || !entry.isOnline) return;
           const entryId = String(entry.userId || entry.id || key).toLowerCase();
           if (selfId && (entryId === selfId || key.toLowerCase() === selfId)) return;
+
+          // Never mark offline if user is currently known to be in any voice call
+          const isUserInCall = Object.values(snap?.channelCalls || {}).some(
+            (c) => c?.active && Array.isArray(c.members) && c.members.some(
+              (m) => String(m.id || m.user_id || m.userId).toLowerCase() === entryId
+            )
+          );
+          if (isUserInCall || entry.voiceChannelId) return;
 
           const lastSeen = entry.receivedAt || entry.timestamp || 0;
           if (lastSeen > 0 && now - lastSeen > STALE_THRESHOLD) {
@@ -388,7 +407,7 @@ function StanduppApp() {
 
         return changed ? next : prev;
       });
-    }, 15000);
+    }, 20000);
 
     return () => clearInterval(sweepInterval);
   }, [activeUserProfile?.id]);
@@ -921,6 +940,91 @@ function StanduppApp() {
     };
   }, []);
 
+  // Handle call_query requests from newly connected or navigating clients
+  useEffect(() => {
+    const handleCallQuery = (query) => {
+      const snap = voiceCallSnapshotRef.current;
+      if (!snap?.isConnected || !snap?.activeCallChannelId) return;
+
+      const targetChan = String(snap.activeCallChannelId);
+      if (query?.channelId && !isChannelMatch(query.channelId, targetChan)) {
+        return;
+      }
+
+      const activeCall =
+        snap.effectiveChannelCalls?.[targetChan] ||
+        snap.channelCalls?.[targetChan] ||
+        resolveChannelCall(snap.effectiveChannelCalls, targetChan);
+
+      const resolvedMembers = mergeVoiceAndCallMembers(
+        snap.voiceMembers,
+        activeCall?.members,
+        activeUserProfile
+      );
+
+      chatService.sendCallUpdate({
+        channelId: targetChan,
+        active: true,
+        stage: 'active',
+        initiator: activeCall?.initiator || activeUserProfile,
+        targetUserId: isDm ? activeDmUserId : null,
+        targetUser: isDm ? activeDmFriend : null,
+        count: Math.max(resolvedMembers.length, 1),
+        members: resolvedMembers,
+        timestamp: Date.now(),
+      });
+    };
+
+    chatService.on('call_query', handleCallQuery);
+    return () => {
+      chatService.off('call_query', handleCallQuery);
+    };
+  }, [activeUserProfile, isDm, activeDmUserId, activeDmFriend]);
+
+  // Broadcast active call heartbeat periodically (every 4s) so all clients immediately discover active voice sessions
+  useEffect(() => {
+    if (!isConnected || !activeCallChannelId) return;
+
+    const broadcastHeartbeat = () => {
+      const snap = voiceCallSnapshotRef.current;
+      if (!snap?.isConnected || !snap?.activeCallChannelId) return;
+
+      const targetChan = String(snap.activeCallChannelId);
+      const activeCall =
+        snap.effectiveChannelCalls?.[targetChan] ||
+        snap.channelCalls?.[targetChan] ||
+        resolveChannelCall(snap.effectiveChannelCalls, targetChan);
+
+      const resolvedMembers = mergeVoiceAndCallMembers(
+        snap.voiceMembers,
+        activeCall?.members,
+        activeUserProfile
+      );
+
+      chatService.sendCallUpdate({
+        channelId: targetChan,
+        active: true,
+        stage: 'active',
+        initiator: activeCall?.initiator || activeUserProfile,
+        targetUserId: isDm ? activeDmUserId : null,
+        targetUser: isDm ? activeDmFriend : null,
+        count: Math.max(resolvedMembers.length, 1),
+        members: resolvedMembers,
+        timestamp: Date.now(),
+      });
+    };
+
+    broadcastHeartbeat();
+    const interval = setInterval(broadcastHeartbeat, 4000);
+    return () => clearInterval(interval);
+  }, [isConnected, activeCallChannelId, activeUserProfile, isDm, activeDmUserId, activeDmFriend]);
+
+  // Proactively query call status whenever entering or switching to a channel
+  useEffect(() => {
+    if (!activeChannel) return;
+    chatService.requestCallStatus?.(activeChannel);
+  }, [activeChannel]);
+
   // Fetch only channels where the active user is an explicit member and subscribe to realtime updates
   useEffect(() => {
     let cancelled = false;
@@ -1167,7 +1271,8 @@ function StanduppApp() {
           })
           : null;
 
-      const callRoom = `standupp-call-${targetChannelId}`;
+      const cleanChan = canonicalChannelId(targetChannelId) || targetChannelId;
+      const callRoom = `standupp-call-${cleanChan}`;
       switchVoiceRoom(callRoom);
       await connectVoice(null, activeUserProfile.name, activeUserProfile);
       if (inputMode === 'ptt') {

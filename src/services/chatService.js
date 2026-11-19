@@ -19,6 +19,7 @@ class RealtimeChatService {
       presence: [],
       all_presences: [],
       call_status: [],
+      call_query: [],
       account_deleted: [],
       delete_message: [],
       clear_chat: [],
@@ -162,6 +163,8 @@ class RealtimeChatService {
             }
           } else if (event.data?.type === 'CALL_STATUS_UPDATE' && event.data.payload) {
             this.emitLocal('call_status', event.data.payload);
+          } else if (event.data?.type === 'CALL_QUERY') {
+            this.emitLocal('call_query', event.data.payload);
           } else if (event.data?.type === 'MESSAGE_READ' && event.data.payload) {
             this.emitLocal('message_read', event.data.payload);
           } else if (event.data?.type === 'ACCOUNT_DELETED' && event.data.payload) {
@@ -255,6 +258,11 @@ class RealtimeChatService {
               this.emitLocal('call_status', payload);
             }
           })
+          .on('broadcast', { event: 'call_query' }, ({ payload }) => {
+            if (payload) {
+              this.emitLocal('call_query', payload);
+            }
+          })
           .on('broadcast', { event: 'presence_update' }, ({ payload }) => {
             if (payload && (payload.userId || payload.id)) {
               this.emitLocal('presence', payload);
@@ -301,7 +309,11 @@ class RealtimeChatService {
               this.emitLocal('typing', payload);
             }
           })
-          .subscribe();
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              this.requestCallStatus();
+            }
+          });
       } catch (err) {
         console.warn('Supabase call channel error:', err);
       }
@@ -593,6 +605,39 @@ class RealtimeChatService {
     }
 
     this.emitLocal('call_status', callData);
+  }
+
+  // Request active call state from network / other clients
+  requestCallStatus(channelId = null) {
+    const payload = {
+      channelId: channelId ? String(channelId) : null,
+      requestedAt: Date.now(),
+    };
+
+    if (this.presenceBroadcastChannel) {
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'CALL_QUERY',
+          payload,
+        });
+      } catch {}
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'call_query',
+          payload,
+        });
+      } catch (err) {
+        console.warn('Supabase call query broadcast error:', err);
+      }
+    }
+
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('call_query', payload);
+    }
   }
 
   // Broadcast account deletion event to connected clients and browser tabs

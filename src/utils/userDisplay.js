@@ -263,17 +263,14 @@ export const computeMemberOnlineStatus = ({
 
   const hasVoicePresence = Boolean(
     p &&
-    p.voiceChannelId &&
-    p.status !== 'offline' &&
-    p.status !== 'invisible' &&
-    p.isOnline !== false
+    p.voiceChannelId
   );
 
   const isInVoice = isInVoiceList || hasVoicePresence;
 
   if (isInVoice) {
     return {
-      status: p?.status && p.status !== 'offline' && p.status !== 'invisible' ? p.status : 'online',
+      status: 'online',
       isOnline: true,
       game: p?.game !== undefined ? p.game : (profile.game || member.game || null),
       substatus: p?.substatus || profile.substatus || member.substatus || 'Seste',
@@ -641,10 +638,11 @@ export const partitionSidebarGroupMembers = ({
     return true;
   });
 
+  const hasVoiceMembers = voiceMembers.length > 0;
   return {
-    showVoiceSection: true,
+    showVoiceSection: Boolean(hasVoiceMembers || isInCall),
     voiceMembers,
-    groupMembers,
+    groupMembers: hasVoiceMembers ? groupMembers : safeMembers,
   };
 };
 
@@ -742,7 +740,7 @@ export const mergeChannelCallsWithPresences = ({
     chanMap.set(uid, normalizeVoiceMember(p, uid));
   });
 
-  // 2. Transient call_status broadcasts (with stale member pruning when newer presence contradicts)
+  // 2. Transient call_status broadcasts & active calls
   Object.entries(channelCalls || {}).forEach(([chanId, callInfo]) => {
     if (!chanId || !callInfo?.active) return;
     const rawMembers = Array.isArray(callInfo.members) && callInfo.members.length > 0
@@ -752,6 +750,20 @@ export const mergeChannelCallsWithPresences = ({
         : [];
     if (rawMembers.length === 0) return;
 
+    // Prune abandoned calls where no heartbeat was received for > 30s
+    // unless self is actively connected to this channel
+    const callAge = Date.now() - (callInfo.receivedAt || callInfo.timestamp || 0);
+    const isSelfConnectedHere = Boolean(isConnected && activeCallChannelId && isChannelMatch(activeCallChannelId, chanId));
+    if (callAge > 30000 && !isSelfConnectedHere) {
+      const hasAnyLivePresence = rawMembers.some((m) => {
+        const p = resolveMemberPresence(presences, m);
+        return p && p.voiceChannelId && isChannelMatch(p.voiceChannelId, chanId);
+      });
+      if (!hasAnyLivePresence) {
+        return;
+      }
+    }
+
     const chanMap = ensureChanMap(chanId);
     rawMembers.forEach((m) => {
       if (!m) return;
@@ -760,15 +772,12 @@ export const mergeChannelCallsWithPresences = ({
 
       const p = resolveMemberPresence(presences, m) || (mUid ? presences?.[mUid] : null);
       if (p) {
-        if (p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false)) {
-          return;
-        }
-        const hasExplicitVoiceField = p.voiceChannelId !== undefined;
+        // Prune ONLY if presence EXPLICITLY states that the user is in a DIFFERENT voice channel
         const presenceChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
         if (
-          hasExplicitVoiceField &&
-          (!presenceChan || !isChannelMatch(presenceChan, chanId)) &&
-          (p.receivedAt || 0) >= (callInfo.receivedAt || 0) + 1500
+          presenceChan &&
+          !isChannelMatch(presenceChan, chanId) &&
+          (p.receivedAt || 0) >= (callInfo.receivedAt || 0) + 3000
         ) {
           return;
         }
