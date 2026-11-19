@@ -47,36 +47,36 @@ export const LandingPage = () => {
             />
           </Link>
 
-          {/* Nav Links - Sade, Zarif ve Akıcı Floating Capsule Menu */}
-          <nav className="hidden md:flex items-center px-1.5 py-1 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 backdrop-blur-md shadow-lg shadow-black/20 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+          {/* Nav Links - Glassmorphic Floating Capsule Menu */}
+          <nav className="hidden md:flex items-center px-1.5 py-1 rounded-full bg-[#0e0920]/60 border border-white/15 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_8px_32px_rgba(0,0,0,0.4)] absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
             <a
               href="#discover"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-white/[0.08] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200"
             >
               Keşfedin
             </a>
             <a
               href="#security"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-white/[0.08] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200"
             >
               Güvenlik
             </a>
             <a
               href="#performance"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-white/[0.08] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200"
             >
               Performans
             </a>
             <a
               href="#support"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-white/[0.08] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200"
             >
               Destek
             </a>
             <button
               type="button"
               onClick={() => handleDownloadClick(directExeUrl)}
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200 cursor-pointer"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-white/[0.08] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 cursor-pointer"
             >
               İndir
             </button>
@@ -160,10 +160,10 @@ export const LandingPage = () => {
       {/* 3. Keşfedin (#discover) */}
       <section id="discover" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full text-center scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/15 border border-white/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_20px_rgba(139,81,255,0.15)]">
             Keşfedin
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
             Modern ve Sade İletişim Deneyimi
           </h2>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-300 font-normal leading-relaxed">
@@ -173,9 +173,9 @@ export const LandingPage = () => {
 
         {/* 3 Key Highlights */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_16px_48px_rgba(139,81,255,0.25)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">Kristal Netliğinde Ses</h3>
+              <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Kristal Netliğinde Ses</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 RNNoise yapay zeka gürültü engelleme teknolojisi ile mekanik klavye seslerini, oda yankısını ve arka plan gürültülerini tamamen yok edin.
               </p>
@@ -185,9 +185,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_16px_48px_rgba(139,81,255,0.25)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">Grup ve Özel Odalar</h3>
+              <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Grup ve Özel Odalar</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Arkadaşlarınızla bire bir doğrudan mesajlaşın veya dilediğiniz büyüklükte arkadaş grupları kurup sesli odalara tek tıklamayla anında katılın.
               </p>
@@ -197,9 +197,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_16px_48px_rgba(139,81,255,0.25)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">60 FPS Ultra Akıcı Yayın</h3>
+              <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">60 FPS Ultra Akıcı Yayın</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Oyunlarınızı veya tüm masaüstünüzü 1080p 60 FPS hızında, sistem sesiyle birlikte donma ve takılma olmadan arkadaşlarınızla paylaşın.
               </p>
@@ -214,10 +214,10 @@ export const LandingPage = () => {
       {/* 4. Güvenlik (#security) */}
       <section id="security" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/15 border border-white/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_20px_rgba(139,81,255,0.15)]">
             Güvenlik & Gizlilik
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
             Tavizsiz Veri Güvenliği, Mutlak Gizlilik
           </h2>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-300 font-normal leading-relaxed">
@@ -227,9 +227,9 @@ export const LandingPage = () => {
 
         {/* 3 Detailed Security Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_16px_48px_rgba(139,81,255,0.25)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">Uçtan Uca Şifreli P2P</h3>
+              <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Uçtan Uca Şifreli P2P</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Ses ve ekran paylaşımı doğrudan eşler arası (Peer-to-Peer) WebRTC altyapısıyla iletilir. DTLS-SRTP 256-bit şifreleme sayesinde görüşmeleriniz sunucularda asla saklanmaz veya dinlenemez.
               </p>
@@ -239,9 +239,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_16px_48px_rgba(139,81,255,0.25)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">Kurumsal Kimlik Doğrulama</h3>
+              <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Kurumsal Kimlik Doğrulama</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Supabase destekli güvenli oturum yönetimi, kriptografik JWT token yapısı ve veritabanı düzeyinde Row-Level Security (RLS) politikalarıyla kullanıcı hesabınız tam koruma altındadır.
               </p>
@@ -251,9 +251,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_16px_48px_rgba(139,81,255,0.25)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">Sıfır Veri Satışı & İzleyici</h3>
+              <h3 className="text-xl font-bold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Sıfır Veri Satışı & İzleyici</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Voys'ta sizi takip eden reklam kodları veya analiz izleyicileri bulunmaz. Profil bilgileriniz ve yazışmalarınız üçüncü taraf şirketlere asla satılmaz veya taranmaz.
               </p>
@@ -265,7 +265,7 @@ export const LandingPage = () => {
         </div>
 
         {/* Security Trust Banner */}
-        <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm flex flex-wrap items-center justify-around gap-4 text-xs sm:text-sm text-gray-300 font-medium">
+        <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl flex flex-wrap items-center justify-around gap-4 text-xs sm:text-sm text-gray-200 font-medium">
           <span>256-bit SSL / TLS Güvenli Bağlantı</span>
           <span className="hidden sm:block text-gray-600">•</span>
           <span>Katı Gizlilik Standartları</span>
@@ -277,10 +277,10 @@ export const LandingPage = () => {
       {/* 5. Performans (#performance) */}
       <section id="performance" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/15 border border-white/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_20px_rgba(139,81,255,0.15)]">
             Performans & Hız
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
             Ultra Düşük Gecikme, Maksimum Verimlilik
           </h2>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-300 font-normal leading-relaxed">
@@ -290,50 +290,50 @@ export const LandingPage = () => {
 
         {/* 4 Stat Metrics Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          <div className="p-6 rounded-2xl bg-[#0e0920]/70 border border-white/10 backdrop-blur-md text-center">
-            <div className="text-3xl sm:text-4xl font-black text-white mb-1.5 bg-gradient-to-r from-purple-400 to-[#d8b4fe] bg-clip-text text-transparent">
+          <div className="p-6 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl text-center transition-all group">
+            <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-[#d8b4fe] to-white bg-clip-text text-transparent mb-1.5 drop-shadow-[0_2px_12px_rgba(139,81,255,0.3)]">
               &lt; 25ms
             </div>
-            <div className="text-xs sm:text-sm font-semibold text-gray-200 mb-1">Ultra Düşük Gecikme</div>
+            <div className="text-xs sm:text-sm font-bold text-white mb-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">Ultra Düşük Gecikme</div>
             <p className="text-[11px] sm:text-xs text-gray-400">Doğrudan P2P WebRTC aktarımı</p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-[#0e0920]/70 border border-white/10 backdrop-blur-md text-center">
-            <div className="text-3xl sm:text-4xl font-black text-white mb-1.5 bg-gradient-to-r from-purple-400 to-[#d8b4fe] bg-clip-text text-transparent">
+          <div className="p-6 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl text-center transition-all group">
+            <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-[#d8b4fe] to-white bg-clip-text text-transparent mb-1.5 drop-shadow-[0_2px_12px_rgba(139,81,255,0.3)]">
               60 FPS
             </div>
-            <div className="text-xs sm:text-sm font-semibold text-gray-200 mb-1">Akıcı Ekran Yayını</div>
+            <div className="text-xs sm:text-sm font-bold text-white mb-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">Akıcı Ekran Yayını</div>
             <p className="text-[11px] sm:text-xs text-gray-400">Donanım hızlandırmalı video motoru</p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-[#0e0920]/70 border border-white/10 backdrop-blur-md text-center">
-            <div className="text-3xl sm:text-4xl font-black text-white mb-1.5 bg-gradient-to-r from-purple-400 to-[#d8b4fe] bg-clip-text text-transparent">
+          <div className="p-6 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl text-center transition-all group">
+            <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-[#d8b4fe] to-white bg-clip-text text-transparent mb-1.5 drop-shadow-[0_2px_12px_rgba(139,81,255,0.3)]">
               48 kHz
             </div>
-            <div className="text-xs sm:text-sm font-semibold text-gray-200 mb-1">Stüdyo Opus Sesi</div>
+            <div className="text-xs sm:text-sm font-bold text-white mb-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">Stüdyo Opus Sesi</div>
             <p className="text-[11px] sm:text-xs text-gray-400">Düşük bant genişliğinde netlik</p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-[#0e0920]/70 border border-white/10 backdrop-blur-md text-center">
-            <div className="text-3xl sm:text-4xl font-black text-white mb-1.5 bg-gradient-to-r from-purple-400 to-[#d8b4fe] bg-clip-text text-transparent">
+          <div className="p-6 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-xl text-center transition-all group">
+            <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-[#d8b4fe] to-white bg-clip-text text-transparent mb-1.5 drop-shadow-[0_2px_12px_rgba(139,81,255,0.3)]">
               &lt; %1
             </div>
-            <div className="text-xs sm:text-sm font-semibold text-gray-200 mb-1">Minimum CPU Yükü</div>
+            <div className="text-xs sm:text-sm font-bold text-white mb-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">Minimum CPU Yükü</div>
             <p className="text-[11px] sm:text-xs text-gray-400">Oyunlarda sıfır FPS kaybı</p>
           </div>
         </div>
 
         {/* 2 Detailed Technical Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-sm">
-            <h3 className="text-lg font-bold text-white mb-2">Donanım Hızlandırmalı Medya Hattı</h3>
+          <div className="p-7 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all duration-300 group">
+            <h3 className="text-lg font-bold text-white mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Donanım Hızlandırmalı Medya Hattı</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               Voys masaüstü uygulaması, ekran yakalama ve ses filtreleme görevlerini modern GPU ve CPU komut setleriyle paralel işler. Rekabetçi oyunlarınızda mikro gecikmeler veya takılmalar yaşamazsınız.
             </p>
           </div>
 
-          <div className="p-7 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-sm">
-            <h3 className="text-lg font-bold text-white mb-2">Hafif Bellek (RAM) Ayak İzi</h3>
+          <div className="p-7 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all duration-300 group">
+            <h3 className="text-lg font-bold text-white mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Hafif Bellek (RAM) Ayak İzi</h3>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               Hantal ve bellek sızdıran geleneksel sohbet uygulamalarının aksine, Voys optimize edilmiş hafif mimarisi sayesinde arka planda sessizce çalışır, bilgisayarınızı asla yavaşlatmaz.
             </p>
@@ -344,10 +344,10 @@ export const LandingPage = () => {
       {/* 6. Destek (#support) */}
       <section id="support" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/15 border border-white/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_20px_rgba(139,81,255,0.15)]">
             Destek & Yardım
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
             Her Zaman Yanınızdayız
           </h2>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-300 font-normal leading-relaxed">
@@ -357,9 +357,9 @@ export const LandingPage = () => {
 
         {/* 3 Support Channels */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-md flex flex-col justify-between">
+          <div className="p-7 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Topluluk Kanalları</h3>
+              <h3 className="text-lg font-bold text-white mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Topluluk Kanalları</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
                 Voys sesli ve yazılı topluluk kanallarına katılarak diğer kullanıcılarla tanışın, deneyimlerinizi paylaşın ve anlık yardım alın.
               </p>
@@ -369,9 +369,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-md flex flex-col justify-between">
+          <div className="p-7 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Yardım & Rehberler</h3>
+              <h3 className="text-lg font-bold text-white mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Yardım & Rehberler</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
                 Mikrofon yapılandırması, yapay zeka gürültü filtresi kalibrasyonu ve ekran paylaşımı ayarlarını optimize etmek için detaylı kılavuzlar.
               </p>
@@ -381,9 +381,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-md flex flex-col justify-between">
+          <div className="p-7 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#8B51FF]/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_12px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl flex flex-col justify-between transition-all duration-300 group">
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Geri Bildirim & İletişim</h3>
+              <h3 className="text-lg font-bold text-white mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:text-[#f3e8ff] transition-colors">Geri Bildirim & İletişim</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
                 Karşılaştığınız bir hatayı bildirmek veya yeni bir özellik önermek mi istiyorsunuz? Geri bildirimleriniz doğrudan geliştiricilere iletilir.
               </p>
@@ -396,7 +396,7 @@ export const LandingPage = () => {
       </section>
 
       {/* 7. Footer */}
-      <footer className="relative z-10 mt-auto pt-16 sm:pt-24 pb-12 sm:pb-16 px-6 sm:px-10 lg:px-16 border-t border-white/[0.08] bg-[#07050f]/85 backdrop-blur-xl">
+      <footer className="relative z-10 mt-auto pt-16 sm:pt-24 pb-12 sm:pb-16 px-6 sm:px-10 lg:px-16 border-t border-white/10 bg-[#07050f]/75 backdrop-blur-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
         <div className="max-w-6xl mx-auto w-full">
           {/* Üst Alan: Esnek Çok Kolonlu Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 sm:pb-16">
@@ -406,7 +406,7 @@ export const LandingPage = () => {
                 <img
                   src="/voys_weblogo.png"
                   alt="Voys"
-                  className="h-7 sm:h-8 w-auto object-contain opacity-95 hover:opacity-100 transition-opacity"
+                  className="h-7 sm:h-8 w-auto object-contain opacity-95 hover:opacity-100 transition-opacity drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
                 />
               </Link>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-sm">
@@ -416,61 +416,61 @@ export const LandingPage = () => {
 
             {/* Kolon 1: Gezinme / Ürün */}
             <div className="flex flex-col space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">
                 Ürün
               </div>
-              <a href="#discover" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#discover" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Keşfedin
               </a>
-              <a href="#security" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#security" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Güvenlik
               </a>
-              <a href="#performance" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#performance" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Performans
               </a>
-              <a href="#support" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#support" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Destek
               </a>
             </div>
 
             {/* Kolon 2: Platform & İndir */}
             <div className="flex flex-col space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">
                 Platform
               </div>
               <button
                 type="button"
                 onClick={() => handleDownloadClick(directExeUrl)}
-                className="text-left text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150"
+                className="text-left text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150 cursor-pointer"
               >
                 Windows (x64) İndir
               </button>
-              <Link to="/auth" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <Link to="/auth" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Tarayıcıda Çalıştır
               </Link>
-              <a href="#performance" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#performance" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Sistem Gereksinimleri
               </a>
-              <a href="#discover" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#discover" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Ekran Yayını Özellikleri
               </a>
             </div>
 
             {/* Kolon 3: Kurumsal & Yasal */}
             <div className="flex flex-col space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">
                 Kurumsal & Yasal
               </div>
-              <a href="#security" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#security" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Gizlilik İlkeleri
               </a>
-              <a href="#security" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#security" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Uçtan Uca Şifreleme
               </a>
-              <a href="#support" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#support" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Topluluk Kuralları
               </a>
-              <a href="#support" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+              <a href="#support" className="text-xs sm:text-sm text-gray-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(216,180,254,0.4)] transition-all duration-150">
                 Hata Bildirimi
               </a>
             </div>
