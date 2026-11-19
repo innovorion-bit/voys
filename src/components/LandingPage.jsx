@@ -48,35 +48,35 @@ export const LandingPage = () => {
           </Link>
 
           {/* Nav Links - Sade, Zarif ve Akıcı Floating Capsule Menu */}
-          <nav className="hidden md:flex items-center px-1.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md shadow-lg shadow-black/20 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <nav className="hidden md:flex items-center px-1.5 py-1 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 backdrop-blur-md shadow-lg shadow-black/20 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
             <a
               href="#discover"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
             >
               Keşfedin
             </a>
             <a
               href="#security"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
             >
               Güvenlik
             </a>
             <a
               href="#performance"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
             >
               Performans
             </a>
             <a
               href="#support"
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200"
             >
               Destek
             </a>
             <button
               type="button"
               onClick={() => handleDownloadClick(directExeUrl)}
-              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all duration-200 cursor-pointer"
+              className="px-4 py-1.5 rounded-full text-xs lg:text-sm font-medium text-[#d8b4fe] hover:text-white hover:bg-[#8B51FF]/20 transition-all duration-200 cursor-pointer"
             >
               İndir
             </button>
