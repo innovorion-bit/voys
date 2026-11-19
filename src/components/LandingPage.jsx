@@ -29,7 +29,7 @@ export const LandingPage = () => {
     <div
       className="w-full min-h-[4320px] text-gray-200 selection:bg-[#8B51FF]/40 selection:text-white font-sans antialiased overflow-x-hidden relative flex flex-col justify-between bg-[#07050f] scroll-smooth"
       style={{
-        backgroundImage: "url('/voys_hero_bg.jpg?v=5')",
+        backgroundImage: "url('/voys_backgraund.jpg?v=6')",
         backgroundSize: '1920px 4320px',
         backgroundPosition: 'top center',
         backgroundRepeat: 'no-repeat',
