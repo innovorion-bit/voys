@@ -290,11 +290,12 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
   const filteredGroups = useMemo(() => {
     const q = groupSearch.trim().toLowerCase();
     if (!q) return effectiveGroups;
-    return effectiveGroups.filter((g) =>
-      [g.name, g.id, g.creator_name, g.creator_username]
+    return effectiveGroups.filter((g) => {
+      const cleanId = String(g.id || '').replace(/^(text-|voice-)/i, '');
+      return [g.name, g.id, cleanId, `#${cleanId}`, g.creator_name, g.creator_username]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q))
-    );
+        .some((v) => String(v).toLowerCase().includes(q));
+    });
   }, [effectiveGroups, groupSearch]);
 
   const telemetry = data?.telemetry || {};
@@ -585,7 +586,12 @@ export const AdminMonitorTab = ({ onUserDeleted = null }) => {
                               )}
                               <div className="min-w-0">
                                 <div className="font-semibold text-white truncate max-w-[200px]">{g.name}</div>
-                                <div className="text-[10px] text-gray-500 font-mono truncate max-w-[200px]">{g.id}</div>
+                                <div
+                                  className="text-[10px] text-gray-500 font-mono truncate max-w-[200px]"
+                                  title={g.id}
+                                >
+                                  #{String(g.id || '').replace(/^(text-|voice-)/i, '')}
+                                </div>
                               </div>
                             </div>
                           </td>
