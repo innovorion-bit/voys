@@ -462,8 +462,22 @@ function StanduppApp() {
     outgoing: [],
   });
 
-  // Active Channel Members state
-  const [channelMembers, setChannelMembers] = useState([]);
+  // Active Channel Members state with instant localStorage cache pre-hydration
+  const [channelMembers, setChannelMembers] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location.pathname) {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'channel' && parts[1] && parts[1] !== 'home') {
+          const raw = localStorage.getItem(`voys_channel_members_${parts[1]}`);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        }
+      }
+    } catch {}
+    return [];
+  });
 
   // Friend & Member Modal Open States
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
@@ -636,6 +650,19 @@ function StanduppApp() {
   useEffect(() => {
     let cancelled = false;
 
+    // Immediately pre-hydrate from local cache for instant UI rendering (0 ms)
+    if (activeChannel && !isDm) {
+      try {
+        const raw = localStorage.getItem(`voys_channel_members_${activeChannel}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setChannelMembers(parsed);
+          }
+        }
+      } catch {}
+    }
+
     const fetchMembers = async () => {
       if (!activeChannel || isDm) {
         if (!cancelled) setChannelMembers([]);
@@ -643,8 +670,11 @@ function StanduppApp() {
       }
       try {
         const members = await dbService.fetchChannelMembers(activeChannel);
-        if (!cancelled && Array.isArray(members)) {
+        if (!cancelled && Array.isArray(members) && members.length > 0) {
           setChannelMembers(members);
+          try {
+            localStorage.setItem(`voys_channel_members_${activeChannel}`, JSON.stringify(members));
+          } catch {}
         }
       } catch (err) {
         console.warn('Channel members fetch warning:', err);

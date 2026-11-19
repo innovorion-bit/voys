@@ -1486,28 +1486,35 @@ export const dbService = {
             .from('channel_members')
             .select('*')
             .eq('channel_id', channelId),
-          10000,
+          6000,
           'Grup üyeleri alınırken zaman aşımı oluştu.'
         );
 
         if (!error && Array.isArray(memberRows)) {
           if (memberRows.length === 0) return [];
           const userIds = memberRows.map((m) => m.user_id);
-          const { data: profiles } = await withTimeout(
-            supabase
-              .from('profiles')
-              .select('id, username, display_name, avatar_url, status, substatus, game')
-              .in('id', userIds),
-            10000,
-            'Üye profilleri alınırken zaman aşımı oluştu.'
-          );
+
+          let profiles = null;
+          try {
+            const { data } = await withTimeout(
+              supabase
+                .from('profiles')
+                .select('id, username, display_name, avatar_url, status, substatus, game')
+                .in('id', userIds),
+              5000,
+              'Üye profilleri alınırken zaman aşımı oluştu.'
+            );
+            profiles = data;
+          } catch (profErr) {
+            console.warn('Profiles fetch warning in fetchChannelMembers:', profErr);
+          }
 
           if (profiles) {
             cacheUserProfiles(profiles);
           }
           const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
 
-          return memberRows.map((m) => {
+          const mapped = memberRows.map((m) => {
             const prof = profileMap.get(m.user_id) || {};
             const cached = getCachedUserProfile(m.user_id);
             const resolvedName = pickDisplayName(
@@ -1521,19 +1528,38 @@ export const dbService = {
               username: (!isUuidLike(prof.username) && prof.username) || cached?.username || 'user',
               avatar: resolvedAvatar,
               avatar_url: resolvedAvatar,
-              game: prof.game || '',
-              substatus: prof.substatus || '',
-              status: prof.status || 'offline',
+              game: prof.game || cached?.game || '',
+              substatus: prof.substatus || cached?.substatus || '',
+              status: prof.status || cached?.status || 'offline',
               profile: prof,
               profiles: prof,
             };
           });
+
+          // Save to localStorage cache for instant loading on refresh
+          try {
+            if (typeof localStorage !== 'undefined' && mapped.length > 0) {
+              localStorage.setItem(`voys_channel_members_${channelId}`, JSON.stringify(mapped));
+            }
+          } catch {}
+
+          return mapped;
         }
-        return [];
       } catch (err) {
         console.warn('Supabase fetchChannelMembers error:', err);
-        return [];
       }
+
+      // Fallback to localStorage cache if network query failed or timed out
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const raw = localStorage.getItem(`voys_channel_members_${channelId}`);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        }
+      } catch {}
+      return [];
     }
     const members = localDb.getChannelMembers().filter((m) => m.channel_id === channelId);
     const users = localDb.getUsers();

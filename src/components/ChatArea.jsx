@@ -976,6 +976,19 @@ export const ChatArea = ({
 
     if (liveMembers.length > 0) return liveMembers;
 
+    // Check localStorage cache before falling back to only currentUser
+    if (activeChannel) {
+      try {
+        const raw = localStorage.getItem(`voys_channel_members_${activeChannel}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+
     if (currentUser) {
       const selfStatus = currentUser.status || 'online';
       const selfOnline = selfStatus !== 'offline' && selfStatus !== 'invisible';

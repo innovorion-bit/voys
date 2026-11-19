@@ -142,12 +142,47 @@ export const useRealtimeChat = (
     return single;
   }, [isDmChannel, channelId, validCurrentUserId]);
 
-  // Store messages isolated by channelId & DM rooms
-  const [messagesByChannel, setMessagesByChannel] = useState({
-    'home': initialChatMessages,
-    'voice-sesli-sohbet': initialChatMessages,
-    ...initialDmMessages,
+  // Store messages isolated by channelId & DM rooms with instant localStorage cache hydration
+  const [messagesByChannel, setMessagesByChannel] = useState(() => {
+    const base = {
+      'home': initialChatMessages,
+      'voice-sesli-sohbet': initialChatMessages,
+      ...initialDmMessages,
+    };
+    try {
+      if (typeof localStorage !== 'undefined' && channelId) {
+        const raw = localStorage.getItem(`voys_cached_msgs_${channelId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            base[channelId] = parsed;
+          }
+        }
+      }
+    } catch {}
+    return base;
   });
+
+  // Instant local cache hydration when switching channels or on refresh
+  useEffect(() => {
+    if (!channelId) return;
+    try {
+      const raw = localStorage.getItem(`voys_cached_msgs_${channelId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessagesByChannel((prev) => {
+            if (prev[channelId] && prev[channelId].length > 0) return prev;
+            parsed.forEach((m) => m?.id && receivedMsgIdsRef.current.add(m.id));
+            return {
+              ...prev,
+              [channelId]: parsed,
+            };
+          });
+        }
+      }
+    } catch {}
+  }, [channelId]);
 
   const [typingUsers, setTypingUsers] = useState([]);
   const typingTimeoutsRef = useRef(new Map());
@@ -252,6 +287,10 @@ export const useRealtimeChat = (
         };
         updatedMsgs = [...channelMsgs, newEntry];
       }
+
+      try {
+        localStorage.setItem(`voys_cached_msgs_${targetRoom}`, JSON.stringify(updatedMsgs.slice(-100)));
+      } catch {}
 
       return {
         ...prevMap,
@@ -518,6 +557,9 @@ export const useRealtimeChat = (
             const merged = [...formattedDbMsgs, ...newRealtime].sort(
               (a, b) => getSortTime(a) - getSortTime(b)
             );
+            try {
+              localStorage.setItem(`voys_cached_msgs_${channelId}`, JSON.stringify(merged.slice(-100)));
+            } catch {}
             return {
               ...prevMap,
               [channelId]: merged,
@@ -564,6 +606,9 @@ export const useRealtimeChat = (
             const merged = [...formattedDbMsgs, ...newRealtime].sort(
               (a, b) => getSortTime(a) - getSortTime(b)
             );
+            try {
+              localStorage.setItem(`voys_cached_msgs_${channelId}`, JSON.stringify(merged.slice(-100)));
+            } catch {}
             return {
               ...prevMap,
               [channelId]: merged,
