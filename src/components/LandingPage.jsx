@@ -671,7 +671,7 @@ export const LandingPage = () => {
         </div>
 
         {/* 3 Support Channels */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Topluluk Kanalları</h3>
@@ -708,53 +708,139 @@ export const LandingPage = () => {
             </div>
           </div>
         </div>
-
-        {/* Quick FAQ Grid */}
-        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-sm">
-          <h3 className="text-xl font-bold text-white mb-6 text-center">Sıkça Sorulan Sorular</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-            <div className="p-4 rounded-xl bg-black/20 border border-white/5">
-              <h4 className="text-sm font-bold text-white mb-1.5">Voys tamamen ücretsiz mi?</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Evet, Voys kristal netliğinde ses, 60 FPS ekran paylaşımı ve sınırsız sohbet özellikleri dahil olmak üzere tamamen ücretsizdir.
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-black/20 border border-white/5">
-              <h4 className="text-sm font-bold text-white mb-1.5">Tarayıcı ile Masaüstü uygulaması arasında fark var mı?</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Her iki platformda da aynı özellikleri kullanabilirsiniz. Masaüstü uygulaması ek olarak global bas-konuş kısayolları ve gelişmiş donanım hızlandırma sağlar.
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-black/20 border border-white/5">
-              <h4 className="text-sm font-bold text-white mb-1.5">Sesli görüşmelerim kaydediliyor mu?</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Hayır. Voys, eşler arası (P2P) WebRTC şifrelemesi kullanır. Ses ve ekran akışlarınız sunucularımız üzerinden depolanmaz veya kaydedilmez.
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-black/20 border border-white/5">
-              <h4 className="text-sm font-bold text-white mb-1.5">Kendi grubumu nasıl kurabilirim?</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Giriş yaptıktan sonra sol menüdeki grup oluşturma ikonuna tıklayarak arkadaşlarınızı davet edebilir ve hemen özel sesli kanalınızı başlatabilirsiniz.
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
 
-      {/* 7. Footer */}
-      <footer className="relative z-10 py-10 px-6 sm:px-10 lg:px-16 border-t border-white/[0.06] bg-[#07050f]/70 backdrop-blur-lg">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-          <div className="flex items-center space-x-3">
-            <img src="/voys_weblogo.png" alt="Voys" className="h-5 sm:h-6 w-auto object-contain opacity-90" />
-            <span>•</span>
-            <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
+      {/* 7. Genişletilmiş ve Esnek Footer */}
+      <footer className="relative z-10 mt-auto pt-20 sm:pt-28 pb-12 sm:pb-16 px-6 sm:px-10 lg:px-16 border-t border-white/[0.08] bg-[#07050f]/85 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto w-full">
+          {/* Üst Alan: Esnek Çok Kolonlu Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-16">
+            {/* Marka & Durum (2 Kolon Genişliğinde) */}
+            <div className="lg:col-span-2 flex flex-col justify-between pr-0 lg:pr-8">
+              <div>
+                <Link to="/" className="inline-block mb-4" title="Voys">
+                  <img
+                    src="/voys_weblogo.png"
+                    alt="Voys"
+                    className="h-7 sm:h-8 w-auto object-contain opacity-95 hover:opacity-100 transition-opacity"
+                  />
+                </Link>
+                <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-sm mb-6">
+                  Birlikte konuşmak, paylaşmak ve topluluk oluşturmak için tasarlanmış yeni nesil yüksek performanslı iletişim platformu.
+                </p>
+              </div>
+
+              {/* Sistem Durumu Rozeti */}
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Tüm Sistemler Operasyonel</span>
+                </div>
+                <div className="text-xs text-gray-500 font-mono">v1.0.0</div>
+              </div>
+            </div>
+
+            {/* Kolon 1: Gezinme / Ürün */}
+            <div className="flex flex-col space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white">
+                Ürün
+              </div>
+              <a href="#discover" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Keşfedin
+              </a>
+              <a href="#security" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Güvenlik
+              </a>
+              <a href="#performance" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Performans
+              </a>
+              <a href="#support" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Destek
+              </a>
+              <Link to="/auth" className="text-xs sm:text-sm text-purple-400 hover:text-purple-300 transition-colors duration-150">
+                Web İstemcisi →
+              </Link>
+            </div>
+
+            {/* Kolon 2: Platform & İndir */}
+            <div className="flex flex-col space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white">
+                Platform
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDownloadClick(directExeUrl)}
+                className="text-left text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150"
+              >
+                Windows (x64) İndir
+              </button>
+              <Link to="/auth" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Tarayıcıda Çalıştır
+              </Link>
+              <a href="#performance" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Sistem Gereksinimleri
+              </a>
+              <a href="#discover" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Ekran Yayını Özellikleri
+              </a>
+            </div>
+
+            {/* Kolon 3: Kurumsal & Yasal */}
+            <div className="flex flex-col space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white">
+                Kurumsal & Yasal
+              </div>
+              <a href="#security" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Gizlilik İlkeleri
+              </a>
+              <a href="#security" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Uçtan Uca Şifreleme
+              </a>
+              <a href="#support" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Topluluk Kuralları
+              </a>
+              <a href="#support" className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors duration-150">
+                Hata Bildirimi
+              </a>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-6 text-xs sm:text-sm text-gray-400 font-medium">
-            <a href="#discover" className="hover:text-white transition-colors duration-200">Keşfedin</a>
-            <a href="#security" className="hover:text-white transition-colors duration-200">Güvenlik</a>
-            <a href="#performance" className="hover:text-white transition-colors duration-200">Performans</a>
-            <a href="#support" className="hover:text-white transition-colors duration-200">Destek</a>
+          {/* Alt Esnek Şerit: Güven & Temel Değerler */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400 mb-10">
+            <div className="flex flex-wrap items-center gap-6 text-xs text-gray-300">
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                Eşler Arası (P2P) WebRTC
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                Sıfır Günlük & Mutlak Gizlilik
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                RNNoise Yapay Zeka Filtresi
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1.5 ml-auto sm:ml-0"
+            >
+              <span>Başa Dön</span>
+              <span>↑</span>
+            </button>
+          </div>
+
+          {/* En Alt Bar: Telif ve Haklar */}
+          <div className="pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
+            <div className="flex items-center space-x-2">
+              <span>© 2026 Voys Inc. Tüm hakları saklıdır.</span>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              Topluluklar ve oyuncular için tasarlandı.
+            </div>
           </div>
         </div>
       </footer>
