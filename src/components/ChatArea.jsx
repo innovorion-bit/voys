@@ -132,6 +132,8 @@ import {
   partitionSidebarGroupMembers,
   computeMemberOnlineStatus,
   resolveMemberPresence,
+  getUserColor,
+  CLASSIC_PURPLE,
 } from '../utils/userDisplay';
 import { MAX_VOLUME_PERCENT, getVolumeSliderFillStyle } from '../utils/remoteAudioGain';
 import { MessageTextWithLinks } from './MessageTextWithLinks';
@@ -160,38 +162,100 @@ function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-// Helper to format typing indicator text nicely in Turkish
+// Helper to format typing indicator text nicely in Turkish with user-specific colors & animated dots
 function formatTypingText(users = []) {
   if (!users || users.length === 0) return null;
-  if (users.length === 1) {
+
+  const resolveTypingItem = (item) => {
+    if (!item) return { name: 'Biri', color: getUserColor('Biri', false) };
+    if (typeof item === 'string') {
+      return { name: item, color: getUserColor(item, false) };
+    }
+    const name = item.name || item.user || 'Biri';
+    const color = item.color || getUserColor(item.id || item.userId || name, false);
+    return { name, color };
+  };
+
+  const items = users.map(resolveTypingItem);
+  const primaryColor = items[0]?.color || CLASSIC_PURPLE;
+
+  const renderTypingDots = (dotColor) => (
+    <span className="inline-flex items-center gap-1 ml-1.5 align-middle" aria-hidden="true">
+      <span
+        className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.3s]"
+        style={{ backgroundColor: dotColor }}
+      />
+      <span
+        className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.15s]"
+        style={{ backgroundColor: dotColor }}
+      />
+      <span
+        className="w-1.5 h-1.5 rounded-full animate-bounce"
+        style={{ backgroundColor: dotColor }}
+      />
+    </span>
+  );
+
+  if (items.length === 1) {
     return (
-      <>
-        <span className="font-semibold text-indigo-300">{users[0]}</span> yazıyor...
-      </>
+      <span className="inline-flex items-center">
+        <span className="font-semibold" style={{ color: items[0].color }}>
+          {items[0].name}
+        </span>
+        <span className="ml-1 text-gray-400">yazıyor</span>
+        {renderTypingDots(items[0].color)}
+      </span>
     );
   }
-  if (users.length === 2) {
+
+  if (items.length === 2) {
     return (
-      <>
-        <span className="font-semibold text-indigo-300">{users[0]}</span> ve{' '}
-        <span className="font-semibold text-indigo-300">{users[1]}</span> yazıyor...
-      </>
+      <span className="inline-flex items-center">
+        <span className="font-semibold" style={{ color: items[0].color }}>
+          {items[0].name}
+        </span>
+        <span className="mx-1 text-gray-400">ve</span>
+        <span className="font-semibold" style={{ color: items[1].color }}>
+          {items[1].name}
+        </span>
+        <span className="ml-1 text-gray-400">yazıyor</span>
+        {renderTypingDots(primaryColor)}
+      </span>
     );
   }
-  if (users.length === 3) {
+
+  if (items.length === 3) {
     return (
-      <>
-        <span className="font-semibold text-indigo-300">{users[0]}</span>,{' '}
-        <span className="font-semibold text-indigo-300">{users[1]}</span> ve{' '}
-        <span className="font-semibold text-indigo-300">{users[2]}</span> yazıyor...
-      </>
+      <span className="inline-flex items-center">
+        <span className="font-semibold" style={{ color: items[0].color }}>
+          {items[0].name}
+        </span>
+        <span className="text-gray-400">, </span>
+        <span className="font-semibold ml-1" style={{ color: items[1].color }}>
+          {items[1].name}
+        </span>
+        <span className="mx-1 text-gray-400">ve</span>
+        <span className="font-semibold" style={{ color: items[2].color }}>
+          {items[2].name}
+        </span>
+        <span className="ml-1 text-gray-400">yazıyor</span>
+        {renderTypingDots(primaryColor)}
+      </span>
     );
   }
+
   return (
-    <>
-      <span className="font-semibold text-indigo-300">{users[0]}</span>,{' '}
-      <span className="font-semibold text-indigo-300">{users[1]}</span> ve {users.length - 2} kişi daha yazıyor...
-    </>
+    <span className="inline-flex items-center">
+      <span className="font-semibold" style={{ color: items[0].color }}>
+        {items[0].name}
+      </span>
+      <span className="text-gray-400">, </span>
+      <span className="font-semibold ml-1" style={{ color: items[1].color }}>
+        {items[1].name}
+      </span>
+      <span className="ml-1 text-gray-400">ve {items.length - 2} kişi daha yazıyor</span>
+      {renderTypingDots(primaryColor)}
+    </span>
   );
 }
 
@@ -1500,7 +1564,12 @@ export const ChatArea = ({
     setReplyingTo({
       id: msg.id,
       user: pickDisplayName([resolvedAuthorName, msg.user], 'Kullanıcı'),
-      color: isMe ? '#a36eff' : (msg.color || '#a36eff'),
+      userId: msg.userId || msg.sender_id || msg.user_id,
+      color: isMe
+        ? CLASSIC_PURPLE
+        : (msg.color && msg.color !== '#90ba3c' && msg.color !== CLASSIC_PURPLE
+            ? msg.color
+            : getUserColor(msg.userId || msg.sender_id || resolvedAuthorName, false)),
       text: previewText,
     });
     textInputRef.current?.focus();
@@ -2771,28 +2840,48 @@ export const ChatArea = ({
                       {/* Message Content */}
                       <div className="w-full min-w-0 flex flex-col items-start">
                         {/* Quoted Message (Reply Preview) */}
-                        {msg.reply_to && (
-                          <button
-                            type="button"
-                            onClick={() => scrollToMessage(msg.reply_to.id)}
-                            className="voys-reply-quote mb-1.5 inline-flex items-center gap-1.5 text-[11px] text-left cursor-pointer py-1 px-2.5 rounded-r-lg rounded-l-sm border-l-2 border-[#8B51FF] max-w-full transition group/reply bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-gray-200"
-                            title="Orijinal mesaja git"
-                          >
-                            <CornerDownRight size={11} className="text-[#a36eff] flex-shrink-0" />
-                            <span className="font-semibold truncate max-w-[130px]" style={{ color: msg.reply_to.color || '#a36eff' }}>
-                              @{pickDisplayName([msg.reply_to.user], 'Kullanıcı')}
-                            </span>
-                            <span className="truncate max-w-[200px] sm:max-w-md opacity-85">
-                              {msg.reply_to.text}
-                            </span>
-                          </button>
-                        )}
+                        {msg.reply_to && (() => {
+                          const isReplyMe = Boolean(
+                            msg.reply_to.userId === 'you' ||
+                            (currentUser?.id && msg.reply_to.userId && String(msg.reply_to.userId) === String(currentUser.id)) ||
+                            (currentUser?.name && msg.reply_to.user === currentUser.name) ||
+                            (currentUser?.display_name && msg.reply_to.user === currentUser.display_name)
+                          );
+                          const replyAuthorColor = isReplyMe
+                            ? CLASSIC_PURPLE
+                            : (msg.reply_to.color && msg.reply_to.color !== '#90ba3c' && msg.reply_to.color !== CLASSIC_PURPLE
+                                ? msg.reply_to.color
+                                : getUserColor(msg.reply_to.userId || msg.reply_to.user, false));
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => scrollToMessage(msg.reply_to.id)}
+                              className="voys-reply-quote mb-1.5 inline-flex items-center gap-1.5 text-[11px] text-left cursor-pointer py-1 px-2.5 rounded-r-lg rounded-l-sm border-l-2 border-[#8B51FF] max-w-full transition group/reply bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-gray-200"
+                              title="Orijinal mesaja git"
+                            >
+                              <CornerDownRight size={11} className="text-[#a36eff] flex-shrink-0" />
+                              <span className="font-semibold truncate max-w-[130px]" style={{ color: replyAuthorColor }}>
+                                @{pickDisplayName([msg.reply_to.user], 'Kullanıcı')}
+                              </span>
+                              <span className="truncate max-w-[200px] sm:max-w-md opacity-85">
+                                {msg.reply_to.text}
+                              </span>
+                            </button>
+                          );
+                        })()}
 
                         {/* Header: Username + Crown + Timestamp (Saat) */}
                         <div className="flex items-center gap-2 leading-none mb-1 select-none">
                           <span
                             className="font-bold text-[13.5px] tracking-wide hover:underline cursor-pointer"
-                            style={{ color: isMe ? '#a36eff' : (msg.color || '#e2e8f0') }}
+                            style={{
+                              color: isMe
+                                ? CLASSIC_PURPLE
+                                : (msg.color && msg.color !== '#90ba3c' && msg.color !== CLASSIC_PURPLE
+                                    ? msg.color
+                                    : getUserColor(senderId || msg.userId || messageUser, false))
+                            }}
                           >
                             {messageUser}
                           </span>
@@ -3113,7 +3202,7 @@ export const ChatArea = ({
                       <span className="text-[11px] text-gray-400 flex-shrink-0">Yanıtlanıyor:</span>
                       <span
                         className="text-xs font-semibold truncate flex-shrink-0 max-w-[140px]"
-                        style={{ color: replyingTo.color || '#a36eff' }}
+                        style={{ color: replyingTo.color || CLASSIC_PURPLE }}
                       >
                         @{replyingTo.user}
                       </span>

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { compressAvatarImage } from '../utils/imageCompressor';
-import { pickDisplayName, getCachedUserProfile, cacheUserProfiles, isUuidLike } from '../utils/userDisplay';
+import { pickDisplayName, getCachedUserProfile, cacheUserProfiles, isUuidLike, getUserColor, CLASSIC_PURPLE } from '../utils/userDisplay';
 import {
   normalizeParticipantId,
   parseDmRoomPair,
@@ -98,7 +98,7 @@ const mapDirectMessageRow = (row) => {
     user: row.sender_name,
     userId: row.sender_id,
     avatar: row.sender_avatar || null,
-    color: row.color || '#90ba3c',
+    color: (row.color && row.color !== '#90ba3c' && row.color !== CLASSIC_PURPLE) ? row.color : getUserColor(row.sender_id || row.sender_name, false),
     hasCrown: row.has_crown || false,
     lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
     attachments: Array.isArray(row.attachments) ? row.attachments : [],
@@ -1689,7 +1689,7 @@ export const dbService = {
               user: row.sender_name,
               userId: row.sender_id,
               avatar: row.sender_avatar || null,
-              color: row.color || '#90ba3c',
+              color: (row.color && row.color !== '#90ba3c' && row.color !== CLASSIC_PURPLE) ? row.color : getUserColor(row.sender_id || row.sender_name, false),
               hasCrown: row.has_crown || false,
               lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
               attachments: Array.isArray(row.attachments) ? row.attachments : [],
@@ -1724,7 +1724,7 @@ export const dbService = {
           sender_id: message.userId,
           sender_name: message.user,
           sender_avatar: safeAvatar,
-          color: message.color || '#90ba3c',
+          color: message.color || (message.userId === 'you' ? CLASSIC_PURPLE : getUserColor(message.userId || message.user, false)),
           has_crown: message.hasCrown || false,
           lines: message.lines || (message.text ? [message.text] : []),
           attachments: message.attachments || [],
@@ -2055,7 +2055,7 @@ export const dbService = {
           receiver_id: receiverId,
           sender_name: message.user || 'Kullanıcı',
           sender_avatar: safeAvatar,
-          color: message.color || '#90ba3c',
+          color: message.color || (message.userId === 'you' ? CLASSIC_PURPLE : getUserColor(message.userId || message.user, false)),
           has_crown: message.hasCrown || false,
           lines: message.lines || (message.text ? [message.text] : []),
           attachments: message.attachments || [],

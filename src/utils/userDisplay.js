@@ -833,4 +833,70 @@ export const mergeChannelCallsWithPresences = ({
   return merged;
 };
 
+/**
+ * Signature Voys classic purple — strictly reserved for the current user ("biz").
+ */
+export const CLASSIC_PURPLE = '#a36eff';
+
+/**
+ * High-contrast, vibrant, dark-mode accessible palette for all other users.
+ * Purposely distinct and calibrated so each participant stands out clearly.
+ */
+export const USER_PALETTE = [
+  '#38bdf8', // Sky Cyan
+  '#f472b6', // Rose Pink
+  '#34d399', // Emerald Mint
+  '#fb923c', // Coral Orange
+  '#60a5fa', // Bright Azure
+  '#fbbf24', // Amber Gold
+  '#2dd4bf', // Tropical Teal
+  '#e879f9', // Neon Fuchsia
+  '#f87171', // Soft Crimson
+  '#4ade80', // Spring Green
+  '#22d3ee', // Electric Aqua
+  '#c084fc', // Soft Lavender
+  '#facc15', // Sunflower Yellow
+  '#818cf8', // Periwinkle Indigo
+  '#fb7185', // Watermelon Rose
+];
+
+/**
+ * Returns a consistent, deterministic color for any user.
+ * "Biz" (current user) is ALWAYS the classic purple (#a36eff).
+ * Other users receive a unique, persistent color based on their user ID or username.
+ */
+export const getUserColor = (userOrId, isMe = false) => {
+  if (isMe) return CLASSIC_PURPLE;
+  if (!userOrId) return USER_PALETTE[0];
+
+  let rawKey = '';
+  if (typeof userOrId === 'object' && userOrId !== null) {
+    if (userOrId.isMe) return CLASSIC_PURPLE;
+    rawKey =
+      userOrId.userId ||
+      userOrId.user_id ||
+      userOrId.sender_id ||
+      userOrId.id ||
+      userOrId.username ||
+      userOrId.name ||
+      userOrId.user ||
+      '';
+  } else {
+    rawKey = String(userOrId);
+  }
+
+  const key = String(rawKey).trim().toLowerCase();
+  if (!key || key === 'sen' || key === 'sen (you)' || key === 'you') {
+    return isMe ? CLASSIC_PURPLE : USER_PALETTE[0];
+  }
+
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+
+  return USER_PALETTE[hash % USER_PALETTE.length];
+};
+
+
 

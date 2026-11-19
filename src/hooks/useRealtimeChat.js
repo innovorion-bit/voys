@@ -3,7 +3,7 @@ import { chatService } from '../services/chatService';
 import { dbService } from '../lib/supabase';
 import { initialChatMessages, initialDmMessages } from '../data/mockData';
 import { sounds } from '../utils/audio';
-import { pickDisplayName } from '../utils/userDisplay';
+import { pickDisplayName, getUserColor, CLASSIC_PURPLE } from '../utils/userDisplay';
 import { isDirectMessageForPair, normalizeParticipantId, parseDmRoomPair } from '../utils/dmIsolation';
 import { purgeUserFromMessagesMap } from '../utils/userPurge';
 
@@ -77,16 +77,24 @@ const formatDbMessageRow = (row, channelId) => {
   const senderId = normalizeParticipantId(row.user_id || row.sender_id || row.userId);
   const readAtNum = row.read_at ? Number(row.read_at) : null;
   const deliveredAtNum = row.delivered_at ? Number(row.delivered_at) : null;
+  const authorName = pickDisplayName([row.user_name, row.sender_name, row.user], 'Kullanıcı');
+  const isRowMe = senderId === 'you';
+  const resolvedColor = isRowMe
+    ? CLASSIC_PURPLE
+    : (row.color && row.color !== '#90ba3c' && row.color !== CLASSIC_PURPLE
+        ? row.color
+        : getUserColor(senderId || authorName, false));
+
   return {
     id: row.id,
     room: channelId,
     room_id: row.room_id || channelId,
     sender_id: senderId,
     receiver_id: normalizeParticipantId(row.receiver_id ?? row.recipient_id),
-    user: pickDisplayName([row.user_name, row.sender_name, row.user], 'Kullanıcı'),
+    user: authorName,
     userId: senderId,
     avatar: row.user_avatar || row.sender_avatar || row.avatar || row.avatar_url || null,
-    color: row.color || '#90ba3c',
+    color: resolvedColor,
     hasCrown: row.has_crown || false,
     lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : (row.text ? [row.text] : [])),
     attachments: Array.isArray(row.attachments) ? row.attachments : [],
@@ -218,12 +226,21 @@ export const useRealtimeChat = (
         };
         updatedMsgs = [...channelMsgs.slice(0, -1), updatedLast];
       } else {
+        const msgSenderId = incoming.userId || incoming.user_id || incoming.sender_id || 'you';
+        const msgUserName = pickDisplayName([incoming.user, incoming.user_name, incoming.sender_name], 'Kullanıcı');
+        const isMsgMe = msgSenderId === 'you' || Boolean(currentUserRef.current?.id && msgSenderId === currentUserRef.current.id);
+        const resolvedColor = isMsgMe
+          ? CLASSIC_PURPLE
+          : (incoming.color && incoming.color !== '#90ba3c' && incoming.color !== CLASSIC_PURPLE
+              ? incoming.color
+              : getUserColor(msgSenderId || msgUserName, false));
+
         const newEntry = {
           id: incoming.id,
-          user: pickDisplayName([incoming.user, incoming.user_name, incoming.sender_name], 'Kullanıcı'),
-          userId: incoming.userId || incoming.user_id || incoming.sender_id || 'you',
+          user: msgUserName,
+          userId: msgSenderId,
           avatar: incoming.avatar || incoming.avatar_url || incoming.user_avatar || incoming.sender_avatar || null,
-          color: incoming.color || '#90ba3c',
+          color: resolvedColor,
           hasCrown: incoming.hasCrown || incoming.has_crown || false,
           timestamp: incoming.timestamp || incoming.timestamp_text || formatTimestamp(),
           sentAt: incoming.sentAt || incoming.sent_at || Date.now(),
@@ -256,7 +273,7 @@ export const useRealtimeChat = (
         clearTimeout(timer);
         typingTimeoutsRef.current.delete(authorName);
       }
-      setTypingUsers((prev) => prev.filter((u) => u !== authorName));
+      setTypingUsers((prev) => prev.filter((u) => (typeof u === 'string' ? u !== authorName : u.name !== authorName)));
     }
 
   }, []);
@@ -322,7 +339,7 @@ export const useRealtimeChat = (
     const formattedReplyTo = replyTo ? {
       id: replyTo.id,
       user: pickDisplayName([replyTo.user], 'Kullanıcı'),
-      color: replyTo.color || '#90ba3c',
+      color: replyTo.color || CLASSIC_PURPLE,
       text: replyTo.text || (replyTo.lines ? replyTo.lines[0] : '') || '📎 Medya / Dosya',
     } : null;
 
@@ -333,7 +350,7 @@ export const useRealtimeChat = (
       user: pickDisplayName([activeUser?.display_name, activeUser?.name, activeUser?.username], 'Sen (You)'),
       userId: activeUser?.id || 'you',
       avatar: activeUser?.avatar_url || activeUser?.avatar || null,
-      color: '#90ba3c',
+      color: CLASSIC_PURPLE,
       timestamp: formatTimestamp(),
       text: trimmedText,
       lines: trimmedText ? [trimmedText] : [],
@@ -438,19 +455,21 @@ export const useRealtimeChat = (
 
       const safeUser = pickDisplayName([user], 'Biri');
       if (!safeUser) return;
+      const userColor = getUserColor(incomingId || safeUser, false);
 
       setTypingUsers((prev) => {
         if (isTyping) {
           const existingTimer = typingTimeoutsRef.current.get(safeUser);
           if (existingTimer) clearTimeout(existingTimer);
           const newTimer = setTimeout(() => {
-            setTypingUsers((curr) => curr.filter((u) => u !== safeUser));
+            setTypingUsers((curr) => curr.filter((u) => (typeof u === 'string' ? u !== safeUser : u.name !== safeUser)));
             typingTimeoutsRef.current.delete(safeUser);
           }, 3500);
           typingTimeoutsRef.current.set(safeUser, newTimer);
 
-          if (!prev.includes(safeUser)) {
-            return [...prev, safeUser];
+          const alreadyIn = prev.some((u) => (typeof u === 'string' ? u === safeUser : u.name === safeUser));
+          if (!alreadyIn) {
+            return [...prev, { name: safeUser, id: incomingId || safeUser, color: userColor }];
           }
           return prev;
         }
@@ -460,7 +479,7 @@ export const useRealtimeChat = (
           clearTimeout(existingTimer);
           typingTimeoutsRef.current.delete(safeUser);
         }
-        return prev.filter((u) => u !== safeUser);
+        return prev.filter((u) => (typeof u === 'string' ? u !== safeUser : u.name !== safeUser));
       });
     };
 
