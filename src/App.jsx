@@ -58,7 +58,7 @@ import {
   applyIncomingCallStatus,
 } from './utils/voiceCallState';
 import { normalizeUserId, removeCachedUserProfile } from './utils/userPurge';
-import { setupWindowCloseHandler, isTauriEnvironment } from './utils/windowManager';
+import { setupWindowCloseHandler, isTauriEnvironment, resizeToMainWindow, trackWindowSize } from './utils/windowManager';
 
 const getUserChannelsCacheKey = (uid) => (uid ? `voys_user_channels_${uid}` : null);
 
@@ -88,6 +88,33 @@ function StanduppApp() {
     updateProfile,
     enabled: Boolean(user),
   });
+
+  // Ensure desktop Tauri window is properly sized to main chat interface (never stuck in tiny auth size)
+  useEffect(() => {
+    if (isTauriEnvironment()) {
+      resizeToMainWindow();
+      const cleanupTracker = trackWindowSize();
+
+      // Guard against race conditions during WebView2 boot / session hydration
+      const t1 = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 650) {
+          resizeToMainWindow(true);
+        }
+      }, 350);
+
+      const t2 = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 650) {
+          resizeToMainWindow(true);
+        }
+      }, 1000);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        cleanupTracker();
+      };
+    }
+  }, []);
 
   const handleUpdateStatus = useCallback(async (newStatus) => {
     try {

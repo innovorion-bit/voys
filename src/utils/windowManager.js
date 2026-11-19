@@ -1,5 +1,5 @@
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri as checkTauri } from '@tauri-apps/api/core';
 import { chatService } from '../services/chatService.js';
 
 export const LOGIN_SIZE = { width: 380, height: 400, minWidth: 360, minHeight: 380 };
@@ -12,27 +12,113 @@ if (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.lock
 }
 
 export function isTauriEnvironment() {
-  return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__);
+  if (typeof window === 'undefined') return false;
+  try {
+    if (typeof checkTauri === 'function' && checkTauri()) return true;
+  } catch {}
+  return Boolean(
+    window.__TAURI_INTERNALS__ ||
+    window.__TAURI__ ||
+    window.__TAURI_INVOKE__ ||
+    (typeof window.__TAURI_IPC__ === 'function')
+  );
 }
 
 /**
  * Resizes the Tauri window to the main chat interface dimensions (950x580) and centers it.
+ * @param {boolean} force - Force resize even if window is already sized or maximized
  */
-export async function resizeToMainWindow() {
+export async function resizeToMainWindow(force = false) {
   if (!isTauriEnvironment()) return;
   try {
     const appWindow = getCurrentWindow();
-    // Re-enable resizing on the main app window
-    await appWindow.setResizable(true);
-    // First update min size constraints for the full chat interface
-    await appWindow.setMinSize(new LogicalSize(MAIN_SIZE.minWidth, MAIN_SIZE.minHeight));
-    // Resize to main interface resolution
-    await appWindow.setSize(new LogicalSize(MAIN_SIZE.width, MAIN_SIZE.height));
-    // Re-center window on screen
-    await appWindow.center();
+    if (!appWindow) return;
+
+    // 1. Re-enable resizing so user can adjust or maximize window
+    await appWindow.setResizable(true).catch(() => {});
+
+    // 2. If already maximized, respect state unless force is requested
+    const isMax = await appWindow.isMaximized().catch(() => false);
+    if (isMax && !force) {
+      return;
+    }
+
+    // Determine target dimensions (saved preference or default MAIN_SIZE)
+    let targetWidth = MAIN_SIZE.width;
+    let targetHeight = MAIN_SIZE.height;
+
+    try {
+      const saved = localStorage.getItem('voys_window_size');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          parsed &&
+          typeof parsed.width === 'number' &&
+          typeof parsed.height === 'number' &&
+          parsed.width >= MAIN_SIZE.minWidth &&
+          parsed.height >= MAIN_SIZE.minHeight
+        ) {
+          targetWidth = parsed.width;
+          targetHeight = parsed.height;
+        }
+      }
+    } catch {}
+
+    // Check current size: if already large enough (>= minWidth & minHeight) and not forced, keep it
+    const curSize = await appWindow.innerSize().catch(() => null);
+    if (curSize && !force) {
+      if (curSize.width >= MAIN_SIZE.minWidth && curSize.height >= MAIN_SIZE.minHeight) {
+        await appWindow.setMinSize(new LogicalSize(MAIN_SIZE.minWidth, MAIN_SIZE.minHeight)).catch(() => {});
+        return;
+      }
+    }
+
+    // 3. IMPORTANT: Set window size FIRST before setting minSize!
+    // Setting minSize (720, 500) while current size is smaller (e.g. 380x400) causes Win32/Tauri constraint errors.
+    await appWindow.setSize(new LogicalSize(targetWidth, targetHeight)).catch((e) => {
+      console.warn('Tauri setSize error:', e);
+    });
+
+    // 4. Update min size constraints for the main chat interface
+    await appWindow.setMinSize(new LogicalSize(MAIN_SIZE.minWidth, MAIN_SIZE.minHeight)).catch((e) => {
+      console.warn('Tauri setMinSize error:', e);
+    });
+
+    // 5. Re-center window on screen if expanding from compact auth size
+    if (!curSize || curSize.width < MAIN_SIZE.minWidth) {
+      await appWindow.center().catch(() => {});
+    }
   } catch (err) {
     console.warn('Tauri resizeToMainWindow error:', err);
   }
+}
+
+/**
+ * Automatically persists main chat window size to localStorage when resized by user.
+ */
+export function trackWindowSize() {
+  if (typeof window === 'undefined') return () => {};
+
+  let timeoutId = null;
+  const handleResize = () => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      if (window.innerWidth >= MAIN_SIZE.minWidth && window.innerHeight >= MAIN_SIZE.minHeight) {
+        try {
+          localStorage.setItem(
+            'voys_window_size',
+            JSON.stringify({ width: window.innerWidth, height: window.innerHeight })
+          );
+        } catch {}
+      }
+    }, 500);
+  };
+
+  window.addEventListener('resize', handleResize);
+  return () => {
+    clearTimeout(timeoutId);
+    window.removeEventListener('resize', handleResize);
+  };
 }
 
 /**
@@ -43,16 +129,20 @@ export async function resizeToAuthWindow(mode = 'login') {
   if (!isTauriEnvironment()) return;
   try {
     const appWindow = getCurrentWindow();
+    if (!appWindow) return;
+
     const height = mode === 'register' ? 580 : (mode === 'forgot' || mode === 'reset') ? 440 : 400;
     const width = 380;
     // Disable resizing on login & register windows
-    await appWindow.setResizable(false);
+    await appWindow.setResizable(false).catch(() => {});
     // Lower min size first so setSize can shrink the window without constraint errors
-    await appWindow.setMinSize(new LogicalSize(360, 380));
+    await appWindow.setMinSize(new LogicalSize(360, 380)).catch(() => {});
     // Resize to compact auth form resolution
-    await appWindow.setSize(new LogicalSize(width, height));
+    await appWindow.setSize(new LogicalSize(width, height)).catch((e) => {
+      console.warn('Tauri resizeToAuthWindow setSize error:', e);
+    });
     // Re-center window on screen
-    await appWindow.center();
+    await appWindow.center().catch(() => {});
   } catch (err) {
     console.warn('Tauri resizeToAuthWindow error:', err);
   }

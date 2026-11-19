@@ -58,6 +58,7 @@ export const AuthPage = ({ initialMode = 'login' }) => {
     updatePassword,
     isAuthenticated,
     isPasswordRecovery,
+    loading,
   } = useAuth();
 
   const navigate = useNavigate();
@@ -74,13 +75,16 @@ export const AuthPage = ({ initialMode = 'login' }) => {
 
   // Window sizing & auth redirect
   useEffect(() => {
+    // Never prematurely shrink the window while initial session hydration is in progress
+    if (loading) return;
+
     if (isAuthenticated && mode !== 'reset') {
       resizeToMainWindow();
       navigate(from, { replace: true });
     } else {
       resizeToAuthWindow(mode);
     }
-  }, [isAuthenticated, mode, from, navigate]);
+  }, [isAuthenticated, loading, mode, from, navigate]);
 
   useEffect(() => {
     let t;
