@@ -180,13 +180,11 @@ export async function setupWindowCloseHandler() {
 
   if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', handleUnload);
-    window.addEventListener('pagehide', handleUnload);
   }
 
   return () => {
     if (typeof window !== 'undefined') {
       window.removeEventListener('beforeunload', handleUnload);
-      window.removeEventListener('pagehide', handleUnload);
     }
   };
 }

@@ -298,13 +298,22 @@ function StanduppApp() {
           }
         });
 
-        // 2. Reconcile previous entries: mark departed users as offline
+        // 2. Reconcile previous entries: mark departed users as offline ONLY after grace period
         Object.entries(prev).forEach(([key, oldEntry]) => {
           if (!oldEntry || typeof oldEntry !== 'object') return;
           const keyLower = String(key).toLowerCase();
           const targetId = String(oldEntry.userId || oldEntry.id || key).toLowerCase();
 
-          if (!activeIds.has(targetId) && !activeIds.has(keyLower)) {
+          if (activeIds.has(targetId) || activeIds.has(keyLower)) {
+            return;
+          }
+
+          // If this user was updated recently (within 60s), do not mark offline on partial list syncs
+          const lastSeen = oldEntry.receivedAt || oldEntry.timestamp || 0;
+          const isRecentlyActive = lastSeen > 0 && now - lastSeen < 60000;
+          const isUserInCall = Boolean(oldEntry.voiceChannelId);
+
+          if (!isRecentlyActive && !isUserInCall) {
             next[key] = {
               ...oldEntry,
               status: 'offline',
@@ -356,13 +365,20 @@ function StanduppApp() {
       chatService.requestPresences?.();
       chatService.requestCallStatus?.(activeChannelRef.current);
     };
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleFocus();
+      }
+    };
     window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [activeUserProfile]);
 
