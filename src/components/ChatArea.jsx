@@ -46,6 +46,7 @@ import {
   Phone,
   PhoneOff,
   LogOut,
+  LogIn,
   Mic,
   MicOff,
   Monitor,
@@ -3616,8 +3617,9 @@ export const ChatArea = ({
                         : 'w-full mt-1.5 flex items-center justify-center space-x-1.5 py-1.5 px-3 text-xs font-bold'
                     } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer`}
                     title="Sese Katıl"
+                    aria-label="Sese Katıl"
                   >
-                    <Phone size={13} />
+                    <LogIn size={isRightPanelCompact ? 16 : 14} />
                     {!isRightPanelCompact && <span>Sese Katıl</span>}
                   </button>
                 )}
