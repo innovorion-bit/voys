@@ -160,7 +160,7 @@ export const LandingPage = () => {
       {/* 3. Keşfedin (#discover) */}
       <section id="discover" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full text-center scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
             Keşfedin
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
@@ -214,7 +214,7 @@ export const LandingPage = () => {
       {/* 4. Güvenlik (#security) */}
       <section id="security" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
             Güvenlik & Gizlilik
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
@@ -227,38 +227,38 @@ export const LandingPage = () => {
 
         {/* 3 Detailed Security Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-emerald-500/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
             <div>
               <h3 className="text-xl font-bold text-white mb-3">Uçtan Uca Şifreli P2P</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Ses ve ekran paylaşımı doğrudan eşler arası (Peer-to-Peer) WebRTC altyapısıyla iletilir. DTLS-SRTP 256-bit şifreleme sayesinde görüşmeleriniz sunucularda asla saklanmaz veya dinlenemez.
               </p>
             </div>
-            <div className="pt-4 border-t border-white/[0.08] text-xs text-emerald-400 font-medium">
+            <div className="pt-4 border-t border-white/[0.08] text-xs text-[#d8b4fe] font-medium">
               DTLS / SRTP Kriptolama
             </div>
           </div>
 
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-emerald-500/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
             <div>
               <h3 className="text-xl font-bold text-white mb-3">Kurumsal Kimlik Doğrulama</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Supabase destekli güvenli oturum yönetimi, kriptografik JWT token yapısı ve veritabanı düzeyinde Row-Level Security (RLS) politikalarıyla kullanıcı hesabınız tam koruma altındadır.
               </p>
             </div>
-            <div className="pt-4 border-t border-white/[0.08] text-xs text-emerald-400 font-medium">
+            <div className="pt-4 border-t border-white/[0.08] text-xs text-[#d8b4fe] font-medium">
               Row-Level Security & JWT
             </div>
           </div>
 
-          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-emerald-500/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
+          <div className="p-7 rounded-3xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-300">
             <div>
               <h3 className="text-xl font-bold text-white mb-3">Sıfır Veri Satışı & İzleyici</h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
                 Voys'ta sizi takip eden reklam kodları veya analiz izleyicileri bulunmaz. Profil bilgileriniz ve yazışmalarınız üçüncü taraf şirketlere asla satılmaz veya taranmaz.
               </p>
             </div>
-            <div className="pt-4 border-t border-white/[0.08] text-xs text-emerald-400 font-medium">
+            <div className="pt-4 border-t border-white/[0.08] text-xs text-[#d8b4fe] font-medium">
               %100 İzleyicisiz ve Reklamsız
             </div>
           </div>
@@ -344,7 +344,7 @@ export const LandingPage = () => {
       {/* 6. Destek (#support) */}
       <section id="support" className="relative z-10 py-24 px-6 sm:px-10 lg:px-16 max-w-6xl mx-auto w-full scroll-mt-20">
         <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#8B51FF]/10 border border-[#8B51FF]/20 text-[#d8b4fe] text-xs font-semibold uppercase tracking-widest mb-5 backdrop-blur-sm">
             Destek & Yardım
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
@@ -357,38 +357,38 @@ export const LandingPage = () => {
 
         {/* 3 Support Channels */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
+          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-md flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Topluluk Kanalları</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
                 Voys sesli ve yazılı topluluk kanallarına katılarak diğer kullanıcılarla tanışın, deneyimlerinizi paylaşın ve anlık yardım alın.
               </p>
             </div>
-            <div className="text-xs font-semibold text-indigo-300">
+            <div className="text-xs font-semibold text-[#d8b4fe]">
               Topluluğa Katıl
             </div>
           </div>
 
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
+          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-md flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Yardım & Rehberler</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
                 Mikrofon yapılandırması, yapay zeka gürültü filtresi kalibrasyonu ve ekran paylaşımı ayarlarını optimize etmek için detaylı kılavuzlar.
               </p>
             </div>
-            <div className="text-xs font-semibold text-indigo-300">
+            <div className="text-xs font-semibold text-[#d8b4fe]">
               Rehberleri İncele
             </div>
           </div>
 
-          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-indigo-500/40 transition-all backdrop-blur-md flex flex-col justify-between">
+          <div className="p-7 rounded-2xl bg-[#0e0920]/75 border border-white/10 hover:border-[#8B51FF]/40 transition-all backdrop-blur-md flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Geri Bildirim & İletişim</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-4">
                 Karşılaştığınız bir hatayı bildirmek veya yeni bir özellik önermek mi istiyorsunuz? Geri bildirimleriniz doğrudan geliştiricilere iletilir.
               </p>
             </div>
-            <div className="text-xs font-semibold text-indigo-300">
+            <div className="text-xs font-semibold text-[#d8b4fe]">
               Hata veya Öneri Bildir
             </div>
           </div>
