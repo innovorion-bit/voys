@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { peerService } from '../services/peerService';
 import { chatService } from '../services/chatService';
-import { sounds } from '../utils/audio';
 import { dbService } from '../lib/supabase';
 import { SettingsContext } from './settingsContextDef';
 import { useAuth } from './useAuth';
@@ -271,11 +270,6 @@ export const SettingsProvider = ({ children }) => {
     }
   });
 
-  // UI Sound Effects State (declared before callbacks that synchronize categories)
-  const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(() => sounds.getEnabled());
-  const [soundEffectsVolume, setSoundEffectsVolume] = useState(() => sounds.getVolume());
-  const [soundCategories, setSoundCategories] = useState(() => sounds.getCategories());
-
   const updateChatSetting = useCallback((key, value) => {
     const normalizedValue = key === 'gamePerformanceMode' ? 'auto' : value;
     setChatSettings((prev) => {
@@ -285,10 +279,6 @@ export const SettingsProvider = ({ children }) => {
       } catch {}
       return next;
     });
-    if (key === 'messageSound') {
-      sounds.setCategoryEnabled('message', Boolean(normalizedValue));
-      setSoundCategories(sounds.getCategories());
-    }
   }, []);
 
   // Sync active theme with document element
@@ -359,31 +349,6 @@ export const SettingsProvider = ({ children }) => {
       window.removeEventListener('blur', syncWindowActivity);
       window.removeEventListener('focus', syncWindowActivity);
     };
-  }, []);
-
-  // UI Sound Effects Callbacks
-  const changeSoundEffectsEnabled = useCallback((enabled) => {
-    setSoundEffectsEnabled(enabled);
-    sounds.setEnabled(enabled);
-  }, []);
-
-  const changeSoundEffectsVolume = useCallback((vol) => {
-    setSoundEffectsVolume(vol);
-    sounds.setVolume(vol);
-  }, []);
-
-  const changeSoundCategory = useCallback((category, enabled) => {
-    sounds.setCategoryEnabled(category, enabled);
-    setSoundCategories(sounds.getCategories());
-    if (category === 'message') {
-      setChatSettings((prev) => {
-        const next = { ...prev, messageSound: Boolean(enabled) };
-        try {
-          localStorage.setItem('standupp_chat_settings', JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    }
   }, []);
 
   // Settings Modal Open/Tab State
@@ -583,12 +548,12 @@ export const SettingsProvider = ({ children }) => {
         outputVolume,
         changeInputVolume,
         changeOutputVolume,
-        soundEffectsEnabled,
-        soundEffectsVolume,
-        soundCategories,
-        changeSoundEffectsEnabled,
-        changeSoundEffectsVolume,
-        changeSoundCategory,
+        soundEffectsEnabled: false,
+        soundEffectsVolume: 0,
+        soundCategories: {},
+        changeSoundEffectsEnabled: () => {},
+        changeSoundEffectsVolume: () => {},
+        changeSoundCategory: () => {},
         advancedAudioFiltering,
         changeAdvancedAudioFiltering,
         autoGainControl,
