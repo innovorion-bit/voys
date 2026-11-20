@@ -1085,27 +1085,6 @@ export const Sidebar = ({
   const [createGroupSearch, setCreateGroupSearch] = useState('');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
-  const groupCandidates = useMemo(() => {
-    let list = Array.isArray(combinedFriends) && combinedFriends.length > 0
-      ? [...combinedFriends]
-      : (Array.isArray(friends) ? [...friends] : []);
-    if (createGroupSearch.trim()) {
-      const q = createGroupSearch.toLowerCase();
-      list = list.filter((f) =>
-        f.name?.toLowerCase().includes(q) ||
-        f.username?.toLowerCase().includes(q) ||
-        f.game?.toLowerCase().includes(q) ||
-        f.substatus?.toLowerCase().includes(q)
-      );
-    }
-    return list.sort((a, b) => {
-      const aScore = a.game ? 3 : (a.isOnline || a.status === 'online' ? 2 : 1);
-      const bScore = b.game ? 3 : (b.isOnline || b.status === 'online' ? 2 : 1);
-      if (aScore !== bScore) return bScore - aScore;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-  }, [combinedFriends, friends, createGroupSearch]);
-
   const handleCreateGroupSubmit = async (e) => {
     e?.preventDefault();
     const trimmed = newGroupName.trim();
@@ -1350,6 +1329,28 @@ export const Sidebar = ({
     const extras = discoveredDmUsers.filter((d) => d && d.id && !existingIds.has(d.id));
     return [...(friends || []), ...extras];
   }, [friends, discoveredDmUsers]);
+
+  // Candidates for group creation (filtered by createGroupSearch)
+  const groupCandidates = useMemo(() => {
+    let list = Array.isArray(combinedFriends) && combinedFriends.length > 0
+      ? [...combinedFriends]
+      : (Array.isArray(friends) ? [...friends] : []);
+    if (createGroupSearch.trim()) {
+      const q = createGroupSearch.toLowerCase();
+      list = list.filter((f) =>
+        f.name?.toLowerCase().includes(q) ||
+        f.username?.toLowerCase().includes(q) ||
+        f.game?.toLowerCase().includes(q) ||
+        f.substatus?.toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a, b) => {
+      const aScore = a.game ? 3 : (a.isOnline || a.status === 'online' ? 2 : 1);
+      const bScore = b.game ? 3 : (b.isOnline || b.status === 'online' ? 2 : 1);
+      if (aScore !== bScore) return bScore - aScore;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [combinedFriends, friends, createGroupSearch]);
 
   const getMessageTimestampNumber = useCallback((msg) => {
     if (!msg) return 0;
