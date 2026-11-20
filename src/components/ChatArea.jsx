@@ -1655,9 +1655,9 @@ export const ChatArea = ({
               <button
                 type="button"
                 onClick={onOpenCreateChannel}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs transition flex items-center space-x-2 cursor-pointer"
+                className="px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white font-semibold rounded-xl text-xs transition flex items-center space-x-2 cursor-pointer"
               >
-                <Plus size={14} />
+                <Plus size={15} />
                 <span>Yeni Grup Oluştur</span>
               </button>
             )}
@@ -2577,7 +2577,7 @@ export const ChatArea = ({
                 <button
                   type="button"
                   onClick={onOpenCreateChannel}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-[#8B51FF] hover:bg-[#773BF5] text-white rounded-xl text-xs font-semibold transition cursor-pointer"
                 >
                   <Plus size={14} />
                   <span>Yeni Grup Oluştur</span>
