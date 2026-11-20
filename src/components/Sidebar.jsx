@@ -26,6 +26,7 @@ import { chatService } from '../services/chatService';
 import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } from '../utils/dmIsolation';
 import { resolveChannelCall, getCachedUserProfile, cacheUserProfiles, pickDisplayName } from '../utils/userDisplay';
 import { sounds } from '../utils/audio';
+import { updateAppBadge } from '../utils/appBadge';
 
 // Format message timestamp: HH:mm (today), DD.MM.YYYY (if 1 day or more has passed)
 function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
@@ -1351,6 +1352,14 @@ export const Sidebar = ({
   }, [textChannels, unreadCounts]);
 
   const totalUnreadCount = totalDmUnreadCount + totalChannelUnreadCount;
+
+  // Sync taskbar & app badge (1, 2, 3...) whenever unread message count changes
+  useEffect(() => {
+    updateAppBadge(totalUnreadCount);
+    return () => {
+      updateAppBadge(0);
+    };
+  }, [totalUnreadCount]);
 
   // Unified Chat Items: DMs and Channels, sorted chronologically by latest message (recency), unread status, and online status
   const allChatItems = useMemo(() => {

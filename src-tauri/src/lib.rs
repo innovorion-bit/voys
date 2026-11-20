@@ -29,6 +29,20 @@ fn exit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
+fn set_app_badge(app: tauri::AppHandle, count: Option<i64>) {
+  if let Some(w) = app.get_webview_window("main") {
+    let unread = count.unwrap_or(0);
+    if unread > 0 {
+      let badge_str = if unread > 99 { "99+".to_string() } else { unread.to_string() };
+      let _ = w.set_title(&format!("({}) Voys", badge_str));
+      let _ = w.request_user_attention(Some(tauri::UserAttentionType::Informational));
+    } else {
+      let _ = w.set_title("Voys");
+    }
+  }
+}
+
+#[tauri::command]
 fn open_external_url(url: String) -> Result<bool, String> {
   let trimmed = url.trim();
   if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
@@ -118,7 +132,8 @@ pub fn run() {
       start_ptt_listener,
       stop_ptt_listener,
       open_external_url,
-      exit_app
+      exit_app,
+      set_app_badge
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
