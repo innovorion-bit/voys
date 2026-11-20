@@ -1319,11 +1319,13 @@ function StanduppApp() {
     deleteMessage,
   } = useRealtimeChat(activeChannel, activeUserProfile);
 
-  // Automatically send read receipt when viewing a DM
+  // Automatically send read receipt when viewing a DM or mark group channel as read
   useEffect(() => {
     if (isDm && activeChannel && activeDmFriend?.id && activeUserProfile?.id) {
       chatService.sendReadReceipt(activeChannel, activeUserProfile.id, activeDmFriend.id);
       dbService.markDmMessagesRead(activeUserProfile.id, activeDmFriend.id).catch(() => {});
+    } else if (!isDm && activeChannel && activeUserProfile?.id) {
+      dbService.markChannelRead?.(activeChannel, activeUserProfile.id);
     }
   }, [isDm, activeChannel, activeDmFriend?.id, activeUserProfile?.id, messages?.length]);
 

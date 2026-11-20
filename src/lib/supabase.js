@@ -2043,6 +2043,125 @@ export const dbService = {
     }
   },
 
+  async markChannelRead(channelId, userId) {
+    if (!channelId || !userId || userId === 'you') return;
+    const cleanId = String(channelId).replace(/^text-/, '');
+    const nowIso = new Date().toISOString();
+    const candidateChannelIds = Array.from(new Set([channelId, cleanId, `text-${cleanId}`]));
+
+    try {
+      localStorage.setItem(`voys_last_read_${userId}_${channelId}`, String(Date.now()));
+      localStorage.setItem(`voys_last_read_${userId}_${cleanId}`, String(Date.now()));
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: rpcErr } = await withTimeout(
+          supabase.rpc('mark_channel_read', {
+            p_channel_id: channelId,
+            p_user_id: userId,
+          }),
+          4000,
+          'mark_channel_read RPC timeout'
+        );
+
+        if (rpcErr) {
+          await withTimeout(
+            supabase
+              .from('channel_members')
+              .update({ last_read_at: nowIso })
+              .eq('user_id', userId)
+              .in('channel_id', candidateChannelIds),
+            4000,
+            'channel_members update timeout'
+          );
+        }
+      } catch (err) {
+        console.warn('Supabase markChannelRead error:', err);
+      }
+    }
+  },
+
+  async fetchUnreadCounts(userId) {
+    if (!userId || userId === 'you') return {};
+    const unreadMap = {};
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const [channelRes, dmRes] = await Promise.allSettled([
+          withTimeout(
+            supabase.rpc('get_unread_channel_counts', { p_user_id: userId }),
+            5000,
+            'get_unread_channel_counts timeout'
+          ),
+          withTimeout(
+            supabase.rpc('get_unread_dm_counts', { p_user_id: String(userId) }),
+            5000,
+            'get_unread_dm_counts timeout'
+          ),
+        ]);
+
+        if (channelRes.status === 'fulfilled' && !channelRes.value?.error && Array.isArray(channelRes.value?.data)) {
+          for (const row of channelRes.value.data) {
+            const count = Number(row?.unread_count) || 0;
+            if (row?.channel_id && count > 0) {
+              const cid = String(row.channel_id);
+              const clean = cid.replace(/^text-/, '');
+              unreadMap[cid] = count;
+              unreadMap[clean] = count;
+              unreadMap[`text-${clean}`] = count;
+            }
+          }
+        } else if (channelRes.status === 'rejected' || channelRes.value?.error) {
+          const { data: memberRows } = await withTimeout(
+            supabase
+              .from('channel_members')
+              .select('channel_id, last_read_at, joined_at')
+              .eq('user_id', userId),
+            4000,
+            'channel_members fallback timeout'
+          );
+
+          if (Array.isArray(memberRows) && memberRows.length > 0) {
+            for (const mem of memberRows) {
+              const lastRead = mem.last_read_at || mem.joined_at;
+              if (lastRead) {
+                const { count } = await supabase
+                  .from('channel_messages')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('channel_id', mem.channel_id)
+                  .neq('sender_id', String(userId))
+                  .gt('created_at', lastRead);
+
+                if (typeof count === 'number' && count > 0) {
+                  const cid = String(mem.channel_id);
+                  const clean = cid.replace(/^text-/, '');
+                  unreadMap[cid] = count;
+                  unreadMap[clean] = count;
+                  unreadMap[`text-${clean}`] = count;
+                }
+              }
+            }
+          }
+        }
+
+        if (dmRes.status === 'fulfilled' && !dmRes.value?.error && Array.isArray(dmRes.value?.data)) {
+          for (const row of dmRes.value.data) {
+            const count = Number(row?.unread_count) || 0;
+            if (count > 0) {
+              if (row.sender_id) unreadMap[String(row.sender_id)] = count;
+              if (row.room_id) unreadMap[String(row.room_id)] = count;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase fetchUnreadCounts error:', err);
+      }
+    }
+
+    return unreadMap;
+  },
+
   async markDmMessagesDelivered(receiverId, senderId) {
     if (!receiverId || !senderId || receiverId === 'you' || senderId === 'you') return;
     const now = Date.now();

@@ -435,6 +435,54 @@ export const Sidebar = ({
     setUnreadCounts(readUnreadCounts(effectiveUserId));
   }, [effectiveUserId]);
 
+  // Load persistent unread message counts from database on login/mount & realtime reconnection
+  useEffect(() => {
+    let cancelled = false;
+    const activeUid = effectiveUserId;
+    if (!activeUid || activeUid === 'you') return;
+
+    const loadDbUnreadCounts = async () => {
+      try {
+        const counts = await dbService.fetchUnreadCounts(activeUid);
+        if (!cancelled && counts && typeof counts === 'object') {
+          // Exclude currently open chat
+          const curDm = activeDmUserIdRef.current;
+          const curChan = activeChannelRef.current;
+          if (curDm) {
+            delete counts[curDm];
+            const dmRoomId = getDmRoomId(activeUid, curDm);
+            if (dmRoomId) delete counts[dmRoomId];
+          }
+          if (curChan) {
+            delete counts[curChan];
+            const clean = String(curChan).replace(/^text-/, '');
+            delete counts[clean];
+            delete counts[`text-${clean}`];
+          }
+
+          setUnreadCounts((prev) => {
+            const next = { ...prev, ...counts };
+            persistUnreadCounts(activeUid, next);
+            return next;
+          });
+        }
+      } catch (err) {
+        console.warn('loadDbUnreadCounts error:', err);
+      }
+    };
+
+    loadDbUnreadCounts();
+
+    const unsubRecovered = dbService.onRealtimeRecovered?.(() => {
+      if (!cancelled) loadDbUnreadCounts();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubRecovered?.();
+    };
+  }, [effectiveUserId]);
+
   const activeDmUserIdRef = useRef(activeDmUserId);
   activeDmUserIdRef.current = activeDmUserId;
 
@@ -505,15 +553,17 @@ export const Sidebar = ({
     }
   }, [effectiveUserId, friends]);
 
-  // Automatically clear unread badge for currently open chat
+  // Automatically clear unread badge for currently open chat & mark as read in database
   useEffect(() => {
     if (!effectiveUserId) return;
     if (activeDmUserId) {
       const dmRoomId = getDmRoomId(effectiveUserId, activeDmUserId);
       clearUnread(activeDmUserId, dmRoomId);
+      dbService.markDmMessagesRead?.(effectiveUserId, activeDmUserId).catch(() => {});
     } else if (activeChannel) {
       const cleanChan = String(activeChannel).replace(/^text-/, '');
       clearUnread(activeChannel, cleanChan, `text-${cleanChan}`);
+      dbService.markChannelRead?.(activeChannel, effectiveUserId).catch(() => {});
     }
   }, [activeChannel, activeDmUserId, effectiveUserId, clearUnread]);
 
@@ -797,10 +847,18 @@ export const Sidebar = ({
         )
       );
 
-      if (!isViewing && !isFromMe) {
+      if (isViewing && activeUid) {
+        dbService.markChannelRead?.(chanId, activeUid).catch(() => {});
+      } else if (!isViewing && !isFromMe) {
         setUnreadCounts((prev) => {
-          const current = prev[chanId] || 0;
-          const next = { ...prev, [chanId]: current + 1 };
+          const cleanChan = String(chanId).replace(/^text-/, '');
+          const current = prev[chanId] || prev[cleanChan] || prev[`text-${cleanChan}`] || 0;
+          const next = {
+            ...prev,
+            [chanId]: current + 1,
+            [cleanChan]: current + 1,
+            [`text-${cleanChan}`]: current + 1,
+          };
           persistUnreadCounts(activeUid, next);
           return next;
         });
@@ -868,10 +926,18 @@ export const Sidebar = ({
         rawRoomId?.replace(/^text-/, '') === curChan?.replace(/^text-/, '')
       );
 
-      if (!isViewing && !isFromMe) {
+      if (isViewing && activeUid) {
+        dbService.markChannelRead?.(rawRoomId, activeUid).catch(() => {});
+      } else if (!isViewing && !isFromMe) {
         setUnreadCounts((prev) => {
-          const current = prev[rawRoomId] || 0;
-          const next = { ...prev, [rawRoomId]: current + 1 };
+          const cleanChan = String(rawRoomId).replace(/^text-/, '');
+          const current = prev[rawRoomId] || prev[cleanChan] || prev[`text-${cleanChan}`] || 0;
+          const next = {
+            ...prev,
+            [rawRoomId]: current + 1,
+            [cleanChan]: current + 1,
+            [`text-${cleanChan}`]: current + 1,
+          };
           persistUnreadCounts(activeUid, next);
           return next;
         });
@@ -1289,7 +1355,13 @@ export const Sidebar = ({
   const totalChannelUnreadCount = useMemo(() => {
     return textChannels.reduce((acc, chan) => {
       if (!chan || chan.id === 'home' || chan.is_home) return acc;
-      const count = Number(unreadCounts[chan.id] || unreadCounts[`text-${chan.id}`] || 0);
+      const cleanChan = String(chan.id).replace(/^text-/, '');
+      const count = Number(
+        unreadCounts[chan.id] ||
+        unreadCounts[`text-${chan.id}`] ||
+        unreadCounts[cleanChan] ||
+        0
+      );
       return acc + count;
     }, 0);
   }, [textChannels, unreadCounts]);
@@ -1378,7 +1450,13 @@ export const Sidebar = ({
 
         const rawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
         const msgTime = getMessageTimestampNumber(lastMsg);
-        const unreadCount = Number(unreadCounts[chan.id] || unreadCounts[`text-${chan.id}`] || 0);
+        const cleanChan = String(chan.id).replace(/^text-/, '');
+        const unreadCount = Number(
+          unreadCounts[chan.id] ||
+          unreadCounts[`text-${chan.id}`] ||
+          unreadCounts[cleanChan] ||
+          0
+        );
 
         items.push({
           type: 'channel',
