@@ -27,7 +27,7 @@ import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } 
 import { resolveChannelCall, getCachedUserProfile, cacheUserProfiles, pickDisplayName } from '../utils/userDisplay';
 import { sounds } from '../utils/audio';
 
-// Format message timestamp: 23:14 (today), Dün (yesterday), Day Name (this week), DD.MM.YYYY (older)
+// Format message timestamp: HH:mm (today), DD.MM.YYYY (if 1 day or more has passed)
 function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
   let date = null;
 
@@ -43,11 +43,17 @@ function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
 
   if (!date || isNaN(date.getTime())) {
     if (fallbackTimestampText) {
-      const timeMatch = String(fallbackTimestampText).match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
-      if (timeMatch) return timeMatch[1];
-      return fallbackTimestampText;
+      const d = new Date(fallbackTimestampText);
+      if (!isNaN(d.getTime())) {
+        date = d;
+      } else {
+        const timeMatch = String(fallbackTimestampText).match(/(\d{1,2}:\d{2})/);
+        if (timeMatch) return timeMatch[1];
+        return fallbackTimestampText;
+      }
+    } else {
+      return '';
     }
-    return '';
   }
 
   const now = new Date();
@@ -57,86 +63,13 @@ function formatChatTimestamp(sentAt, fallbackTimestampText = '') {
     date.getFullYear() === now.getFullYear()
   );
 
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const isYesterday = (
-    date.getDate() === yesterday.getDate() &&
-    date.getMonth() === yesterday.getMonth() &&
-    date.getFullYear() === yesterday.getFullYear()
-  );
-
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const timeStr = `${hours}:${minutes}`;
-
   if (isToday) {
-    return timeStr;
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
-  if (isYesterday) {
-    return 'Dün';
-  }
-
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 7) {
-    const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-    return days[date.getDay()];
-  }
-
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `${day}.${month}.${date.getFullYear()}`;
-}
-
-// Helper to extract clean time HH:mm
-function formatChatTimeOnly(sentAt, fallbackTimestampText = '') {
-  let date = null;
-  if (typeof sentAt === 'number') {
-    date = new Date(sentAt);
-  } else if (typeof sentAt === 'string') {
-    if (/^\d+$/.test(sentAt)) {
-      date = new Date(Number(sentAt));
-    } else {
-      date = new Date(sentAt);
-    }
-  }
-
-  if (!date || isNaN(date.getTime())) {
-    if (fallbackTimestampText) {
-      const timeMatch = String(fallbackTimestampText).match(/(\d{1,2}:\d{2})/);
-      if (timeMatch) return timeMatch[1];
-    }
-    return '';
-  }
-
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-}
-
-// Helper to extract clean date DD.MM.YYYY
-function formatChatDateOnly(sentAt, fallbackTimestampText = '') {
-  let date = null;
-  if (typeof sentAt === 'number') {
-    date = new Date(sentAt);
-  } else if (typeof sentAt === 'string') {
-    if (/^\d+$/.test(sentAt)) {
-      date = new Date(Number(sentAt));
-    } else {
-      date = new Date(sentAt);
-    }
-  }
-
-  if (!date || isNaN(date.getTime())) {
-    if (fallbackTimestampText) {
-      const d = new Date(fallbackTimestampText);
-      if (!isNaN(d.getTime())) date = d;
-    }
-  }
-
-  if (!date || isNaN(date.getTime())) return '';
-
+  // Son mesaj üzerinden 1 gün geçtiyse sadece tarih (DD.MM.YYYY)
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
@@ -2457,8 +2390,7 @@ export const Sidebar = ({
                   const isSelected = activeDmUserId === friend.id;
                   const isPlayingGame = !!friend.game;
 
-                  const lastMessageTime = lastMsg ? formatChatTimeOnly(rawTime, lastMsg.timestamp) : '';
-                  const lastMessageDate = lastMsg ? formatChatDateOnly(rawTime, lastMsg.timestamp) : '';
+                  const lastMessageTime = lastMsg ? formatChatTimestamp(rawTime, lastMsg.timestamp) : '';
                   const lastMessageText = formatMessagePreview(lastMsg);
                   const isSentByMe = Boolean(
                     lastMsg && (
@@ -2576,13 +2508,8 @@ export const Sidebar = ({
                             </div>
                           )}
 
-                          {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) & Purple Notification Badge */}
+                          {/* Right Badges / Purple Notification Badge */}
                           <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
-                            {lastMessageDate && unreadCount === 0 && (
-                              <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
-                                {lastMessageDate}
-                              </span>
-                            )}
                             {unreadCount > 0 && (
                               <span className="min-w-[19px] h-[19px] px-1.5 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center shadow-md shadow-[#8B51FF]/40 select-none animate-in fade-in zoom-in duration-200">
                                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -2606,8 +2533,7 @@ export const Sidebar = ({
                   )
                 );
 
-                const lastMessageTime = lastMsg ? formatChatTimeOnly(rawTime, lastMsg.timestamp) : '';
-                const lastMessageDate = lastMsg ? formatChatDateOnly(rawTime, lastMsg.timestamp) : '';
+                const lastMessageTime = lastMsg ? formatChatTimestamp(rawTime, lastMsg.timestamp) : '';
                 const lastMessageText = formatMessagePreview(lastMsg);
                 const senderName = resolveMessageSenderName(lastMsg, currentUserProfile?.id, currentUserProfile?.name, combinedFriends);
 
@@ -2669,13 +2595,8 @@ export const Sidebar = ({
                           )}
                         </p>
 
-                        {/* Right Badges / Son Mesaj Tarihi (DD.MM.YYYY) & Purple Notification Badge */}
+                        {/* Right Badges / Purple Notification Badge */}
                         <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
-                          {lastMessageDate && unreadCount === 0 && (
-                            <span className="text-[10px] font-normal text-gray-500 flex-shrink-0 select-none">
-                              {lastMessageDate}
-                            </span>
-                          )}
                           {unreadCount > 0 && (
                             <span className="min-w-[19px] h-[19px] px-1.5 rounded-full bg-[#8B51FF] text-white text-[10px] font-bold flex items-center justify-center shadow-md shadow-[#8B51FF]/40 select-none animate-in fade-in zoom-in duration-200">
                               {unreadCount > 99 ? '99+' : unreadCount}
