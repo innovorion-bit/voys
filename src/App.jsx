@@ -29,6 +29,7 @@ const LandingPage = lazy(() =>
   import('./components/LandingPage').then((m) => ({ default: m.LandingPage }))
 );
 import { useVoiceWebRTC } from './hooks/useVoiceWebRTC';
+import { peerService } from './services/peerService';
 import { useRealtimeChat } from './hooks/useRealtimeChat';
 import { useGameDetection } from './hooks/useGameDetection';
 import { SettingsProvider } from './context/SettingsContext';
@@ -1274,38 +1275,19 @@ function StanduppApp() {
     };
   }, []);
 
-  const prevInputModeRef = useRef(inputMode);
-
-  // Push-to-Talk (PTT) Synchronization with WebRTC Audio Stream (Silent, no sound effects)
+  // Push-to-Talk (PTT) Synchronization with WebRTC Audio Stream (Pure local gating, zero network/sound overhead)
   useEffect(() => {
-    const prevMode = prevInputModeRef.current;
-    prevInputModeRef.current = inputMode;
+    peerService.setInputMode(inputMode);
+  }, [inputMode]);
 
-    if (!isConnected) return;
+  useEffect(() => {
+    peerService.setPttActive(isPttActive);
+  }, [isPttActive]);
 
-    if (inputMode === 'ptt') {
-      if (isPttActive) {
-        if (isMuted && !isDeafened) {
-          setMuted(false, false);
-        }
-      } else if (!isMuted) {
-        setMuted(true, false);
-      }
-    } else if (prevMode === 'ptt' && isMuted && !isDeafened) {
-      setMuted(false, false);
-    }
-  }, [inputMode, isConnected, isPttActive, isMuted, isDeafened, setMuted]);
-
-  // Manual Mute toggle wrapper (informs user when Push-to-Talk owns mic gating)
+  // Handle Mute toggle: toggles manual mute state cleanly in both modes (no toast warnings)
   const handleToggleMute = useCallback(() => {
-    if (inputMode === 'ptt') {
-      toast.info('Bas-Konuş modu aktif', {
-        description: `Konuşmak için [${formatShortcutLabel(pttKey)}] tuşuna basılı tutun veya Aygıt ayarlarından Açık Mikrofon'a geçin.`,
-      });
-      return;
-    }
     toggleMute();
-  }, [inputMode, pttKey, toggleMute]);
+  }, [toggleMute]);
 
   // Isolated Realtime Chat Hook for the active channel or DM room
   const {
@@ -1620,7 +1602,7 @@ function StanduppApp() {
             name: activeUserProfile.name,
             avatar: activeUserProfile.avatar || null,
             avatarBg: '#3d9921',
-            isSpeaking: isSpeaking,
+            isSpeaking: isSpeaking || (inputMode === 'ptt' && isPttActive && !isMuted && !isDeafened),
             isMuted: isMuted,
             isDeafened: isDeafened,
             status: activeUserProfile.status || 'online',
@@ -1637,6 +1619,8 @@ function StanduppApp() {
     isConnected,
     activeUserProfile,
     isSpeaking,
+    inputMode,
+    isPttActive,
     isMuted,
     isDeafened,
     remotePeers,

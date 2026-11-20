@@ -54,6 +54,8 @@ export const useVoiceWebRTC = () => {
 
   const remoteAudioContextRef = useRef(null);
   const remoteAnalysersRef = useRef(new Map());
+  const recentJoinSoundsRef = useRef(new Map());
+  const recentLeaveSoundsRef = useRef(new Map());
 
   // Clean up local VAD
   const cleanupLocalVAD = useCallback(() => {
@@ -410,13 +412,16 @@ export const useVoiceWebRTC = () => {
           updated[existingIdx] = { ...updated[existingIdx], stream };
           return updated;
         }
-        sounds.playJoin();
+        const now = Date.now();
+        if (now - (recentJoinSoundsRef.current.get(peerId) || 0) > 3000) {
+          recentJoinSoundsRef.current.set(peerId, now);
+          sounds.playJoin();
+        }
         return [...prev, { peerId, stream, isSpeaking: false }];
       });
     };
 
     const handlePeerLeft = (peerId) => {
-      sounds.playLeave();
       const analyserEntry = remoteAnalysersRef.current.get(peerId);
       if (analyserEntry) {
         try {
@@ -426,7 +431,17 @@ export const useVoiceWebRTC = () => {
         } catch {}
         remoteAnalysersRef.current.delete(peerId);
       }
-      setRemotePeers((prev) => prev.filter((p) => p.peerId !== peerId));
+      setRemotePeers((prev) => {
+        const existed = prev.some((p) => p.peerId === peerId);
+        if (existed) {
+          const now = Date.now();
+          if (now - (recentLeaveSoundsRef.current.get(peerId) || 0) > 3000) {
+            recentLeaveSoundsRef.current.set(peerId, now);
+            sounds.playLeave();
+          }
+        }
+        return prev.filter((p) => p.peerId !== peerId);
+      });
       setPeerMetadata(peerService.getAllPeerMetadata());
     };
 

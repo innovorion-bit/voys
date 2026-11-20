@@ -3408,7 +3408,7 @@ export const ChatArea = ({
                     const memberDeafened = Boolean(isMe ? isDeafened : m.isDeafened);
                     const memberSpeaking = Boolean(
                       isMe
-                        ? (!isMuted && !isDeafened && isSpeaking)
+                        ? (!isMuted && !isDeafened && (isSpeaking || (inputMode === 'ptt' && isPttActive)))
                         : (!memberMuted && !memberDeafened && !isDeafened && !isLocallyMuted && m.isSpeaking)
                     );
                     const isSharingScreen = Boolean(
@@ -3559,25 +3559,25 @@ export const ChatArea = ({
                           ? 'w-9 h-8 flex items-center justify-center'
                           : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl transition cursor-pointer border ${
-                        inputMode === 'ptt'
-                          ? isPttActive
+                        isMuted
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
+                          : inputMode === 'ptt' && isPttActive
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                            : 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 hover:bg-indigo-500/25'
-                          : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
+                            : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
                       }`}
                       title={
-                        inputMode === 'ptt'
-                          ? `Bas-Konuş [${formatShortcutLabel(pttKey)}]: ${isPttActive ? 'Konuşuluyor' : 'Basılı tutarak konuşun'}`
-                          : isMuted
+                        isMuted
                           ? 'Mikrofonu Aç'
-                          : 'Mikrofonu Kapat'
+                          : inputMode === 'ptt'
+                            ? `Bas-Konuş [${formatShortcutLabel(pttKey)}] (Mikrofonu kapatmak için tıklayın)`
+                            : 'Mikrofonu Kapat'
                       }
                       aria-label={isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
                     >
                       {isMuted ? (
-                        <MicOff size={16} className={inputMode === 'ptt' ? 'text-indigo-300' : 'text-rose-500'} />
+                        <MicOff size={16} className="text-rose-400" />
                       ) : (
-                        <Mic size={16} className={isPttActive ? 'text-emerald-400' : 'text-white'} />
+                        <Mic size={16} className={inputMode === 'ptt' && isPttActive ? 'text-emerald-400' : 'text-white'} />
                       )}
                     </button>
 

@@ -138,6 +138,12 @@ export class MeshVoiceService {
     this.supabaseVoiceChannel = null;
     this.roomName = 'sesli-sohbet-mesh-v1';
 
+    // Local mute, deafen, and push-to-talk transmission state
+    this.isLocalMuted = false;
+    this.isLocalDeafened = false;
+    this.inputMode = 'voice'; // 'voice' | 'ptt'
+    this.isPttActive = false;
+
     this.selectedAudioInputId = null;
     this.advancedAudioFiltering = readStoredBool('standupp_advanced_audio_filtering', true);
     this.autoGainControlEnabled = readStoredBool('standupp_auto_gain_control', true);
@@ -472,6 +478,7 @@ export class MeshVoiceService {
 
         this.rawLocalStream = rawStream;
         this.localStream = await this.buildProcessedLocalStream(rawStream);
+        this.applyAudioTrackGating();
         return this.localStream;
       } catch (err) {
         console.warn('Microphone access denied or unavailable:', err);
@@ -959,6 +966,12 @@ export class MeshVoiceService {
           })
           .on('presence', { event: 'leave' }, ({ key }) => {
             if (key && key !== this.myPeerId) {
+              // Only remove if not actively streaming/connected via WebRTC
+              const activeCall = this.activeCalls.get(key);
+              const pcState = activeCall?.peerConnection?.connectionState;
+              if (pcState === 'connected') {
+                return;
+              }
               this.removePeer(key);
             }
           })
@@ -1381,22 +1394,46 @@ export class MeshVoiceService {
     return this.activeScreenShare;
   }
 
+  setInputMode(mode) {
+    this.inputMode = mode === 'ptt' ? 'ptt' : 'voice';
+    this.applyAudioTrackGating();
+  }
+
+  setPttActive(active) {
+    this.isPttActive = Boolean(active);
+    this.applyAudioTrackGating();
+  }
+
+  // Pure local hardware audio gating: gates the microphone track without triggering
+  // presence diffs, sound effects, toasts, or network mute status flickering.
+  applyAudioTrackGating() {
+    let shouldTransmit = false;
+    if (!this.isLocalMuted && !this.isLocalDeafened) {
+      if (this.inputMode === 'ptt') {
+        shouldTransmit = Boolean(this.isPttActive);
+      } else {
+        shouldTransmit = true;
+      }
+    }
+
+    if (this.rawLocalStream) {
+      this.rawLocalStream.getAudioTracks().forEach((track) => {
+        track.enabled = shouldTransmit;
+      });
+    }
+    if (this.localStream) {
+      this.localStream.getAudioTracks().forEach((track) => {
+        track.enabled = shouldTransmit;
+      });
+    }
+  }
+
   // 6. Control microphone track enabled state (Mute / Unmute) and broadcast state
   setMicrophoneEnabled(enabled, isDeafened = false) {
     this.isLocalMuted = !enabled;
     this.isLocalDeafened = Boolean(isDeafened);
 
-    if (this.rawLocalStream) {
-      this.rawLocalStream.getAudioTracks().forEach((track) => {
-        track.enabled = enabled;
-      });
-    }
-    if (this.localStream) {
-      this.localStream.getAudioTracks().forEach((track) => {
-        track.enabled = enabled;
-      });
-    }
-
+    this.applyAudioTrackGating();
     this.broadcastMuteState(!enabled, isDeafened);
   }
 
@@ -1433,6 +1470,8 @@ export class MeshVoiceService {
     }
 
     // 3. Supabase Realtime voice channel (Cross-device / Cross-network)
+    // Send lightweight broadcast event only. Never re-track presence here, as
+    // presence mutations trigger join/leave events across the mesh and sever active calls!
     if (this.supabaseVoiceChannel) {
       try {
         this.supabaseVoiceChannel.send({
@@ -1440,17 +1479,6 @@ export class MeshVoiceService {
           event: 'peer_mute_update',
           payload,
         });
-        if (this.myPeerId) {
-          this.supabaseVoiceChannel.track({
-            peerId: this.myPeerId,
-            userName: this.userName,
-            userId: this.userMeta?.userId || null,
-            avatar: this.userMeta?.avatar || null,
-            isMuted: this.isLocalMuted,
-            isDeafened: this.isLocalDeafened,
-            joinedAt: Date.now(),
-          }).catch(() => {});
-        }
       } catch (err) {
         console.warn('Supabase peer_mute_update broadcast error:', err);
       }
