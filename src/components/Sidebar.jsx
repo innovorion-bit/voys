@@ -1082,7 +1082,29 @@ export const Sidebar = ({
   // Create group panel internal states
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedGroupFriends, setSelectedGroupFriends] = useState([]);
+  const [createGroupSearch, setCreateGroupSearch] = useState('');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+
+  const groupCandidates = useMemo(() => {
+    let list = Array.isArray(combinedFriends) && combinedFriends.length > 0
+      ? [...combinedFriends]
+      : (Array.isArray(friends) ? [...friends] : []);
+    if (createGroupSearch.trim()) {
+      const q = createGroupSearch.toLowerCase();
+      list = list.filter((f) =>
+        f.name?.toLowerCase().includes(q) ||
+        f.username?.toLowerCase().includes(q) ||
+        f.game?.toLowerCase().includes(q) ||
+        f.substatus?.toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a, b) => {
+      const aScore = a.game ? 3 : (a.isOnline || a.status === 'online' ? 2 : 1);
+      const bScore = b.game ? 3 : (b.isOnline || b.status === 'online' ? 2 : 1);
+      if (aScore !== bScore) return bScore - aScore;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [combinedFriends, friends, createGroupSearch]);
 
   const handleCreateGroupSubmit = async (e) => {
     e?.preventDefault();
@@ -1101,6 +1123,7 @@ export const Sidebar = ({
       }
       setNewGroupName('');
       setSelectedGroupFriends([]);
+      setCreateGroupSearch('');
       setSidebarView('chats');
     } catch (err) {
       toast.error('Grup oluşturulamadı', { description: err.message });
@@ -2031,6 +2054,7 @@ export const Sidebar = ({
                 onClick={() => {
                   setNewGroupName('');
                   setSelectedGroupFriends([]);
+                  setCreateGroupSearch('');
                   setSidebarView('chats');
                 }}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
@@ -2046,13 +2070,13 @@ export const Sidebar = ({
 
           {/* Form Content */}
           <form onSubmit={handleCreateGroupSubmit} className="flex-1 flex flex-col justify-between p-3.5 space-y-4 overflow-y-auto custom-scrollbar min-h-0">
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
               {/* Group Name Input */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex-shrink-0">
                 <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
                   Grup Adı
                 </label>
-                <div className="h-10 px-3 bg-[#141418] rounded-xl flex items-center text-xs text-white border border-white/[0.08] focus-within:border-indigo-500/60 focus-within:ring-1 focus-within:ring-indigo-500/40 transition">
+                <div className="h-10 px-3 bg-[#141418] rounded-xl flex items-center text-xs text-white border border-white/[0.08] focus-within:border-[#8B51FF]/60 focus-within:ring-1 focus-within:ring-[#8B51FF]/40 transition">
                   <Users size={16} className="text-gray-400 mr-2 flex-shrink-0" />
                   <input
                     type="text"
@@ -2075,11 +2099,11 @@ export const Sidebar = ({
                 </div>
               </div>
 
-              {/* Add Friends Section (Optional Member Select) */}
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between">
+              {/* Add Friends Section (Matching Friends List Layout) */}
+              <div className="space-y-2 pt-1 flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between flex-shrink-0">
                   <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider">
-                    Üye Ekle {friends.length > 0 ? `(${selectedGroupFriends.length}/${friends.length})` : ''}
+                    Üye Ekle {groupCandidates.length > 0 ? `(${selectedGroupFriends.length}/${groupCandidates.length})` : ''}
                   </label>
                   {selectedGroupFriends.length > 0 && (
                     <button
@@ -2092,40 +2116,109 @@ export const Sidebar = ({
                   )}
                 </div>
 
-                {friends.length === 0 ? (
-                  <div className="p-3 rounded-xl bg-[#141418]/60 border border-white/5 text-center text-xs text-gray-500">
-                    Henüz arkadaş listenizde kimse yok. Grubu şimdi oluşturup daha sonra da üye ekleyebilirsiniz.
+                {/* Search Box inside Member Select */}
+                {(groupCandidates.length > 3 || createGroupSearch) && (
+                  <div className="h-8 px-2.5 bg-[#141418] rounded-lg flex items-center text-xs text-gray-200 border border-white/[0.08] focus-within:border-[#8B51FF]/60 transition flex-shrink-0">
+                    <Search size={13} className="text-gray-400 mr-2 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={createGroupSearch}
+                      onChange={(e) => setCreateGroupSearch(e.target.value)}
+                      placeholder="Arkadaşlarında ara..."
+                      className="w-full bg-transparent border-none outline-none text-[11px] text-gray-200 placeholder-gray-500"
+                    />
+                    {createGroupSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCreateGroupSearch('')}
+                        className="text-gray-400 hover:text-white ml-1 p-0.5 rounded transition cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {groupCandidates.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-[#141418]/60 border border-white/5 text-center text-xs text-gray-500">
+                    {createGroupSearch
+                      ? 'Aramanıza uygun arkadaş bulunamadı.'
+                      : 'Henüz arkadaş listenizde kimse yok. Grubu şimdi oluşturup daha sonra da üye ekleyebilirsiniz.'}
                   </div>
                 ) : (
-                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto custom-scrollbar pr-0.5">
-                    {friends.map((friend) => {
+                  <div className="-mx-3.5 divide-y divide-white/[0.04] max-h-[260px] overflow-y-auto custom-scrollbar">
+                    {groupCandidates.map((friend) => {
                       const isSelected = selectedGroupFriends.includes(friend.id);
                       return (
                         <div
-                          key={friend.id}
+                          key={`create-group-friend-${friend.id}`}
                           onClick={() => toggleSelectGroupFriend(friend.id)}
-                          className={`p-2 rounded-xl flex items-center justify-between transition cursor-pointer border ${isSelected
-                            ? 'bg-indigo-600/15 border-indigo-500/30 text-white'
-                            : 'bg-[#141418] hover:bg-white/[0.05] border-white/[0.06] text-gray-300'
-                            }`}
+                          className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition select-none group ${
+                            isSelected
+                              ? 'bg-[#8B51FF]/10 hover:bg-[#8B51FF]/15'
+                              : 'hover:bg-[#141418]'
+                          }`}
                         >
-                          <div className="flex items-center space-x-2.5 min-w-0">
-                            <UserAvatar user={friend} size="sm" showStatus={false} />
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-white truncate">{friend.name}</p>
-                              <p className="text-[10px] text-gray-400 font-mono truncate">
-                                @{friend.username}
-                              </p>
+                          <div className="flex items-center space-x-3 min-w-0 flex-1 pr-2">
+                            <UserAvatar
+                              user={friend}
+                              size="md"
+                              showStatus={true}
+                              status={friend.status}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center space-x-1.5">
+                                <span className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-gray-200 group-hover:text-white'}`}>
+                                  {friend.name}
+                                </span>
+                              </div>
+                              <div className="text-[11px] truncate mt-0.5">
+                                {friend.game ? (
+                                  <span className="text-emerald-400 font-medium flex items-center space-x-1">
+                                    <Gamepad2 size={11} className="flex-shrink-0 mr-1 inline" />
+                                    <span>{friend.game}</span>
+                                  </span>
+                                ) : !friend.isOnline || friend.status === 'offline' || friend.status === 'invisible' ? (
+                                  <span className="text-gray-500">Çevrimdışı</span>
+                                ) : friend.status === 'dnd' ? (
+                                  <span className="text-rose-400/90">Rahatsız Etmeyin</span>
+                                ) : friend.status === 'idle' ? (
+                                  <span className="text-amber-400/90">Boşta</span>
+                                ) : friend.substatus && !['Çevrimiçi', 'Boşta', 'Rahatsız Etmeyin', 'Görünmez', 'Çevrimdışı', 'P2P Bağlantısı'].includes(friend.substatus) ? (
+                                  <span className="text-gray-400">{friend.substatus}</span>
+                                ) : (
+                                  <span className="text-emerald-400">Çevrimiçi</span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
-                          <div
-                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${isSelected
-                              ? 'bg-indigo-600 border-indigo-600 text-white'
-                              : 'border-white/20 bg-transparent'
+                          {/* Action Button: Matches "Mesaj" button layout from Friends */}
+                          <div className="flex items-center space-x-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelectGroupFriend(friend.id);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center space-x-1 ${
+                                isSelected
+                                  ? 'bg-[#8B51FF] hover:bg-[#773BF5] text-white shadow-sm border border-[#8B51FF]'
+                                  : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/5'
                               }`}
-                          >
-                            {isSelected && <Check size={11} strokeWidth={3} />}
+                            >
+                              {isSelected ? (
+                                <>
+                                  <Check size={12} strokeWidth={2.5} />
+                                  <span>Eklendi</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus size={12} />
+                                  <span>Ekle</span>
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       );
@@ -2142,6 +2235,7 @@ export const Sidebar = ({
                 onClick={() => {
                   setNewGroupName('');
                   setSelectedGroupFriends([]);
+                  setCreateGroupSearch('');
                   setSidebarView('chats');
                 }}
                 className="flex-1 py-2 text-xs font-semibold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/5 cursor-pointer"
@@ -2151,7 +2245,7 @@ export const Sidebar = ({
               <button
                 type="submit"
                 disabled={!newGroupName.trim() || isCreatingGroup}
-                className="flex-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="flex-1 py-2 text-xs font-bold text-white bg-[#8B51FF] hover:bg-[#773BF5] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm"
               >
                 {isCreatingGroup ? (
                   <Loader2 size={13} className="animate-spin text-white" />
