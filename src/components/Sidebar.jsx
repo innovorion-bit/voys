@@ -25,7 +25,6 @@ import { getDmRoomId, localDb, dbService } from '../lib/supabase';
 import { chatService } from '../services/chatService';
 import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } from '../utils/dmIsolation';
 import { resolveChannelCall, getCachedUserProfile, cacheUserProfiles, pickDisplayName } from '../utils/userDisplay';
-import { sounds } from '../utils/audio';
 import { updateAppBadge } from '../utils/appBadge';
 
 // Format message timestamp: HH:mm (today), DD.MM.YYYY (if 1 day or more has passed)
@@ -756,7 +755,6 @@ export const Sidebar = ({
           persistUnreadCounts(activeUid, next);
           return next;
         });
-        try { sounds.playMessage(); } catch { }
       }
     });
 
@@ -823,7 +821,6 @@ export const Sidebar = ({
           persistUnreadCounts(activeUid, next);
           return next;
         });
-        try { sounds.playMessage(); } catch { }
       }
     });
 
@@ -869,7 +866,6 @@ export const Sidebar = ({
             persistUnreadCounts(activeUid, next);
             return next;
           });
-          try { sounds.playMessage(); } catch { }
         }
         return;
       }
@@ -902,7 +898,6 @@ export const Sidebar = ({
           persistUnreadCounts(activeUid, next);
           return next;
         });
-        try { sounds.playMessage(); } catch { }
       }
     };
 

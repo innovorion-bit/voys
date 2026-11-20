@@ -34,14 +34,12 @@ import {
   Keyboard,
   Radio,
   RotateCcw,
-  VolumeX,
   Layers,
   Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '../context/useSettings';
 import { useAuth } from '../context/useAuth';
-import { sounds } from '../utils/audio';
 import { dbService, isAuthorizedAdminUser } from '../lib/supabase';
 import { AdminMonitorTab } from './AdminMonitorTab';
 import { ImageCropModal } from './ImageCropModal';
@@ -646,10 +644,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
     } finally {
       setIsUpdatingPassword(false);
     }
-  };
-
-  const playSpeakerTestSound = () => {
-    sounds.playTestTone();
   };
 
   const handleClose = useCallback(() => {
@@ -1452,15 +1446,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-semibold text-gray-200">Hoparlör</label>
-                      <button
-                        type="button"
-                        onClick={playSpeakerTestSound}
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 transition font-medium"
-                        title="Test Sesi Çal"
-                      >
-                        <Play size={10} />
-                        <span>Test Sesi</span>
-                      </button>
                     </div>
                     <div className="relative">
                       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none flex items-center">
@@ -1745,86 +1730,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Ses Efektleri & Bildirim Sesleri */}
-              <div className="pt-6 border-t border-white/[0.08] space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-200 uppercase tracking-wider block">
-                    SES EFEKTLERİ VE BİLDİRİM SESLERİ
-                  </label>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Odaya katılma, ayrılma ve yeni mesaj seslerini yönetin.
-                  </p>
-                </div>
-
-                {/* Unified Clean Card */}
-                <div className="p-4 rounded-xl bg-[#111214] border border-white/10 space-y-3.5">
-                  {/* Master Toggle Row */}
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center space-x-3 min-w-0">
-                      {soundEffectsEnabled ? (
-                        <Volume2 size={18} className="text-[#8B51FF] flex-shrink-0" />
-                      ) : (
-                        <VolumeX size={18} className="text-gray-500 flex-shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <span className="text-xs font-semibold text-white block">
-                          Tüm Uygulama Ses Efektleri
-                        </span>
-                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                          {soundEffectsEnabled
-                            ? 'Katılma, ayrılma ve yeni mesaj sesleri aktif'
-                            : 'Uygulamadaki tüm ses efektleri kapalı'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={soundEffectsEnabled}
-                      onClick={() => changeSoundEffectsEnabled(!soundEffectsEnabled)}
-                      className={`w-11 h-6 rounded-full transition-colors p-0.5 flex items-center cursor-pointer flex-shrink-0 ${
-                        soundEffectsEnabled ? 'bg-[#8B51FF]' : 'bg-white/15'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                          soundEffectsEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Volume Slider Row */}
-                  <div
-                    className={`pt-3 border-t border-white/[0.06] space-y-2 transition-opacity duration-200 ${
-                      !soundEffectsEnabled ? 'opacity-35 pointer-events-none' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-gray-200">Ses Efekti Seviyesi</span>
-                      <span className="font-mono text-gray-300 font-semibold">{soundEffectsVolume}%</span>
-                    </div>
-                    <div className="relative flex items-center py-1">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        disabled={!soundEffectsEnabled}
-                        value={soundEffectsVolume}
-                        onChange={(e) => changeSoundEffectsVolume(Number(e.target.value))}
-                        className="w-full h-1.5 rounded-lg appearance-none cursor-pointer voice-slider accent-[#8B51FF]"
-                        style={{
-                          background: soundEffectsEnabled
-                            ? `linear-gradient(to right, #8B51FF ${soundEffectsVolume}%, #232428 ${soundEffectsVolume}%)`
-                            : '#232428',
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}

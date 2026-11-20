@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { peerService } from '../services/peerService';
-import { sounds } from '../utils/audio';
 import { isTauriEnvironment } from '../utils/windowManager';
 
 const VAD_RMS_THRESHOLD = 1.2;
@@ -54,8 +53,6 @@ export const useVoiceWebRTC = () => {
 
   const remoteAudioContextRef = useRef(null);
   const remoteAnalysersRef = useRef(new Map());
-  const recentJoinSoundsRef = useRef(new Map());
-  const recentLeaveSoundsRef = useRef(new Map());
 
   // Clean up local VAD
   const cleanupLocalVAD = useCallback(() => {
@@ -186,8 +183,6 @@ export const useVoiceWebRTC = () => {
   const connectVoice = useCallback(async (customPeerId = null, userName = 'Sen (You)', userMeta = null) => {
     setAudioError(null);
     try {
-      sounds.playJoin();
-
       // 1. Get user microphone access via navigator.mediaDevices.getUserMedia
       let stream = null;
       try {
@@ -292,7 +287,6 @@ export const useVoiceWebRTC = () => {
 
   // Disconnect from voice mesh
   const disconnectVoice = useCallback(() => {
-    sounds.playLeave();
     cleanupLocalVAD();
     cleanupRemoteVAD();
     peerService.disconnect();
@@ -412,11 +406,6 @@ export const useVoiceWebRTC = () => {
           updated[existingIdx] = { ...updated[existingIdx], stream };
           return updated;
         }
-        const now = Date.now();
-        if (now - (recentJoinSoundsRef.current.get(peerId) || 0) > 3000) {
-          recentJoinSoundsRef.current.set(peerId, now);
-          sounds.playJoin();
-        }
         return [...prev, { peerId, stream, isSpeaking: false }];
       });
     };
@@ -431,17 +420,7 @@ export const useVoiceWebRTC = () => {
         } catch {}
         remoteAnalysersRef.current.delete(peerId);
       }
-      setRemotePeers((prev) => {
-        const existed = prev.some((p) => p.peerId === peerId);
-        if (existed) {
-          const now = Date.now();
-          if (now - (recentLeaveSoundsRef.current.get(peerId) || 0) > 3000) {
-            recentLeaveSoundsRef.current.set(peerId, now);
-            sounds.playLeave();
-          }
-        }
-        return prev.filter((p) => p.peerId !== peerId);
-      });
+      setRemotePeers((prev) => prev.filter((p) => p.peerId !== peerId));
       setPeerMetadata(peerService.getAllPeerMetadata());
     };
 
@@ -557,7 +536,6 @@ export const useVoiceWebRTC = () => {
     const handleScreenShareStarted = (info) => {
       setActiveScreenShare(info);
       if (!info.isLocal) {
-        sounds.playJoin();
         toast.info(`${info.userName} ekranını paylaşıyor`, {
           icon: '🖥️',
         });
@@ -567,7 +545,6 @@ export const useVoiceWebRTC = () => {
     const handleScreenShareStopped = ({ peerId }) => {
       setActiveScreenShare((prev) => {
         if (prev?.peerId === peerId) {
-          sounds.playLeave();
           toast.info('Ekran paylaşımı sona erdi');
           return null;
         }
@@ -614,7 +591,6 @@ export const useVoiceWebRTC = () => {
           qualityLabel,
           stream,
         });
-        sounds.playJoin();
         toast.success('Ekran Paylaşımı Başlatıldı', {
           description: `${qualityLabel} kalitesinde canlı yayınlanıyor.`,
         });
@@ -635,7 +611,6 @@ export const useVoiceWebRTC = () => {
     peerService.stopScreenShare();
     setIsScreenSharing(false);
     setActiveScreenShare((prev) => (prev?.isLocal ? null : prev));
-    sounds.playLeave();
     toast.info('Ekran Paylaşımı Sonlandırıldı');
   }, []);
 

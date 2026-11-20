@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { chatService } from '../services/chatService';
 import { dbService } from '../lib/supabase';
 import { initialChatMessages, initialDmMessages } from '../data/mockData';
-import { sounds } from '../utils/audio';
 import { pickDisplayName, getUserColor, CLASSIC_PURPLE } from '../utils/userDisplay';
 import { isDirectMessageForPair, normalizeParticipantId, parseDmRoomPair } from '../utils/dmIsolation';
 import { purgeUserFromMessagesMap } from '../utils/userPurge';
@@ -297,12 +296,6 @@ export const useRealtimeChat = (
         [targetRoom]: updatedMsgs,
       };
     });
-
-    const senderId = incoming.userId || incoming.user_id || incoming.sender_id;
-    const isOwnMessage = senderId === 'you' || Boolean(currentUserRef.current?.id && senderId === currentUserRef.current.id);
-    if (!isOwnMessage) {
-      sounds.playMessage();
-    }
 
     // Immediately clear typing state if a message arrives from this user
     const authorName = pickDisplayName([incoming.user, incoming.user_name, incoming.sender_name], null);

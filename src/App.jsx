@@ -38,7 +38,6 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import { chatService } from './services/chatService';
 import { dbService, getDmRoomId, isSupabaseConfigured } from './lib/supabase';
-import { sounds } from './utils/audio';
 import { formatShortcutLabel } from './services/shortcutService';
 import {
   pickDisplayName,
@@ -1352,7 +1351,6 @@ function StanduppApp() {
   // Steam-style in-chat voice call start / join (instantly connected, no ringing)
   const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
     try {
-      sounds.playJoin();
       const snapshot = voiceCallSnapshotRef.current;
       const previousCallChannelId = activeCallChannelId;
       const prevLeaveTransition =
@@ -1431,7 +1429,6 @@ function StanduppApp() {
 
   // Handle in-chat voice call leave / disconnect
   const handleLeaveCall = useCallback(() => {
-    sounds.playLeave();
     const leavingChan = activeCallChannelId || activeChannel;
     const snapshot = voiceCallSnapshotRef.current;
     const { callUpdatePayload } = buildLeaveCallTransition({
