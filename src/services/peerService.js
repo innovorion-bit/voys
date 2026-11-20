@@ -143,6 +143,7 @@ export class MeshVoiceService {
     this.isLocalDeafened = false;
     this.inputMode = 'voice'; // 'voice' | 'ptt'
     this.isPttActive = false;
+    this.meshWatchdogInterval = null;
 
     this.selectedAudioInputId = null;
     this.advancedAudioFiltering = readStoredBool('standupp_advanced_audio_filtering', true);
@@ -663,9 +664,32 @@ export class MeshVoiceService {
         debug: 0,
         config: {
           iceServers: [
+            // High-speed Google STUN
             { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            // Cloudflare STUN
             { urls: 'stun:stun.cloudflare.com:3478' },
+            // OpenRelay Public STUN
+            { urls: 'stun:openrelay.metered.ca:80' },
+            // OpenRelay Global TURN (UDP + TCP ports 80/443 for Symmetric NAT / CGNAT / ISP Firewalls)
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject',
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject',
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject',
+            },
           ],
+          iceCandidatePoolSize: 10,
         },
       };
 
@@ -729,42 +753,40 @@ export class MeshVoiceService {
           // Deduplicate WebRTC glare calls so two concurrent audio streams never play at once
           const existingVoiceCall = this.activeCalls.get(incomingPeerId);
           if (existingVoiceCall && existingVoiceCall !== call) {
-            const existingState = existingVoiceCall.peerConnection?.connectionState;
-            const existingHealthy = existingVoiceCall._open && existingState === 'connected';
-            if (existingHealthy && this.myPeerId > incomingPeerId) {
+            const pc = existingVoiceCall.peerConnection;
+            const existingState = pc?.connectionState;
+            const existingIce = pc?.iceConnectionState;
+            const existingHealthy = (existingState === 'connected' || existingIce === 'connected' || existingIce === 'completed');
+
+            // If an established healthy call already exists, decline duplicate glare call
+            if (existingHealthy) {
               try { call.close(); } catch {}
               return;
             }
-            this.activeCalls.set(incomingPeerId, call);
-            try { existingVoiceCall.close(); } catch {}
+
+            // Both sides called each other at the same time (glare).
+            // Deterministic tie-breaker: peer with higher ID stays the caller
+            if (this.myPeerId > incomingPeerId) {
+              // We are authoritative caller: reject incoming call, preserve our outgoing call
+              try { call.close(); } catch {}
+              return;
+            } else {
+              // Remote peer is authoritative caller: accept their incoming call, close our outgoing call
+              this.activeCalls.set(incomingPeerId, call);
+              try { existingVoiceCall.close(); } catch {}
+            }
           } else {
             this.activeCalls.set(incomingPeerId, call);
           }
 
-          // Get or request current local stream to answer with
-          const currentStream = this.localStream || await this.getLocalAudioStream().catch(() => null);
+          // Guaranteed sendrecv audio stream on answer (never answer receive-only)
+          const currentStream = await this.getOrCreateAnswerStream();
 
           call.answer(currentStream || undefined, {
             sdpTransform: optimizeOpusSdp,
           });
 
-          call.on('stream', (remoteStream) => {
-            if (this.activeCalls.get(incomingPeerId) !== call) return;
-            this.remoteStreams.set(incomingPeerId, remoteStream);
-            this.emit('stream', { peerId: incomingPeerId, stream: remoteStream });
-            this.emit('peersUpdated', Array.from(this.remoteStreams.keys()));
-          });
-
-          call.on('close', () => {
-            if (this.activeCalls.get(incomingPeerId) !== call) return;
-            this.removePeer(incomingPeerId);
-          });
-
-          call.on('error', (err) => {
-            if (this.activeCalls.get(incomingPeerId) !== call) return;
-            console.error(`Call error with ${incomingPeerId}:`, err);
-            this.removePeer(incomingPeerId);
-          });
+          this.bindAudioCallEvents(call, incomingPeerId);
         });
 
         // Handle incoming data connection (for cross-network mesh list sync)
@@ -1001,6 +1023,8 @@ export class MeshVoiceService {
                 isDeafened: Boolean(this.isLocalDeafened),
                 joinedAt: Date.now(),
               }).catch(() => {});
+              this.startPingMonitoring();
+              this.startMeshWatchdog();
             }
           });
       } catch (err) {
@@ -1050,7 +1074,9 @@ export class MeshVoiceService {
       } else if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
         data.knownPeers.forEach((pId) => {
           if (pId !== this.myPeerId && !this.activeCalls.has(pId)) {
-            this.callPeer(pId);
+            if (this.myPeerId > pId) {
+              this.callPeer(pId);
+            }
           }
         });
       } else if (data?.type === 'RTC_PING' && data.timestamp) {
@@ -1074,13 +1100,127 @@ export class MeshVoiceService {
     });
   }
 
+  // Ensures we always have an active MediaStream with audio track before answering or calling.
+  // If local mic is initializing, provides a silent Web Audio stream so SDP negotiates bidirectional sendrecv.
+  async getOrCreateAnswerStream() {
+    let currentStream = this.localStream;
+    if (!currentStream || currentStream.getAudioTracks().length === 0) {
+      currentStream = await this.getLocalAudioStream().catch(() => null);
+    }
+    if (!currentStream || currentStream.getAudioTracks().length === 0) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const dummyCtx = new AudioCtx();
+          const osc = dummyCtx.createOscillator();
+          const dst = dummyCtx.createMediaStreamDestination();
+          const gain = dummyCtx.createGain();
+          gain.gain.value = 0;
+          osc.connect(gain);
+          gain.connect(dst);
+          osc.start();
+          currentStream = dst.stream;
+        }
+      } catch {}
+    }
+    return currentStream;
+  }
+
+  // Binds dual stream listeners (PeerJS event + native RTCPeerConnection ontrack) and ICE health watchers
+  bindAudioCallEvents(call, peerId) {
+    if (!call || !peerId) return;
+
+    const attachStream = (remoteStream) => {
+      if (this.activeCalls.get(peerId) !== call) return;
+      if (!remoteStream) return;
+      const existing = this.remoteStreams.get(peerId);
+      if (existing === remoteStream) return;
+      this.remoteStreams.set(peerId, remoteStream);
+      this.emit('stream', { peerId, stream: remoteStream });
+      this.emit('peersUpdated', Array.from(this.remoteStreams.keys()));
+    };
+
+    call.on('stream', (remoteStream) => {
+      attachStream(remoteStream);
+    });
+
+    const pc = call.peerConnection;
+    if (pc) {
+      // Direct browser ontrack listener (captures audio even if PeerJS wrapper delayed)
+      pc.addEventListener('track', (event) => {
+        if (event.streams && event.streams[0]) {
+          attachStream(event.streams[0]);
+        }
+      });
+
+      // ICE state monitoring and recovery
+      pc.addEventListener('iceconnectionstatechange', () => {
+        const ice = pc.iceConnectionState;
+        if (ice === 'failed') {
+          console.warn(`[WebRTC] ICE failed with ${peerId}, attempting ICE restart...`);
+          try {
+            if (typeof pc.restartIce === 'function') {
+              pc.restartIce();
+            }
+          } catch {}
+
+          setTimeout(() => {
+            if (this.activeCalls.get(peerId) === call && (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected')) {
+              console.warn(`[WebRTC] ICE failed permanently with ${peerId}. Healing connection...`);
+              this.activeCalls.delete(peerId);
+              this.remoteStreams.delete(peerId);
+              try { call.close(); } catch {}
+              this.checkAndHealMesh();
+            }
+          }, 3500);
+        }
+      });
+
+      // Connection state monitoring
+      pc.addEventListener('connectionstatechange', () => {
+        const state = pc.connectionState;
+        if (state === 'failed') {
+          console.warn(`[WebRTC] Connection failed with ${peerId}. Reconnecting...`);
+          this.activeCalls.delete(peerId);
+          this.remoteStreams.delete(peerId);
+          try { call.close(); } catch {}
+          this.checkAndHealMesh();
+        }
+      });
+    }
+
+    call.on('close', () => {
+      if (this.activeCalls.get(peerId) !== call) return;
+      this.removePeer(peerId);
+    });
+
+    call.on('error', (err) => {
+      if (this.activeCalls.get(peerId) !== call) return;
+      console.warn(`Call error with ${peerId}:`, err);
+      this.removePeer(peerId);
+    });
+  }
+
   // 4. Call another peer directly to build the mesh
   async callPeer(targetPeerId) {
     if (!this.peer || !targetPeerId || targetPeerId === this.myPeerId) return null;
-    if (this.activeCalls.has(targetPeerId)) return this.activeCalls.get(targetPeerId);
+
+    const existingCall = this.activeCalls.get(targetPeerId);
+    if (existingCall) {
+      const pc = existingCall.peerConnection;
+      const pcState = pc?.connectionState;
+      const iceState = pc?.iceConnectionState;
+      if (pcState === 'connected' || pcState === 'connecting' || iceState === 'connected' || iceState === 'completed') {
+        return existingCall;
+      }
+      // Dead call: clean up before re-calling
+      this.activeCalls.delete(targetPeerId);
+      this.remoteStreams.delete(targetPeerId);
+      try { existingCall.close(); } catch {}
+    }
 
     try {
-      const stream = this.localStream || await this.getLocalAudioStream().catch(() => null);
+      const stream = await this.getOrCreateAnswerStream();
       const call = this.peer.call(targetPeerId, stream || undefined, {
         sdpTransform: optimizeOpusSdp,
         metadata: {
@@ -1094,24 +1234,7 @@ export class MeshVoiceService {
       if (!call) return null;
 
       this.activeCalls.set(targetPeerId, call);
-
-      call.on('stream', (remoteStream) => {
-        if (this.activeCalls.get(targetPeerId) !== call) return;
-        this.remoteStreams.set(targetPeerId, remoteStream);
-        this.emit('stream', { peerId: targetPeerId, stream: remoteStream });
-        this.emit('peersUpdated', Array.from(this.remoteStreams.keys()));
-      });
-
-      call.on('close', () => {
-        if (this.activeCalls.get(targetPeerId) !== call) return;
-        this.removePeer(targetPeerId);
-      });
-
-      call.on('error', (err) => {
-        if (this.activeCalls.get(targetPeerId) !== call) return;
-        console.error(`Call error with ${targetPeerId}:`, err);
-        this.removePeer(targetPeerId);
-      });
+      this.bindAudioCallEvents(call, targetPeerId);
 
       // Also establish data channel for mesh discovery
       try {
@@ -1614,8 +1737,24 @@ export class MeshVoiceService {
     this.healMeshConnections();
   }
 
-  // Cross-mesh self-healing to bridge remaining peers after a peer leaves
-  healMeshConnections() {
+  startMeshWatchdog() {
+    this.stopMeshWatchdog();
+    // Watchdog every 4 seconds ensures every voice room participant has an active, healthy WebRTC call
+    this.meshWatchdogInterval = setInterval(() => {
+      this.checkAndHealMesh();
+    }, 4000);
+  }
+
+  stopMeshWatchdog() {
+    if (this.meshWatchdogInterval) {
+      clearInterval(this.meshWatchdogInterval);
+      this.meshWatchdogInterval = null;
+    }
+  }
+
+  // Active full-mesh auditor: checks presence list against active WebRTC connections,
+  // prunes dead/failed connections, and silently connects any missing peers.
+  checkAndHealMesh() {
     if (!this.peer || this.peer.destroyed || !this.supabaseVoiceChannel) return;
     try {
       const state = this.supabaseVoiceChannel.presenceState?.() || {};
@@ -1623,24 +1762,53 @@ export class MeshVoiceService {
         if (peerKey === this.myPeerId) return;
         const remoteInfo = state[peerKey]?.[0];
         const remotePeerId = remoteInfo?.peerId || peerKey;
-        if (remotePeerId && remotePeerId !== this.myPeerId && !this.activeCalls.has(remotePeerId)) {
-          if (remoteInfo) {
-            this.setPeerMetadata(remotePeerId, remoteInfo);
+        if (!remotePeerId || remotePeerId === this.myPeerId) return;
+
+        if (remoteInfo) {
+          this.setPeerMetadata(remotePeerId, remoteInfo);
+        }
+
+        const existingCall = this.activeCalls.get(remotePeerId);
+        let isHealthy = false;
+
+        if (existingCall) {
+          const pc = existingCall.peerConnection;
+          const pcState = pc?.connectionState;
+          const iceState = pc?.iceConnectionState;
+
+          if (pcState === 'connected' || pcState === 'connecting' || iceState === 'connected' || iceState === 'completed') {
+            isHealthy = true;
+          } else if (pcState === 'failed' || iceState === 'failed' || pcState === 'closed') {
+            console.warn(`[MeshWatchdog] Pruning dead call with ${remotePeerId}`);
+            this.activeCalls.delete(remotePeerId);
+            this.remoteStreams.delete(remotePeerId);
+            try { existingCall.close(); } catch {}
+            isHealthy = false;
           }
+        }
+
+        if (!isHealthy && !this.activeCalls.has(remotePeerId)) {
           if (this.myPeerId > remotePeerId) {
+            console.log(`[MeshWatchdog] Auto-bridging missing voice connection to ${remotePeerId}`);
             this.callPeer(remotePeerId);
           } else {
             setTimeout(() => {
               if (this.peer && !this.peer.destroyed && !this.activeCalls.has(remotePeerId)) {
+                console.log(`[MeshWatchdog] Fallback bridging connection to ${remotePeerId}`);
                 this.callPeer(remotePeerId);
               }
-            }, 600);
+            }, 800);
           }
         }
       });
     } catch (err) {
-      console.warn('Mesh heal error:', err);
+      console.warn('Mesh watchdog error:', err);
     }
+  }
+
+  // Cross-mesh self-healing to bridge remaining peers after a peer leaves
+  healMeshConnections() {
+    this.checkAndHealMesh();
   }
 
   // Set active voice room for room isolation
@@ -1648,6 +1816,8 @@ export class MeshVoiceService {
     if (!newRoomName || this.roomName === newRoomName) return;
 
     this.stopScreenShare();
+    this.stopPingMonitoring();
+    this.stopMeshWatchdog();
 
     if (this.broadcastChannel) {
       this.broadcastChannel.postMessage({
@@ -1688,6 +1858,7 @@ export class MeshVoiceService {
   disconnect() {
     this.stopScreenShare();
     this.stopPingMonitoring();
+    this.stopMeshWatchdog();
     this.peerLatencies.clear();
     this.peerMetadata.clear();
 

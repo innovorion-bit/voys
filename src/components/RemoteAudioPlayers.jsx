@@ -63,14 +63,33 @@ const RemoteAudioItem = ({
       audioEl.srcObject = stream;
     }
 
-    const playPromise = audioEl.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn(`Remote audio autoplay for ${peerId} paused:`, err);
-      });
-    }
+    const attemptPlay = () => {
+      if (!audioEl) return;
+      const playPromise = audioEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn(`Remote audio autoplay for ${peerId} paused:`, err);
+        });
+      }
+    };
+
+    attemptPlay();
+
+    // Auto-resume audio element on first user gesture if blocked by browser autoplay policy
+    const onGesture = () => {
+      if (audioEl && audioEl.paused) {
+        audioEl.play().catch(() => {});
+      }
+    };
+
+    window.addEventListener('pointerdown', onGesture);
+    window.addEventListener('keydown', onGesture);
+    window.addEventListener('click', onGesture);
 
     return () => {
+      window.removeEventListener('pointerdown', onGesture);
+      window.removeEventListener('keydown', onGesture);
+      window.removeEventListener('click', onGesture);
       teardownBoostGraph();
       if (audioEl) {
         try {
@@ -101,20 +120,27 @@ const RemoteAudioItem = ({
     let cleanupResumeListener;
 
     const ensureResumeOnGesture = (ctx) => {
-      if (cleanupResumeListener || !ctx || ctx.state !== 'suspended' || typeof window === 'undefined') {
+      if (cleanupResumeListener || !ctx || typeof window === 'undefined') {
         return;
       }
-      ctx.resume().catch(() => {});
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       const onGesture = () => {
         if (ctx.state === 'suspended') {
           ctx.resume().catch(() => {});
         }
+        if (audioEl && audioEl.paused) {
+          audioEl.play().catch(() => {});
+        }
       };
-      window.addEventListener('pointerdown', onGesture, { once: true });
-      window.addEventListener('keydown', onGesture, { once: true });
+      window.addEventListener('pointerdown', onGesture);
+      window.addEventListener('keydown', onGesture);
+      window.addEventListener('click', onGesture);
       cleanupResumeListener = () => {
         window.removeEventListener('pointerdown', onGesture);
         window.removeEventListener('keydown', onGesture);
+        window.removeEventListener('click', onGesture);
       };
     };
 
