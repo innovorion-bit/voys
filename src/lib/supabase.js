@@ -2148,9 +2148,16 @@ export const dbService = {
         if (dmRes.status === 'fulfilled' && !dmRes.value?.error && Array.isArray(dmRes.value?.data)) {
           for (const row of dmRes.value.data) {
             const count = Number(row?.unread_count) || 0;
-            if (count > 0) {
-              if (row.sender_id) unreadMap[String(row.sender_id)] = count;
-              if (row.room_id) unreadMap[String(row.room_id)] = count;
+            const senderId = row?.sender_id ? String(row.sender_id) : null;
+            const roomId = row?.room_id ? String(row.room_id) : null;
+            if (
+              count > 0 &&
+              senderId &&
+              senderId !== String(userId) &&
+              roomId !== 'dm-control-cleared'
+            ) {
+              unreadMap[senderId] = count;
+              if (roomId) unreadMap[roomId] = count;
             }
           }
         }
@@ -2277,6 +2284,8 @@ export const dbService = {
           sender_name: 'System',
           lines: [JSON.stringify({ type: 'dm_cleared', targetRoomId: canonical || roomId, partnerId: normPartner, clearedAt })],
           sent_at: clearedAt,
+          read_at: clearedAt,
+          delivered_at: clearedAt,
         };
         await supabase.from('direct_messages').upsert(payload, { onConflict: 'id' });
       } catch (err) {

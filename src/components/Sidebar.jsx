@@ -402,8 +402,58 @@ export const Sidebar = ({
     });
   }, [effectiveUserId]);
 
+  // Persistent unread message counts: { [chatId]: count }
+  const [unreadCounts, setUnreadCounts] = useState(() => readUnreadCounts(effectiveUserId));
+  // Dynamically discovered DM partners from incoming direct messages (even if not yet in friends list)
+  const [discoveredDmUsers, setDiscoveredDmUsers] = useState([]);
+
+  useEffect(() => {
+    setUnreadCounts(readUnreadCounts(effectiveUserId));
+  }, [effectiveUserId]);
+
+  const activeDmUserIdRef = useRef(activeDmUserId);
+  activeDmUserIdRef.current = activeDmUserId;
+
+  const activeChannelRef = useRef(activeChannel);
+  activeChannelRef.current = activeChannel;
+
+  const clearUnread = useCallback((...keys) => {
+    setUnreadCounts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      keys.filter(Boolean).forEach((k) => {
+        if (next[k] !== undefined) {
+          delete next[k];
+          changed = true;
+        }
+      });
+      if (changed) {
+        persistUnreadCounts(effectiveUserId, next);
+        return next;
+      }
+      return prev;
+    });
+  }, [effectiveUserId]);
+
   const handleHideChat = useCallback((chatItem) => {
     if (!chatItem?.id) return;
+
+    // Clear unread counts for this chat immediately so removed chat doesn't leave phantom badges
+    clearUnread(chatItem.id);
+    if (chatItem.type === 'dm') {
+      const dmRoomId = effectiveUserId ? getDmRoomId(effectiveUserId, chatItem.id) : null;
+      if (dmRoomId) clearUnread(dmRoomId);
+      if (effectiveUserId) {
+        dbService.markDmMessagesRead?.(effectiveUserId, chatItem.id).catch(() => {});
+      }
+    } else if (chatItem.type === 'channel') {
+      const cleanChan = String(chatItem.id).replace(/^text-/, '');
+      clearUnread(chatItem.id, cleanChan, `text-${cleanChan}`);
+      if (effectiveUserId) {
+        dbService.markChannelRead?.(chatItem.id, effectiveUserId).catch(() => {});
+      }
+    }
+
     setHiddenChatIds((prev) => {
       const next = new Set(prev);
       next.add(chatItem.id);
@@ -424,16 +474,7 @@ export const Sidebar = ({
     toast.success('Sohbet kaldırıldı', {
       description: 'Mesajlar silinmedi. Kişiye yeni mesaj geldiğinde veya arandığında sohbet tekrar listelenir.',
     });
-  }, [activeDmUserId, activeChannel, effectiveUserId, onSelectDm, onSelectChannel]);
-
-  // Persistent unread message counts: { [chatId]: count }
-  const [unreadCounts, setUnreadCounts] = useState(() => readUnreadCounts(effectiveUserId));
-  // Dynamically discovered DM partners from incoming direct messages (even if not yet in friends list)
-  const [discoveredDmUsers, setDiscoveredDmUsers] = useState([]);
-
-  useEffect(() => {
-    setUnreadCounts(readUnreadCounts(effectiveUserId));
-  }, [effectiveUserId]);
+  }, [activeDmUserId, activeChannel, effectiveUserId, onSelectDm, onSelectChannel, clearUnread]);
 
   // Load persistent unread message counts from database on login/mount & realtime reconnection
   useEffect(() => {
@@ -461,7 +502,17 @@ export const Sidebar = ({
           }
 
           setUnreadCounts((prev) => {
-            const next = { ...prev, ...counts };
+            // Keep DB counts as authoritative, prune stale keys that are no longer unread on server
+            const next = { ...counts };
+            if (activeUid) {
+              delete next[activeUid];
+              delete next['dm-control-cleared'];
+            }
+            Object.keys(next).forEach((k) => {
+              if (!next[k] || Number(next[k]) <= 0 || isNaN(next[k])) {
+                delete next[k];
+              }
+            });
             persistUnreadCounts(activeUid, next);
             return next;
           });
@@ -481,30 +532,6 @@ export const Sidebar = ({
       cancelled = true;
       unsubRecovered?.();
     };
-  }, [effectiveUserId]);
-
-  const activeDmUserIdRef = useRef(activeDmUserId);
-  activeDmUserIdRef.current = activeDmUserId;
-
-  const activeChannelRef = useRef(activeChannel);
-  activeChannelRef.current = activeChannel;
-
-  const clearUnread = useCallback((...keys) => {
-    setUnreadCounts((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      keys.filter(Boolean).forEach((k) => {
-        if (next[k] !== undefined) {
-          delete next[k];
-          changed = true;
-        }
-      });
-      if (changed) {
-        persistUnreadCounts(effectiveUserId, next);
-        return next;
-      }
-      return prev;
-    });
   }, [effectiveUserId]);
 
   const ensureDiscoveredDmPartner = useCallback(async (partnerId, fallbackName) => {
@@ -1401,7 +1428,14 @@ export const Sidebar = ({
     if (filterTab !== 'channels') {
       combinedFriends.forEach((friend) => {
         if (!friend || !friend.id) return;
-        if (hiddenChatIds.has(friend.id) && !q) return;
+
+        const dmRoomId = currentUserProfile?.id && friend?.id
+          ? getDmRoomId(currentUserProfile.id, friend.id)
+          : null;
+        const unreadCount = Number(unreadCounts[friend.id] || (dmRoomId ? unreadCounts[dmRoomId] : 0) || 0);
+
+        // A chat with unread messages is never hidden so user never gets phantom notification badges
+        if (hiddenChatIds.has(friend.id) && !q && unreadCount === 0) return;
         if (q) {
           const match =
             friend.name?.toLowerCase().includes(q) ||
@@ -1410,10 +1444,6 @@ export const Sidebar = ({
             friend.substatus?.toLowerCase().includes(q);
           if (!match) return;
         }
-
-        const dmRoomId = currentUserProfile?.id && friend?.id
-          ? getDmRoomId(currentUserProfile.id, friend.id)
-          : null;
 
         const baseMsg = dmRoomId ? lastMessagesMap[dmRoomId] : null;
         const isActiveChat = activeChannel === dmRoomId;
@@ -1445,7 +1475,6 @@ export const Sidebar = ({
 
         const rawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
         const msgTime = getMessageTimestampNumber(lastMsg);
-        const unreadCount = Number(unreadCounts[friend.id] || (dmRoomId ? unreadCounts[dmRoomId] : 0) || 0);
 
         items.push({
           type: 'dm',
@@ -1465,7 +1494,17 @@ export const Sidebar = ({
     if (filterTab !== 'dms') {
       textChannels.forEach((chan) => {
         if (!chan || chan.id === 'home' || chan.is_home || chan.id === 'voice-sesli-sohbet') return;
-        if (hiddenChatIds.has(chan.id) && !q) return;
+
+        const cleanChan = String(chan.id).replace(/^text-/, '');
+        const unreadCount = Number(
+          unreadCounts[chan.id] ||
+          unreadCounts[`text-${chan.id}`] ||
+          unreadCounts[cleanChan] ||
+          0
+        );
+
+        // A group with unread messages is never hidden
+        if (hiddenChatIds.has(chan.id) && !q && unreadCount === 0) return;
         if (q && !chan.name?.toLowerCase().includes(q)) return;
 
         const lastMsg = (activeChannel === chan.id && activeLastMessage)
@@ -1474,13 +1513,6 @@ export const Sidebar = ({
 
         const rawTime = lastMsg ? (lastMsg.sentAt || lastMsg.sent_at || lastMsg.created_at) : null;
         const msgTime = getMessageTimestampNumber(lastMsg);
-        const cleanChan = String(chan.id).replace(/^text-/, '');
-        const unreadCount = Number(
-          unreadCounts[chan.id] ||
-          unreadCounts[`text-${chan.id}`] ||
-          unreadCounts[cleanChan] ||
-          0
-        );
 
         items.push({
           type: 'channel',
