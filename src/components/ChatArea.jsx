@@ -1749,7 +1749,14 @@ export const ChatArea = ({
                   ? (peerAudioPrefs[String(dmCallMember.id)] || (dmCallMember.peerId ? peerAudioPrefs[String(dmCallMember.peerId)] : null))
                   : null;
                 const dmMuted = Boolean(dmPref?.muted || dmPref?.volume === 0);
-                const dmSpeaking = Boolean(isInCall && !isDeafened && !dmMuted && dmCallMember?.isSpeaking);
+                const dmSpeaking = Boolean(
+                  isInCall &&
+                  !isDeafened &&
+                  !dmMuted &&
+                  !dmCallMember?.isMuted &&
+                  !dmCallMember?.isDeafened &&
+                  dmCallMember?.isSpeaking
+                );
 
                 return (
                   <div
@@ -3397,10 +3404,12 @@ export const ChatArea = ({
                       ? (peerAudioPrefs[String(m.id)] || (m.peerId ? peerAudioPrefs[String(m.peerId)] : null))
                       : null;
                     const isLocallyMuted = Boolean(pref?.muted || pref?.volume === 0);
+                    const memberMuted = Boolean(isMe ? isMuted : m.isMuted);
+                    const memberDeafened = Boolean(isMe ? isDeafened : m.isDeafened);
                     const memberSpeaking = Boolean(
                       isMe
                         ? (!isMuted && !isDeafened && isSpeaking)
-                        : (!isDeafened && !isLocallyMuted && m.isSpeaking)
+                        : (!memberMuted && !memberDeafened && !isDeafened && !isLocallyMuted && m.isSpeaking)
                     );
                     const isSharingScreen = Boolean(
                       (isMe && isScreenSharing) ||
@@ -3416,9 +3425,9 @@ export const ChatArea = ({
                     );
                     const voiceStatusLabel = isSharingScreen
                       ? 'Ekran paylaşıyor'
-                      : isMe && isDeafened
+                      : memberDeafened
                         ? 'Sağırlaştırıldı'
-                        : isMe && isMuted
+                        : memberMuted
                           ? 'Mikrofon Kapalı'
                           : !isMe && isLocallyMuted
                             ? 'Sesi Kapatıldı'
@@ -3427,18 +3436,20 @@ export const ChatArea = ({
                               : 'Seste';
                     const voiceStatusColorClass = isSharingScreen
                       ? 'text-[#c084fc] font-medium'
-                      : (isMe && (isDeafened || isMuted)) || (!isMe && isLocallyMuted)
+                      : memberDeafened || memberMuted || (!isMe && isLocallyMuted)
                         ? 'text-rose-400/90'
                         : !isMe && typeof pref?.volume === 'number' && pref.volume > 100
                           ? 'text-amber-400/90'
                           : 'text-gray-400';
                     const iconSize = isRightPanelCompact ? 10 : 13;
-                    const voiceBadgeIcon = isMe && (isMuted || isDeafened)
-                      ? (isDeafened ? <Headphones size={iconSize} /> : <MicOff size={iconSize} />)
+                    const voiceBadgeIcon = memberDeafened || memberMuted
+                      ? (memberDeafened ? <Headphones size={iconSize} /> : <MicOff size={iconSize} />)
                       : (!isMe && isLocallyMuted ? <VolumeX size={iconSize} /> : null);
-                    const voiceBadgeTitle = isMe && (isMuted || isDeafened)
-                      ? (isDeafened ? 'Sağırlaştırıldı' : 'Mikrofon Kapalı')
-                      : 'Sesi Kapatıldı';
+                    const voiceBadgeTitle = memberDeafened
+                      ? 'Sağırlaştırıldı'
+                      : memberMuted
+                        ? 'Mikrofon Kapalı'
+                        : 'Sesi Kapatıldı';
                     const memberKey = m.peerId || m.id || `call-member-${idx}`;
 
                     if (isRightPanelCompact) {
@@ -3920,8 +3931,8 @@ export const ChatArea = ({
         const targetVolume = typeof pref.volume === 'number' ? pref.volume : 100;
         const targetMuted = Boolean(pref.muted);
         const targetSpeaking = isTargetInVoice && (isMeTarget
-          ? Boolean(isSpeaking && !isMuted)
-          : Boolean(liveTarget.isSpeaking && !isDeafened && !targetMuted && targetVolume > 0));
+          ? Boolean(isSpeaking && !isMuted && !isDeafened)
+          : Boolean(liveTarget.isSpeaking && !liveTarget.isMuted && !liveTarget.isDeafened && !isDeafened && !targetMuted && targetVolume > 0));
         const canSendDm = Boolean(!isMeTarget && onSelectDm && isValidRealUser);
         const isVolumeModified = targetMuted || targetVolume !== 100;
         const isCurrentUserGroupAdmin = Boolean(

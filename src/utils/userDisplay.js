@@ -425,7 +425,9 @@ export const mergeVoiceAndCallMembers = (voiceMembers = [], callMembers = [], cu
     mergedList.push({
       ...cm,
       isSpeaking: Boolean(cm.isSpeaking),
-      substatus: cm.substatus || 'Seste',
+      isMuted: Boolean(cm.isMuted),
+      isDeafened: Boolean(cm.isDeafened),
+      substatus: cm.substatus || (cm.isDeafened ? 'Sağırlaştırıldı' : cm.isMuted ? 'Mikrofon Kapalı' : 'Seste'),
     });
   });
 
@@ -438,8 +440,10 @@ export const mergeVoiceAndCallMembers = (voiceMembers = [], callMembers = [], cu
       name: currentUser.name || 'Sen (You)',
       avatar: currentUser.avatar || currentUser.avatar_url || null,
       isSpeaking: false,
+      isMuted: Boolean(currentUser.isMuted),
+      isDeafened: Boolean(currentUser.isDeafened),
       status: currentUser.status || 'online',
-      substatus: 'Seste',
+      substatus: currentUser.isDeafened ? 'Sağırlaştırıldı' : currentUser.isMuted ? 'Mikrofon Kapalı' : 'Seste',
     });
   }
 
@@ -599,6 +603,9 @@ export const partitionSidebarGroupMembers = ({
         (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
       ) || '';
 
+    const memberMuted = Boolean(cm.isMuted ?? matchedMember?.isMuted);
+    const memberDeafened = Boolean(cm.isDeafened ?? matchedMember?.isDeafened);
+
     voiceMembers.push({
       ...cm,
       ...(matchedMember || {}),
@@ -612,8 +619,14 @@ export const partitionSidebarGroupMembers = ({
       role: matchedMember?.role || cm.role || 'member',
       game: matchedMember?.game || cm.game || '',
       isSpeaking: Boolean(cm.isSpeaking),
+      isMuted: memberMuted,
+      isDeafened: memberDeafened,
       peerId: cm.peerId || matchedMember?.peerId || null,
-      substatus: cm.substatus || matchedMember?.substatus || 'Seste',
+      substatus: memberDeafened
+        ? 'Sağırlaştırıldı'
+        : memberMuted
+          ? 'Mikrofon Kapalı'
+          : cm.substatus || matchedMember?.substatus || 'Seste',
     });
   });
 

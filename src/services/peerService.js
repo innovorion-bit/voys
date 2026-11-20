@@ -212,6 +212,8 @@ export class MeshVoiceService {
       ...(nextUserId ? { userId: nextUserId } : {}),
       ...(nextName ? { name: nextName, userName: nextName } : {}),
       ...(nextAvatar ? { avatar: nextAvatar } : {}),
+      ...(typeof meta.isMuted === 'boolean' ? { isMuted: meta.isMuted } : {}),
+      ...(typeof meta.isDeafened === 'boolean' ? { isDeafened: meta.isDeafened } : {}),
     };
     this.peerMetadata.set(peerId, next);
     this.emit('peerMetadataUpdated', Object.fromEntries(this.peerMetadata));
@@ -615,6 +617,8 @@ export class MeshVoiceService {
         userId: userMeta.id || userMeta.userId || null,
         name: resolvedName,
         avatar: userMeta.avatar_url || userMeta.avatar || null,
+        isMuted: false,
+        isDeafened: false,
       };
     } else {
       this.userName = userName || 'Sen (You)';
@@ -622,6 +626,8 @@ export class MeshVoiceService {
         userId: null,
         name: this.userName,
         avatar: null,
+        isMuted: false,
+        isDeafened: false,
       };
     }
 
@@ -794,6 +800,8 @@ export class MeshVoiceService {
               name: data.name,
               userId: data.userId,
               avatar: data.avatar,
+              isMuted: data.isMuted,
+              isDeafened: data.isDeafened,
             });
             // A new peer joined the room: deterministic priority avoids dual-call glare
             if (!this.activeCalls.has(data.peerId)) {
@@ -814,6 +822,8 @@ export class MeshVoiceService {
               name: this.userName,
               userId: this.userMeta?.userId || null,
               avatar: this.userMeta?.avatar || null,
+              isMuted: Boolean(this.isLocalMuted),
+              isDeafened: Boolean(this.isLocalDeafened),
               knownPeers: Array.from(this.remoteStreams.keys()),
             });
             break;
@@ -823,6 +833,8 @@ export class MeshVoiceService {
               name: data.name,
               userId: data.userId,
               avatar: data.avatar,
+              isMuted: data.isMuted,
+              isDeafened: data.isDeafened,
             });
             // Existing peer announced itself
             if (!this.activeCalls.has(data.peerId)) {
@@ -849,6 +861,14 @@ export class MeshVoiceService {
             }
             break;
 
+          case 'PEER_MUTE_UPDATE':
+            this.setPeerMetadata(data.peerId, {
+              userId: data.userId,
+              isMuted: data.isMuted,
+              isDeafened: data.isDeafened,
+            });
+            break;
+
           default:
             break;
         }
@@ -863,6 +883,8 @@ export class MeshVoiceService {
         name: this.userName,
         userId: this.userMeta?.userId || null,
         avatar: this.userMeta?.avatar || null,
+        isMuted: Boolean(this.isLocalMuted),
+        isDeafened: Boolean(this.isLocalDeafened),
       });
     }
 
@@ -946,6 +968,15 @@ export class MeshVoiceService {
               this.emit('screenShareStopped', { peerId: payload.peerId });
             }
           })
+          .on('broadcast', { event: 'peer_mute_update' }, ({ payload }) => {
+            if (payload?.peerId && payload.peerId !== this.myPeerId) {
+              this.setPeerMetadata(payload.peerId, {
+                userId: payload.userId,
+                isMuted: payload.isMuted,
+                isDeafened: payload.isDeafened,
+              });
+            }
+          })
           .subscribe(async (status) => {
             if (status === 'SUBSCRIBED' && this.supabaseVoiceChannel) {
               await this.supabaseVoiceChannel.track({
@@ -953,6 +984,8 @@ export class MeshVoiceService {
                 userName: this.userName,
                 userId: this.userMeta?.userId || null,
                 avatar: this.userMeta?.avatar || null,
+                isMuted: Boolean(this.isLocalMuted),
+                isDeafened: Boolean(this.isLocalDeafened),
                 joinedAt: Date.now(),
               }).catch(() => {});
             }
@@ -976,6 +1009,8 @@ export class MeshVoiceService {
           userName: this.userName,
           userId: this.userMeta?.userId || null,
           avatar: this.userMeta?.avatar || null,
+          isMuted: Boolean(this.isLocalMuted),
+          isDeafened: Boolean(this.isLocalDeafened),
         });
         conn.send({
           type: 'MESH_SYNC',
@@ -993,6 +1028,12 @@ export class MeshVoiceService {
     conn.on('data', (data) => {
       if (data?.type === 'PEER_INFO') {
         this.setPeerMetadata(peerId, data);
+      } else if (data?.type === 'PEER_MUTE_UPDATE') {
+        this.setPeerMetadata(peerId, {
+          userId: data.userId,
+          isMuted: data.isMuted,
+          isDeafened: data.isDeafened,
+        });
       } else if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
         data.knownPeers.forEach((pId) => {
           if (pId !== this.myPeerId && !this.activeCalls.has(pId)) {
@@ -1340,8 +1381,11 @@ export class MeshVoiceService {
     return this.activeScreenShare;
   }
 
-  // 6. Control microphone track enabled state (Mute / Unmute)
-  setMicrophoneEnabled(enabled) {
+  // 6. Control microphone track enabled state (Mute / Unmute) and broadcast state
+  setMicrophoneEnabled(enabled, isDeafened = false) {
+    this.isLocalMuted = !enabled;
+    this.isLocalDeafened = Boolean(isDeafened);
+
     if (this.rawLocalStream) {
       this.rawLocalStream.getAudioTracks().forEach((track) => {
         track.enabled = enabled;
@@ -1351,6 +1395,65 @@ export class MeshVoiceService {
       this.localStream.getAudioTracks().forEach((track) => {
         track.enabled = enabled;
       });
+    }
+
+    this.broadcastMuteState(!enabled, isDeafened);
+  }
+
+  broadcastMuteState(isMuted, isDeafened = false) {
+    this.isLocalMuted = Boolean(isMuted);
+    this.isLocalDeafened = Boolean(isDeafened);
+    if (this.userMeta) {
+      this.userMeta.isMuted = this.isLocalMuted;
+      this.userMeta.isDeafened = this.isLocalDeafened;
+    }
+
+    const payload = {
+      type: 'PEER_MUTE_UPDATE',
+      peerId: this.myPeerId,
+      userId: this.userMeta?.userId || null,
+      isMuted: Boolean(isMuted),
+      isDeafened: Boolean(isDeafened),
+    };
+
+    // 1. Direct WebRTC DataConnections (Mesh)
+    for (const conn of this.activeDataConns.values()) {
+      try {
+        if (conn && conn.open) {
+          conn.send(payload);
+        }
+      } catch {}
+    }
+
+    // 2. BroadcastChannel (Same Machine / Cross-tab)
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage(payload);
+      } catch {}
+    }
+
+    // 3. Supabase Realtime voice channel (Cross-device / Cross-network)
+    if (this.supabaseVoiceChannel) {
+      try {
+        this.supabaseVoiceChannel.send({
+          type: 'broadcast',
+          event: 'peer_mute_update',
+          payload,
+        });
+        if (this.myPeerId) {
+          this.supabaseVoiceChannel.track({
+            peerId: this.myPeerId,
+            userName: this.userName,
+            userId: this.userMeta?.userId || null,
+            avatar: this.userMeta?.avatar || null,
+            isMuted: this.isLocalMuted,
+            isDeafened: this.isLocalDeafened,
+            joinedAt: Date.now(),
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Supabase peer_mute_update broadcast error:', err);
+      }
     }
   }
 

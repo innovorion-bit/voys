@@ -1098,6 +1098,50 @@ function StanduppApp() {
     chatService.requestCallStatus?.(activeChannel);
   }, [activeChannel]);
 
+  // Broadcast local mute / deafen state updates across clients
+  useEffect(() => {
+    if (!isConnected || !activeCallChannelId || !activeUserProfile?.id) return;
+    chatService.broadcastMuteUpdate?.(
+      activeCallChannelId,
+      activeUserProfile.id,
+      isMuted,
+      isDeafened
+    );
+  }, [isMuted, isDeafened, isConnected, activeCallChannelId, activeUserProfile?.id]);
+
+  // Listen for peer mute / deafen state updates from other clients
+  useEffect(() => {
+    const handlePeerMuteUpdate = (payload) => {
+      if (!payload || !payload.userId) return;
+      const targetUid = String(payload.userId);
+
+      setChannelCalls((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.keys(next).forEach((chanKey) => {
+          const callObj = next[chanKey];
+          if (callObj?.members?.some((m) => String(m.id || m.user_id) === targetUid)) {
+            changed = true;
+            next[chanKey] = {
+              ...callObj,
+              members: callObj.members.map((m) =>
+                String(m.id || m.user_id) === targetUid
+                  ? { ...m, isMuted: Boolean(payload.isMuted), isDeafened: Boolean(payload.isDeafened) }
+                  : m
+              ),
+            };
+          }
+        });
+        return changed ? next : prev;
+      });
+    };
+
+    chatService.on('peer_mute_update', handlePeerMuteUpdate);
+    return () => {
+      chatService.off('peer_mute_update', handlePeerMuteUpdate);
+    };
+  }, []);
+
   // Fetch only channels where the active user is an explicit member and subscribe to realtime updates
   useEffect(() => {
     let cancelled = false;
@@ -1540,6 +1584,12 @@ function StanduppApp() {
           null;
 
         const resolvedId = matchedProfile?.id || matchedProfile?.userId || meta.userId || peerId;
+        const isRemoteMuted = Boolean(
+          meta.isMuted ?? matchedProfile?.isMuted
+        );
+        const isRemoteDeafened = Boolean(
+          meta.isDeafened ?? matchedProfile?.isDeafened
+        );
 
         return {
           id: resolvedId,
@@ -1549,9 +1599,11 @@ function StanduppApp() {
           avatar_url: resolvedAvatar,
           avatarBg: '#1e3a5f',
           isSpeaking: Boolean(peerSpeaking),
+          isMuted: isRemoteMuted,
+          isDeafened: isRemoteDeafened,
           status: matchedProfile?.status || 'online',
           game: matchedProfile?.game || '',
-          substatus: matchedProfile?.substatus || 'Seste',
+          substatus: matchedProfile?.substatus || (isRemoteDeafened ? 'Sağırlaştırıldı' : isRemoteMuted ? 'Mikrofon Kapalı' : 'Seste'),
           statusColor: 'text-[#57cbde]',
           isAway: matchedProfile?.status === 'idle',
         };
@@ -1567,9 +1619,11 @@ function StanduppApp() {
             avatar: activeUserProfile.avatar || null,
             avatarBg: '#3d9921',
             isSpeaking: isSpeaking,
+            isMuted: isMuted,
+            isDeafened: isDeafened,
             status: activeUserProfile.status || 'online',
             game: activeUserProfile.game || '',
-            substatus: activeUserProfile.substatus || (isMuted ? 'Mikrofon Susturuldu' : 'Bağlı (Mesh RTC)'),
+            substatus: activeUserProfile.substatus || (isDeafened ? 'Sağırlaştırıldı' : isMuted ? 'Mikrofon Kapalı' : 'Seste'),
             statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
             isAway: activeUserProfile.status === 'idle',
           },
@@ -1582,6 +1636,7 @@ function StanduppApp() {
     activeUserProfile,
     isSpeaking,
     isMuted,
+    isDeafened,
     remotePeers,
     peerMetadata,
     myPeerId,

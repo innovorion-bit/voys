@@ -173,6 +173,8 @@ class RealtimeChatService {
             this.emitLocal('delete_message', event.data.payload);
           } else if (event.data?.type === 'CLEAR_CHAT' && event.data.payload) {
             this.emitLocal('clear_chat', event.data.payload);
+          } else if (event.data?.type === 'PEER_MUTE_UPDATE' && event.data.payload) {
+            this.emitLocal('peer_mute_update', event.data.payload);
           }
         };
 
@@ -256,6 +258,11 @@ class RealtimeChatService {
           .on('broadcast', { event: 'call_update' }, ({ payload }) => {
             if (payload) {
               this.emitLocal('call_status', payload);
+            }
+          })
+          .on('broadcast', { event: 'peer_mute_update' }, ({ payload }) => {
+            if (payload) {
+              this.emitLocal('peer_mute_update', payload);
             }
           })
           .on('broadcast', { event: 'call_query' }, ({ payload }) => {
@@ -605,6 +612,40 @@ class RealtimeChatService {
     }
 
     this.emitLocal('call_status', callData);
+  }
+
+  // Broadcast microphone mute / deafen state across clients
+  broadcastMuteUpdate(channelId, userId, isMuted, isDeafened = false) {
+    const payload = {
+      channelId: channelId ? String(channelId) : null,
+      userId: String(userId),
+      isMuted: Boolean(isMuted),
+      isDeafened: Boolean(isDeafened),
+      timestamp: Date.now(),
+    };
+
+    if (this.presenceBroadcastChannel) {
+      try {
+        this.presenceBroadcastChannel.postMessage({
+          type: 'PEER_MUTE_UPDATE',
+          payload,
+        });
+      } catch {}
+    }
+
+    if (isSupabaseConfigured && this.supabaseCallChannel) {
+      try {
+        this.supabaseCallChannel.send({
+          type: 'broadcast',
+          event: 'peer_mute_update',
+          payload,
+        });
+      } catch (err) {
+        console.warn('Supabase peer_mute_update broadcast error:', err);
+      }
+    }
+
+    this.emitLocal('peer_mute_update', payload);
   }
 
   // Request active call state from network / other clients
