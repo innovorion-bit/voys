@@ -587,7 +587,7 @@ export const SettingsProvider = ({ children }) => {
         closeChatSettings,
         chatSettings,
         updateChatSetting,
-        isPerformanceModeActive,
+        isPerformanceModeActive: false,
       }}
     >
       {children}
