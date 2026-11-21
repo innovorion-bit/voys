@@ -156,6 +156,13 @@ export async function resizeToLoginWindow() {
 }
 
 /**
+ * Resizes the Tauri window to the compact splash/loading dimensions (380x400) and centers it.
+ */
+export async function resizeToSplashWindow() {
+  return resizeToAuthWindow('login');
+}
+
+/**
  * Minimizes the current application window.
  */
 export async function minimizeWindow() {

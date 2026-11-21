@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { AuthContext } from './authContextDef';
 import { supabase, dbService, localDb, isSupabaseConfigured, ADMIN_USER_ID, ADMIN_EMAIL } from '../lib/supabase';
 import { chatService } from '../services/chatService';
-import { resizeToMainWindow, resizeToLoginWindow } from '../utils/windowManager';
+import { resizeToMainWindow, resizeToLoginWindow, resizeToSplashWindow } from '../utils/windowManager';
 import { normalizeUserId, purgeUserFromStorage } from '../utils/userPurge';
 
 const isDefinitiveMissingUserAuthError = (error) => {
@@ -143,23 +143,34 @@ export const AuthProvider = ({ children }) => {
     let unsubProfiles = null;
     let loadingTimer = null;
     const authInitStartTime = Date.now();
-    const MIN_LOADING_TIME_MS = 1400; // Keep loading screen visible smoothly for ~1.4s
+    const MIN_LOADING_TIME_MS = 3200; // Keep loading screen visible smoothly in small window for ~3.2s to show updates loading
 
-    const finishLoading = () => {
+    // Ensure desktop app starts in compact splash window on every startup
+    resizeToSplashWindow();
+
+    const finishLoading = (hasUser = false) => {
       const elapsed = Date.now() - authInitStartTime;
       const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
+      const applyLoaded = () => {
+        if (!isMountedRef.current) return;
+        setLoading(false);
+        if (hasUser) {
+          resizeToMainWindow();
+        } else {
+          resizeToLoginWindow();
+        }
+      };
+
       if (remaining > 0) {
         if (!loadingTimer) {
-          loadingTimer = setTimeout(() => {
-            if (isMountedRef.current) setLoading(false);
-          }, remaining);
+          loadingTimer = setTimeout(applyLoaded, remaining);
         }
       } else {
         if (loadingTimer) {
           clearTimeout(loadingTimer);
           loadingTimer = null;
         }
-        if (isMountedRef.current) setLoading(false);
+        applyLoaded();
       }
     };
 
@@ -172,8 +183,7 @@ export const AuthProvider = ({ children }) => {
         if (currentSession?.user) {
           setSession(currentSession);
           setUser(buildNormalizedUser(currentSession.user));
-          finishLoading();
-          resizeToMainWindow();
+          finishLoading(true);
 
           // Upgrade JWT claims once if admin role was added server-side to an active session
           if (
@@ -182,7 +192,7 @@ export const AuthProvider = ({ children }) => {
             currentSession.user.app_metadata?.role !== 'admin' &&
             supabase?.auth?.refreshSession
           ) {
-            supabase.auth.refreshSession().catch(() => {});
+            supabase.auth.refreshSession().catch(() => { });
           }
 
           // Verify account still exists on server before syncing profile (never signs out on offline/network errors)
@@ -203,7 +213,7 @@ export const AuthProvider = ({ children }) => {
                   setUser((prev) => (prev ? buildNormalizedUser(prev, profileData) : prev));
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           } else {
             // Fetch fresh profile in background
             dbService.ensureProfile(currentSession.user)
@@ -212,14 +222,14 @@ export const AuthProvider = ({ children }) => {
                   setUser((prev) => (prev ? buildNormalizedUser(prev, profileData) : prev));
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
         } else {
-          finishLoading();
+          finishLoading(false);
         }
       } catch (err) {
         console.warn('initSession error:', err);
-        if (isMountedRef.current) finishLoading();
+        if (isMountedRef.current) finishLoading(false);
       }
     };
 
@@ -228,9 +238,9 @@ export const AuthProvider = ({ children }) => {
     // Safety timeout: ensure loading never hangs indefinitely
     const safetyTimer = setTimeout(() => {
       if (isMountedRef.current) {
-        setLoading(false);
+        finishLoading(Boolean(user));
       }
-    }, 4000);
+    }, 5000);
 
     // Subscribe to auth state changes
     const { data: { subscription } } = dbService.onAuthStateChange(async (event, currentSession) => {
@@ -248,8 +258,7 @@ export const AuthProvider = ({ children }) => {
       if (currentUser) {
         // Set immediate user state to ensure instant UI responsiveness
         setUser((prev) => buildNormalizedUser(currentUser, prev));
-        finishLoading();
-        resizeToMainWindow();
+        finishLoading(true);
 
         // Background profile sync
         dbService.ensureProfile(currentUser)
@@ -275,7 +284,7 @@ export const AuthProvider = ({ children }) => {
                     forceDeletedAccountLogout(currentUser.id);
                   }
                 })
-                .catch(() => {});
+                .catch(() => { });
             } else {
               forceDeletedAccountLogout(currentUser.id);
             }
@@ -287,8 +296,7 @@ export const AuthProvider = ({ children }) => {
         });
       } else {
         setUser(null);
-        finishLoading();
-        resizeToLoginWindow();
+        finishLoading(false);
       }
     });
 
@@ -527,7 +535,7 @@ export const AuthProvider = ({ children }) => {
             forceDeletedAccountLogout(currentId);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     };
 
     if (typeof window !== 'undefined') {

@@ -6,8 +6,16 @@ import React from 'react';
  */
 export const LoadingScreen = () => {
   return (
-    <div className="flex flex-col items-center justify-center h-screen w-screen bg-[#0c0c0e] rounded-2xl border border-white/10 text-gray-300 select-none">
-      <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-indigo-500 animate-spin" />
+    <div
+      data-tauri-drag-region
+      className="flex flex-col items-center justify-center h-screen w-screen bg-[#070709] select-none cursor-default overflow-hidden"
+    >
+      <div
+        data-tauri-drag-region
+        className="w-full h-full max-w-[380px] max-h-[400px] flex items-center justify-center bg-[#0c0c0e] rounded-2xl border border-white/10 shadow-2xl relative"
+      >
+        <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-[#8B51FF] animate-spin pointer-events-none" />
+      </div>
     </div>
   );
 };

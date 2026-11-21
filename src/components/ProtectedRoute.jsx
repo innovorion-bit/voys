@@ -9,10 +9,10 @@ export const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !loading) {
       resizeToMainWindow();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loading]);
 
   if (loading) {
     return <LoadingScreen />;
