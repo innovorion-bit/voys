@@ -885,7 +885,7 @@ export class MeshVoiceService {
       this.broadcastChannel.onmessage = (event) => {
         const data = event.data;
         if (!data || data.peerId === this.myPeerId) return;
-        if (!data.room || (this.roomName && data.room !== this.roomName)) return;
+        if (data.room && this.roomName && data.room !== this.roomName) return;
 
         switch (data.type) {
           case 'JOIN_ROOM':
@@ -965,10 +965,14 @@ export class MeshVoiceService {
 
           case 'PEER_SPEAKING_UPDATE':
             if (data.peerId && data.peerId !== this.myPeerId) {
+              const isSpk = Boolean(data.isSpeaking);
+              if (isSpk) {
+                this.setPeerMetadata(data.peerId, { isMuted: false });
+              }
               this.emit('peerSpeakingUpdate', {
                 peerId: data.peerId,
                 userId: data.userId,
-                isSpeaking: Boolean(data.isSpeaking),
+                isSpeaking: isSpk,
               });
             }
             break;
@@ -1093,10 +1097,14 @@ export class MeshVoiceService {
           .on('broadcast', { event: 'peer_speaking_update' }, ({ payload }) => {
             if (payload?.peerId && payload.peerId !== this.myPeerId) {
               if (!payload.room || (this.roomName && payload.room === this.roomName)) {
+                const isSpk = Boolean(payload.isSpeaking);
+                if (isSpk) {
+                  this.setPeerMetadata(payload.peerId, { isMuted: false });
+                }
                 this.emit('peerSpeakingUpdate', {
                   peerId: payload.peerId,
                   userId: payload.userId,
-                  isSpeaking: Boolean(payload.isSpeaking),
+                  isSpeaking: isSpk,
                 });
               }
             }
@@ -1156,7 +1164,7 @@ export class MeshVoiceService {
 
     conn.on('data', (data) => {
       // Reject cross-room sync from peers who are in another room
-      if (!data?.room || (this.roomName && data.room !== this.roomName)) {
+      if (data?.room && this.roomName && data.room !== this.roomName) {
         return;
       }
 
@@ -1169,10 +1177,14 @@ export class MeshVoiceService {
           isDeafened: data.isDeafened,
         });
       } else if (data?.type === 'PEER_SPEAKING_UPDATE') {
+        const isSpk = Boolean(data.isSpeaking);
+        if (isSpk) {
+          this.setPeerMetadata(peerId, { isMuted: false });
+        }
         this.emit('peerSpeakingUpdate', {
           peerId: data.peerId || peerId,
           userId: data.userId,
-          isSpeaking: Boolean(data.isSpeaking),
+          isSpeaking: isSpk,
         });
       } else if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
         data.knownPeers.forEach((pId) => {
@@ -1333,6 +1345,8 @@ export class MeshVoiceService {
           userName: this.userName,
           userId: this.userMeta?.userId || null,
           avatar: this.userMeta?.avatar || null,
+          isMuted: Boolean(this.isLocalMuted),
+          isDeafened: Boolean(this.isLocalDeafened),
         },
       });
 
@@ -1679,10 +1693,12 @@ export class MeshVoiceService {
 
     const payload = {
       type: 'PEER_MUTE_UPDATE',
+      room: this.roomName,
       peerId: this.myPeerId,
       userId: this.userMeta?.userId || null,
       isMuted: Boolean(isMuted),
       isDeafened: Boolean(isDeafened),
+      timestamp: Date.now(),
     };
 
     // 1. Direct WebRTC DataConnections (Mesh)

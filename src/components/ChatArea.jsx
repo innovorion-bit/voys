@@ -3373,7 +3373,7 @@ export const ChatArea = ({
                       ? (peerAudioPrefs[String(m.id)] || (m.peerId ? peerAudioPrefs[String(m.peerId)] : null))
                       : null;
                     const isLocallyMuted = Boolean(pref?.muted || pref?.volume === 0);
-                    const memberMuted = Boolean(isMe ? isMuted : m.isMuted);
+                    const memberMuted = Boolean(isMe ? isMuted : (!m.isSpeaking && m.isMuted));
                     const memberDeafened = Boolean(isMe ? isDeafened : m.isDeafened);
                     const memberSpeaking = Boolean(
                       isMe

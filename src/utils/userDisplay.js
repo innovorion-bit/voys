@@ -444,6 +444,7 @@ export const mergeVoiceAndCallMembers = (
           avatar_url: vm.avatar_url || matchingCallMember.avatar_url || matchingCallMember.avatar,
           name: vm.name && !vm.name.startsWith('Katılımcı-') ? vm.name : (matchingCallMember.name || vm.name),
           isSpeaking: Boolean(vm.isSpeaking),
+          isMuted: vm.isSpeaking ? false : Boolean(vm.isMuted ?? matchingCallMember.isMuted),
         }
       : vm;
 
@@ -487,14 +488,15 @@ export const mergeVoiceAndCallMembers = (
     });
 
     const isMemberSpeaking = matchingVoiceMember ? Boolean(matchingVoiceMember.isSpeaking) : Boolean(cm.isSpeaking);
+    const isMemberMuted = isMemberSpeaking ? false : Boolean(matchingVoiceMember?.isMuted ?? cm.isMuted);
 
     addKeys(cm, cmKey);
     mergedList.push({
       ...cm,
       isSpeaking: isMemberSpeaking,
-      isMuted: Boolean(cm.isMuted),
+      isMuted: isMemberMuted,
       isDeafened: Boolean(cm.isDeafened),
-      substatus: cm.substatus || (cm.isDeafened ? 'Sağırlaştırıldı' : cm.isMuted ? 'Mikrofon Kapalı' : 'Seste'),
+      substatus: cm.substatus || (cm.isDeafened ? 'Sağırlaştırıldı' : isMemberMuted ? 'Mikrofon Kapalı' : 'Seste'),
     });
   });
 
@@ -675,7 +677,8 @@ export const partitionSidebarGroupMembers = ({
         (u) => typeof u === 'string' && u.trim() && !isUuidLike(u)
       ) || '';
 
-    const memberMuted = Boolean(cm.isMuted ?? matchedMember?.isMuted);
+    const isMemberSpeaking = Boolean(cm.isSpeaking);
+    const memberMuted = Boolean(!isMemberSpeaking && (cm.isMuted ?? matchedMember?.isMuted));
     const memberDeafened = Boolean(cm.isDeafened ?? matchedMember?.isDeafened);
 
     voiceMembers.push({
@@ -690,7 +693,7 @@ export const partitionSidebarGroupMembers = ({
       avatar_url: resolvedAvatar,
       role: matchedMember?.role || cm.role || 'member',
       game: null,
-      isSpeaking: Boolean(cm.isSpeaking),
+      isSpeaking: isMemberSpeaking,
       isMuted: memberMuted,
       isDeafened: memberDeafened,
       peerId: cm.peerId || matchedMember?.peerId || null,

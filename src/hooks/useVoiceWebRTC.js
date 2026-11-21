@@ -461,6 +461,9 @@ export const useVoiceWebRTC = () => {
           isSpeaking: boolSpeaking,
           lastUpdated: now,
         });
+        if (boolSpeaking) {
+          peerService.setPeerMetadata(peerId, { isMuted: false });
+        }
       }
       const analyserEntry = remoteAnalysersRef.current.get(peerId);
       if (analyserEntry) {
@@ -554,6 +557,7 @@ export const useVoiceWebRTC = () => {
           if (level.isSpeaking || isSignaledSpeaking) {
             entry.lastSpokeAt = now;
             speakingNow = true;
+            peerService.setPeerMetadata(peerId, { isMuted: false });
           } else if (now - entry.lastSpokeAt < VAD_HANGOVER_MS) {
             speakingNow = true;
           }

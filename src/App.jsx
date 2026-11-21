@@ -1616,11 +1616,11 @@ function StanduppApp() {
           null;
 
         const resolvedId = matchedProfile?.id || matchedProfile?.userId || meta.userId || peerId;
-        const isRemoteMuted = Boolean(
-          meta.isMuted ?? matchedProfile?.isMuted
+        const isRemoteMuted = !peerSpeaking && Boolean(
+          meta.isMuted ?? matchedProfile?.isMuted ?? false
         );
         const isRemoteDeafened = Boolean(
-          meta.isDeafened ?? matchedProfile?.isDeafened
+          meta.isDeafened ?? matchedProfile?.isDeafened ?? false
         );
 
         return {
