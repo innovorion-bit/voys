@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { RemoteAudioPlayers } from './components/RemoteAudioPlayers';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
+import { LoadingScreen } from './components/LoadingScreen';
 
 const CreateChannelModal = lazy(() =>
   import('./components/CreateChannelModal').then((m) => ({ default: m.CreateChannelModal }))
@@ -2293,7 +2294,7 @@ function HomeRoute() {
   }
 
   if (loading) {
-    return <div className="min-h-screen w-full bg-[#070709]" />;
+    return <LoadingScreen />;
   }
 
   // If user is already authenticated in web browser, directly go to StanduppApp
@@ -2313,7 +2314,7 @@ function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <Suspense fallback={<div className="min-h-screen w-full bg-[#09090b]" />}>
+        <Suspense fallback={<LoadingScreen />}>
           <Routes>
             {/* Public Landing & Download Page Routes */}
             <Route path="/download" element={<LandingPage />} />

@@ -141,6 +141,27 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     isMountedRef.current = true;
     let unsubProfiles = null;
+    let loadingTimer = null;
+    const authInitStartTime = Date.now();
+    const MIN_LOADING_TIME_MS = 1400; // Keep loading screen visible smoothly for ~1.4s
+
+    const finishLoading = () => {
+      const elapsed = Date.now() - authInitStartTime;
+      const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
+      if (remaining > 0) {
+        if (!loadingTimer) {
+          loadingTimer = setTimeout(() => {
+            if (isMountedRef.current) setLoading(false);
+          }, remaining);
+        }
+      } else {
+        if (loadingTimer) {
+          clearTimeout(loadingTimer);
+          loadingTimer = null;
+        }
+        if (isMountedRef.current) setLoading(false);
+      }
+    };
 
     // Fast-path: get current session immediately without waiting for events
     const initSession = async () => {
@@ -151,7 +172,7 @@ export const AuthProvider = ({ children }) => {
         if (currentSession?.user) {
           setSession(currentSession);
           setUser(buildNormalizedUser(currentSession.user));
-          setLoading(false);
+          finishLoading();
           resizeToMainWindow();
 
           // Upgrade JWT claims once if admin role was added server-side to an active session
@@ -194,11 +215,11 @@ export const AuthProvider = ({ children }) => {
               .catch(() => {});
           }
         } else {
-          setLoading(false);
+          finishLoading();
         }
       } catch (err) {
         console.warn('initSession error:', err);
-        if (isMountedRef.current) setLoading(false);
+        if (isMountedRef.current) finishLoading();
       }
     };
 
@@ -207,9 +228,9 @@ export const AuthProvider = ({ children }) => {
     // Safety timeout: ensure loading never hangs indefinitely
     const safetyTimer = setTimeout(() => {
       if (isMountedRef.current) {
-        setLoading((prev) => (prev ? false : prev));
+        setLoading(false);
       }
-    }, 2500);
+    }, 4000);
 
     // Subscribe to auth state changes
     const { data: { subscription } } = dbService.onAuthStateChange(async (event, currentSession) => {
@@ -227,7 +248,7 @@ export const AuthProvider = ({ children }) => {
       if (currentUser) {
         // Set immediate user state to ensure instant UI responsiveness
         setUser((prev) => buildNormalizedUser(currentUser, prev));
-        setLoading(false);
+        finishLoading();
         resizeToMainWindow();
 
         // Background profile sync
@@ -266,13 +287,14 @@ export const AuthProvider = ({ children }) => {
         });
       } else {
         setUser(null);
-        setLoading(false);
+        finishLoading();
         resizeToLoginWindow();
       }
     });
 
     return () => {
       isMountedRef.current = false;
+      if (loadingTimer) clearTimeout(loadingTimer);
       clearTimeout(safetyTimer);
       subscription?.unsubscribe?.();
       unsubProfiles?.();
