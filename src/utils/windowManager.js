@@ -64,13 +64,12 @@ export async function resizeToMainWindow(force = false) {
       }
     } catch {}
 
-    // Check current size: if already large enough (>= minWidth & minHeight) and not forced, keep it
-    const curSize = await appWindow.innerSize().catch(() => null);
-    if (curSize && !force) {
-      if (curSize.width >= MAIN_SIZE.minWidth && curSize.height >= MAIN_SIZE.minHeight) {
-        await appWindow.setMinSize(new LogicalSize(MAIN_SIZE.minWidth, MAIN_SIZE.minHeight)).catch(() => {});
-        return;
-      }
+    // Check current size using logical pixels (DOM innerWidth/innerHeight)
+    const currentLogicalWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const currentLogicalHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+    if (!force && currentLogicalWidth >= MAIN_SIZE.minWidth && currentLogicalHeight >= MAIN_SIZE.minHeight) {
+      await appWindow.setMinSize(new LogicalSize(MAIN_SIZE.minWidth, MAIN_SIZE.minHeight)).catch(() => {});
+      return;
     }
 
     // 3. IMPORTANT: Set window size FIRST before setting minSize!
@@ -84,8 +83,8 @@ export async function resizeToMainWindow(force = false) {
       console.warn('Tauri setMinSize error:', e);
     });
 
-    // 5. Re-center window on screen if expanding from compact auth size
-    if (!curSize || curSize.width < MAIN_SIZE.minWidth) {
+    // 5. Re-center window on screen if expanding from compact auth/splash size
+    if (currentLogicalWidth < MAIN_SIZE.minWidth) {
       await appWindow.center().catch(() => {});
     }
   } catch (err) {
@@ -133,14 +132,14 @@ export async function resizeToAuthWindow(mode = 'login') {
 
     const height = mode === 'register' ? 580 : (mode === 'forgot' || mode === 'reset') ? 440 : 400;
     const width = 380;
-    // Disable resizing on login & register windows
-    await appWindow.setResizable(false).catch(() => {});
     // Lower min size first so setSize can shrink the window without constraint errors
     await appWindow.setMinSize(new LogicalSize(360, 380)).catch(() => {});
     // Resize to compact auth form resolution
     await appWindow.setSize(new LogicalSize(width, height)).catch((e) => {
       console.warn('Tauri resizeToAuthWindow setSize error:', e);
     });
+    // Disable resizing on login & register windows
+    await appWindow.setResizable(false).catch(() => {});
     // Re-center window on screen
     await appWindow.center().catch(() => {});
   } catch (err) {

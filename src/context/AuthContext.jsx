@@ -142,6 +142,7 @@ export const AuthProvider = ({ children }) => {
     isMountedRef.current = true;
     let unsubProfiles = null;
     let loadingTimer = null;
+    let hasResolvedUser = false;
     const authInitStartTime = Date.now();
     const MIN_LOADING_TIME_MS = 3200; // Keep loading screen visible smoothly in small window for ~3.2s to show updates loading
 
@@ -149,13 +150,16 @@ export const AuthProvider = ({ children }) => {
     resizeToSplashWindow();
 
     const finishLoading = (hasUser = false) => {
+      if (hasUser) {
+        hasResolvedUser = true;
+      }
       const elapsed = Date.now() - authInitStartTime;
       const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
       const applyLoaded = () => {
         if (!isMountedRef.current) return;
         setLoading(false);
-        if (hasUser) {
-          resizeToMainWindow();
+        if (hasResolvedUser) {
+          resizeToMainWindow(true);
         } else {
           resizeToLoginWindow();
         }

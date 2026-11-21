@@ -93,7 +93,7 @@ function StanduppApp() {
   // Ensure desktop Tauri window is properly sized to main chat interface (never stuck in tiny auth size)
   useEffect(() => {
     if (isTauriEnvironment()) {
-      resizeToMainWindow();
+      resizeToMainWindow(true);
       const cleanupTracker = trackWindowSize();
 
       // Guard against race conditions during WebView2 boot / session hydration
