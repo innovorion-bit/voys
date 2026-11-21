@@ -2116,7 +2116,7 @@ export const Sidebar = ({
                       : 'Henüz arkadaş listenizde kimse yok. Grubu şimdi oluşturup daha sonra da üye ekleyebilirsiniz.'}
                   </div>
                 ) : (
-                  <div className="-mx-3.5 divide-y divide-white/[0.04] max-h-[260px] overflow-y-auto custom-scrollbar">
+                  <div className="-mx-3.5 max-h-[260px] overflow-y-auto custom-scrollbar">
                     {groupCandidates.map((friend) => {
                       const isSelected = selectedGroupFriends.includes(friend.id);
                       return (
@@ -2199,7 +2199,7 @@ export const Sidebar = ({
             </div>
 
             {/* Bottom Action Buttons */}
-            <div className="pt-3 border-t border-white/[0.06] flex items-center space-x-2 mt-auto">
+            <div className="pt-2 flex items-center space-x-2 mt-auto">
               <button
                 type="button"
                 onClick={() => {
