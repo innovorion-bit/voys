@@ -230,6 +230,23 @@ export class MeshVoiceService {
     this.emit('peerMetadataUpdated', Object.fromEntries(this.peerMetadata));
   }
 
+  // Update peer mute state by userId across all registered peer connections
+  setMuteByUserId(userId, isMuted, isDeafened = false) {
+    if (!userId) return false;
+    const uidStr = String(userId).toLowerCase();
+    let updated = false;
+    for (const [peerId, meta] of this.peerMetadata.entries()) {
+      if (meta?.userId && String(meta.userId).toLowerCase() === uidStr) {
+        this.setPeerMetadata(peerId, {
+          isMuted: Boolean(isMuted),
+          ...(typeof isDeafened === 'boolean' ? { isDeafened: Boolean(isDeafened) } : {}),
+        });
+        updated = true;
+      }
+    }
+    return updated;
+  }
+
   // Real-time peer-to-peer Voice Activity Detection (VAD) broadcast across mesh
   broadcastSpeaking(isSpeaking) {
     const boolSpeaking = Boolean(isSpeaking);
@@ -956,11 +973,16 @@ export class MeshVoiceService {
             break;
 
           case 'PEER_MUTE_UPDATE':
-            this.setPeerMetadata(data.peerId, {
-              userId: data.userId,
-              isMuted: data.isMuted,
-              isDeafened: data.isDeafened,
-            });
+            if (data.peerId && data.peerId !== this.myPeerId) {
+              this.setPeerMetadata(data.peerId, {
+                userId: data.userId,
+                isMuted: data.isMuted,
+                isDeafened: data.isDeafened,
+              });
+            }
+            if (data.userId) {
+              this.setMuteByUserId(data.userId, data.isMuted, data.isDeafened);
+            }
             break;
 
           case 'PEER_SPEAKING_UPDATE':
@@ -968,6 +990,9 @@ export class MeshVoiceService {
               const isSpk = Boolean(data.isSpeaking);
               if (isSpk) {
                 this.setPeerMetadata(data.peerId, { isMuted: false });
+                if (data.userId) {
+                  this.setMuteByUserId(data.userId, false);
+                }
               }
               this.emit('peerSpeakingUpdate', {
                 peerId: data.peerId,
@@ -1086,12 +1111,16 @@ export class MeshVoiceService {
             }
           })
           .on('broadcast', { event: 'peer_mute_update' }, ({ payload }) => {
-            if (payload?.peerId && payload.peerId !== this.myPeerId) {
+            if (!payload) return;
+            if (payload.peerId && payload.peerId !== this.myPeerId) {
               this.setPeerMetadata(payload.peerId, {
                 userId: payload.userId,
                 isMuted: payload.isMuted,
                 isDeafened: payload.isDeafened,
               });
+            }
+            if (payload.userId) {
+              this.setMuteByUserId(payload.userId, payload.isMuted, payload.isDeafened);
             }
           })
           .on('broadcast', { event: 'peer_speaking_update' }, ({ payload }) => {
@@ -1100,6 +1129,9 @@ export class MeshVoiceService {
                 const isSpk = Boolean(payload.isSpeaking);
                 if (isSpk) {
                   this.setPeerMetadata(payload.peerId, { isMuted: false });
+                  if (payload.userId) {
+                    this.setMuteByUserId(payload.userId, false);
+                  }
                 }
                 this.emit('peerSpeakingUpdate', {
                   peerId: payload.peerId,
@@ -1176,10 +1208,16 @@ export class MeshVoiceService {
           isMuted: data.isMuted,
           isDeafened: data.isDeafened,
         });
+        if (data.userId) {
+          this.setMuteByUserId(data.userId, data.isMuted, data.isDeafened);
+        }
       } else if (data?.type === 'PEER_SPEAKING_UPDATE') {
         const isSpk = Boolean(data.isSpeaking);
         if (isSpk) {
           this.setPeerMetadata(peerId, { isMuted: false });
+          if (data.userId) {
+            this.setMuteByUserId(data.userId, false);
+          }
         }
         this.emit('peerSpeakingUpdate', {
           peerId: data.peerId || peerId,

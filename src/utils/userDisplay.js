@@ -444,7 +444,9 @@ export const mergeVoiceAndCallMembers = (
           avatar_url: vm.avatar_url || matchingCallMember.avatar_url || matchingCallMember.avatar,
           name: vm.name && !vm.name.startsWith('Katılımcı-') ? vm.name : (matchingCallMember.name || vm.name),
           isSpeaking: Boolean(vm.isSpeaking),
-          isMuted: vm.isSpeaking ? false : Boolean(vm.isMuted ?? matchingCallMember.isMuted),
+          isMuted: vm.isSpeaking ? false : Boolean(vm.isMuted === true),
+          isDeafened: Boolean(vm.isDeafened === true),
+          substatus: vm.isDeafened ? 'Sağırlaştırıldı' : vm.isMuted ? 'Mikrofon Kapalı' : 'Seste',
         }
       : vm;
 
@@ -488,15 +490,22 @@ export const mergeVoiceAndCallMembers = (
     });
 
     const isMemberSpeaking = matchingVoiceMember ? Boolean(matchingVoiceMember.isSpeaking) : Boolean(cm.isSpeaking);
-    const isMemberMuted = isMemberSpeaking ? false : Boolean(matchingVoiceMember?.isMuted ?? cm.isMuted);
+    const isMemberMuted = isMemberSpeaking
+      ? false
+      : matchingVoiceMember
+        ? Boolean(matchingVoiceMember.isMuted === true)
+        : Boolean(cm.isMuted === true);
+    const isMemberDeafened = matchingVoiceMember
+      ? Boolean(matchingVoiceMember.isDeafened === true)
+      : Boolean(cm.isDeafened === true);
 
     addKeys(cm, cmKey);
     mergedList.push({
       ...cm,
       isSpeaking: isMemberSpeaking,
       isMuted: isMemberMuted,
-      isDeafened: Boolean(cm.isDeafened),
-      substatus: cm.substatus || (cm.isDeafened ? 'Sağırlaştırıldı' : isMemberMuted ? 'Mikrofon Kapalı' : 'Seste'),
+      isDeafened: isMemberDeafened,
+      substatus: isMemberDeafened ? 'Sağırlaştırıldı' : isMemberMuted ? 'Mikrofon Kapalı' : 'Seste',
     });
   });
 
@@ -678,8 +687,8 @@ export const partitionSidebarGroupMembers = ({
       ) || '';
 
     const isMemberSpeaking = Boolean(cm.isSpeaking);
-    const memberMuted = Boolean(!isMemberSpeaking && (cm.isMuted ?? matchedMember?.isMuted));
-    const memberDeafened = Boolean(cm.isDeafened ?? matchedMember?.isDeafened);
+    const memberMuted = Boolean(!isMemberSpeaking && cm.isMuted === true);
+    const memberDeafened = Boolean(cm.isDeafened === true);
 
     voiceMembers.push({
       ...cm,
@@ -701,7 +710,7 @@ export const partitionSidebarGroupMembers = ({
         ? 'Sağırlaştırıldı'
         : memberMuted
           ? 'Mikrofon Kapalı'
-          : cm.substatus || matchedMember?.substatus || 'Seste',
+          : 'Seste',
     });
   });
 

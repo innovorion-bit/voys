@@ -1142,6 +1142,8 @@ function StanduppApp() {
       if (!payload || !payload.userId) return;
       const targetUid = String(payload.userId);
 
+      peerService.setMuteByUserId?.(targetUid, payload.isMuted, payload.isDeafened);
+
       setChannelCalls((prev) => {
         let changed = false;
         const next = { ...prev };
@@ -1616,12 +1618,8 @@ function StanduppApp() {
           null;
 
         const resolvedId = matchedProfile?.id || matchedProfile?.userId || meta.userId || peerId;
-        const isRemoteMuted = !peerSpeaking && Boolean(
-          meta.isMuted ?? matchedProfile?.isMuted ?? false
-        );
-        const isRemoteDeafened = Boolean(
-          meta.isDeafened ?? matchedProfile?.isDeafened ?? false
-        );
+        const isRemoteMuted = !peerSpeaking && Boolean(meta.isMuted === true);
+        const isRemoteDeafened = Boolean(meta.isDeafened === true);
 
         return {
           id: resolvedId,
@@ -1635,7 +1633,7 @@ function StanduppApp() {
           isDeafened: isRemoteDeafened,
           status: matchedProfile?.status || 'online',
           game: null,
-          substatus: matchedProfile?.substatus || (isRemoteDeafened ? 'Sağırlaştırıldı' : isRemoteMuted ? 'Mikrofon Kapalı' : 'Seste'),
+          substatus: isRemoteDeafened ? 'Sağırlaştırıldı' : isRemoteMuted ? 'Mikrofon Kapalı' : 'Seste',
           statusColor: 'text-[#57cbde]',
           isAway: matchedProfile?.status === 'idle',
         };
