@@ -29,7 +29,7 @@ export const WindowHeader = ({
   return (
     <header
       data-tauri-drag-region
-      className="h-8 bg-[#08080a] voys-glass-header border-b border-white/[0.06] flex items-center justify-between px-2.5 select-none flex-shrink-0 relative z-50"
+      className="h-8 bg-[#08080a] voys-glass-header border-b border-white/[0.06] flex items-center justify-between px-2.5 select-none flex-shrink-0 relative z-[150]"
     >
       {/* Left: Voys Brand Logo */}
       <div

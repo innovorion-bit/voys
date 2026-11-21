@@ -156,20 +156,6 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
   const [isPreviewAvatarOpen, setIsPreviewAvatarOpen] = useState(false);
   const avatarFileInputRef = useRef(null);
 
-  // Notify parent (WindowHeader visibility) when avatar preview modal toggles
-  useEffect(() => {
-    onAvatarPreviewChange?.(isPreviewAvatarOpen);
-    try {
-      window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen: isPreviewAvatarOpen } }));
-    } catch {}
-    return () => {
-      onAvatarPreviewChange?.(false);
-      try {
-        window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen: false } }));
-      } catch {}
-    };
-  }, [isPreviewAvatarOpen, onAvatarPreviewChange]);
-
   // Field editing states for Account Settings (locked by default)
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -671,7 +657,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
   if (!isSettingsOpen) return null;
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 ${isPreviewAvatarOpen ? 'top-0' : 'top-8'} z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none`}>
+    <div className="fixed top-8 inset-x-0 bottom-0 z-40 bg-[#08080a] voys-glass-settings flex w-full text-gray-200 select-none">
       {/* Left Category Sidebar */}
       <div className="w-[275px] border-r border-white/[0.06] bg-[#0c0c0e] voys-glass-settings-sidebar p-3.5 flex flex-col justify-between flex-shrink-0">
         <div className="flex flex-col space-y-1">
@@ -1896,7 +1882,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
       {isPreviewAvatarOpen && avatarInput && (
         <div
           onClick={() => setIsPreviewAvatarOpen(false)}
-          className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
+          className="fixed top-8 inset-x-0 bottom-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
         >
           <button
             type="button"

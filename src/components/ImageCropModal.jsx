@@ -45,7 +45,7 @@ export const ImageCropModal = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 select-none"
+      className="fixed top-8 inset-x-0 bottom-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 select-none"
     >
       <div
         onClick={(e) => e.stopPropagation()}

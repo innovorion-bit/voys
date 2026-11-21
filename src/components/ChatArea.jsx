@@ -1110,23 +1110,6 @@ export const ChatArea = ({
   const [pendingFiles, setPendingFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Notify parent (WindowHeader visibility) when media/avatar lightbox opens or closes
-  useEffect(() => {
-    const isOpen = Boolean(activeMediaModal);
-    onAvatarPreviewChange?.(isOpen);
-    try {
-      window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen } }));
-    } catch {}
-    return () => {
-      if (isOpen) {
-        onAvatarPreviewChange?.(false);
-        try {
-          window.dispatchEvent(new CustomEvent('voys:avatar-preview', { detail: { isOpen: false } }));
-        } catch {}
-      }
-    };
-  }, [activeMediaModal, onAvatarPreviewChange]);
-
   const textInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -4442,7 +4425,7 @@ export const ChatArea = ({
         return (
           <div
             onClick={() => setActiveMediaModal(null)}
-            className="fixed inset-0 bg-black/90 z-[120] flex flex-col items-center justify-center p-4 sm:p-6 select-none animate-in fade-in duration-200"
+            className="fixed top-8 inset-x-0 bottom-0 bg-black/90 z-[120] flex flex-col items-center justify-center p-4 sm:p-6 select-none animate-in fade-in duration-200"
           >
             {/* Yalnızca sağ üstte kapat (X) butonu kalır */}
             <button
@@ -4454,21 +4437,30 @@ export const ChatArea = ({
               <X size={18} />
             </button>
 
-            {/* Centered Image or Fallback Avatar (Profil fotoğrafları net kare olarak render edilir) */}
+            {/* Centered Image, Video or Fallback Avatar */}
             <div
               onClick={(e) => e.stopPropagation()}
               className="flex items-center justify-center"
             >
               {activeMediaModal.url ? (
-                <img
-                  src={activeMediaModal.url}
-                  alt={activeMediaModal.name}
-                  className={
-                    isProfileView
-                      ? "w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square object-cover rounded-none border border-white/15 shadow-2xl"
-                      : "max-h-[85vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain border border-white/10"
-                  }
-                />
+                activeMediaModal.isVideo || activeMediaModal.url?.match(/\.(mp4|webm|mov|ogg)($|\?)/i) ? (
+                  <video
+                    src={activeMediaModal.url}
+                    controls
+                    autoPlay
+                    className="max-h-[80vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain border border-white/10"
+                  />
+                ) : (
+                  <img
+                    src={activeMediaModal.url}
+                    alt={activeMediaModal.name}
+                    className={
+                      isProfileView
+                        ? "w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square object-cover rounded-none border border-white/15 shadow-2xl"
+                        : "max-h-[80vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain border border-white/10"
+                    }
+                  />
+                )
               ) : activeMediaModal.fallbackUser ? (
                 <div className="w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square bg-[#141418] border border-white/15 flex items-center justify-center shadow-2xl text-white font-bold select-none p-4 rounded-none">
                   <UserAvatar user={activeMediaModal.fallbackUser} size="full" showStatus={false} className="!w-full !h-full !text-7xl !rounded-none" />
