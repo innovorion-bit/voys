@@ -1039,6 +1039,18 @@ function StanduppApp() {
       const callTargetUserId = isTargetCallDm ? (activeCall?.targetUserId || (isDm ? activeDmUserId : null)) : null;
       const callTargetUser = isTargetCallDm ? (activeCall?.targetUser || (isDm ? activeDmFriend : null)) : null;
 
+      let sanitizedMembers = resolvedMembers;
+      if (isTargetCallDm && callTargetUserId && activeUserProfile?.id) {
+        const allowedIds = new Set([
+          String(activeUserProfile.id).toLowerCase(),
+          String(callTargetUserId).toLowerCase(),
+        ]);
+        sanitizedMembers = resolvedMembers.filter((m) => {
+          const uid = String(m?.id || m?.user_id || m?.userId || '').toLowerCase();
+          return allowedIds.has(uid);
+        });
+      }
+
       chatService.sendCallUpdate({
         channelId: targetChan,
         active: true,
@@ -1046,8 +1058,8 @@ function StanduppApp() {
         initiator: activeCall?.initiator || activeUserProfile,
         targetUserId: callTargetUserId,
         targetUser: callTargetUser,
-        count: Math.max(resolvedMembers.length, 1),
-        members: resolvedMembers,
+        count: Math.max(sanitizedMembers.length, 1),
+        members: sanitizedMembers,
         timestamp: Date.now(),
       });
     };
@@ -1082,6 +1094,18 @@ function StanduppApp() {
       const callTargetUserId = isTargetCallDm ? (activeCall?.targetUserId || (isDm ? activeDmUserId : null)) : null;
       const callTargetUser = isTargetCallDm ? (activeCall?.targetUser || (isDm ? activeDmFriend : null)) : null;
 
+      let sanitizedMembers = resolvedMembers;
+      if (isTargetCallDm && callTargetUserId && activeUserProfile?.id) {
+        const allowedIds = new Set([
+          String(activeUserProfile.id).toLowerCase(),
+          String(callTargetUserId).toLowerCase(),
+        ]);
+        sanitizedMembers = resolvedMembers.filter((m) => {
+          const uid = String(m?.id || m?.user_id || m?.userId || '').toLowerCase();
+          return allowedIds.has(uid);
+        });
+      }
+
       chatService.sendCallUpdate({
         channelId: targetChan,
         active: true,
@@ -1089,8 +1113,8 @@ function StanduppApp() {
         initiator: activeCall?.initiator || activeUserProfile,
         targetUserId: callTargetUserId,
         targetUser: callTargetUser,
-        count: Math.max(resolvedMembers.length, 1),
-        members: resolvedMembers,
+        count: Math.max(sanitizedMembers.length, 1),
+        members: sanitizedMembers,
         timestamp: Date.now(),
       });
     };
@@ -1349,6 +1373,12 @@ function StanduppApp() {
   // Steam-style in-chat voice call start / join (instantly connected, no ringing)
   const handleStartCall = useCallback(async (targetChannelId = activeChannel) => {
     try {
+      if (!targetChannelId) return;
+
+      if (isDm && activeDmUserId && activeUserProfile?.id) {
+        targetChannelId = getDmRoomId(activeUserProfile.id, activeDmUserId);
+      }
+
       const snapshot = voiceCallSnapshotRef.current;
       const previousCallChannelId = activeCallChannelId;
       const prevLeaveTransition =
@@ -1367,6 +1397,10 @@ function StanduppApp() {
             knownProfiles: snapshot.knownProfiles,
           })
           : null;
+
+      if (previousCallChannelId && previousCallChannelId !== targetChannelId) {
+        disconnectVoice();
+      }
 
       const cleanChan = canonicalChannelId(targetChannelId) || targetChannelId;
       const callRoom = `standupp-call-${cleanChan}`;
@@ -1519,9 +1553,19 @@ function StanduppApp() {
         }
 
         // Validate that remote peer belongs to the current voice call room
-        if (activeCallChannelId && meta.room) {
+        if (activeCallChannelId) {
           const expectedRoom = `standupp-call-${canonicalChannelId(activeCallChannelId) || activeCallChannelId}`;
-          if (meta.room !== expectedRoom && meta.room !== activeCallChannelId) {
+          if (!meta.room || (meta.room !== expectedRoom && meta.room !== activeCallChannelId)) {
+            return null;
+          }
+        }
+
+        if (isDm && activeDmUserId) {
+          const dmAllowedUserIds = new Set([
+            String(activeUserProfile?.id || '').toLowerCase(),
+            String(activeDmUserId || '').toLowerCase(),
+          ]);
+          if (meta.userId && !dmAllowedUserIds.has(String(meta.userId).toLowerCase())) {
             return null;
           }
         }
@@ -2083,11 +2127,26 @@ function StanduppApp() {
 
   const resolvedCallMembers = useMemo(() => {
     if (!activeChannel) return [];
+    let members = [];
     if (isCurrentChannelCallConnected) {
-      return mergeVoiceAndCallMembers(voiceMembers, activeChannelCall?.members, activeUserProfile);
+      members = mergeVoiceAndCallMembers(voiceMembers, activeChannelCall?.members, activeUserProfile);
+    } else {
+      members = activeChannelCall?.members || [];
     }
-    return activeChannelCall?.members || [];
-  }, [activeChannel, isCurrentChannelCallConnected, voiceMembers, activeChannelCall?.members, activeUserProfile]);
+
+    if (isDm && activeDmUserId) {
+      const allowed = new Set([
+        String(activeUserProfile?.id || '').toLowerCase(),
+        String(activeDmUserId || '').toLowerCase(),
+      ]);
+      return members.filter((m) => {
+        const uid = String(m?.id || m?.user_id || m?.userId || '').toLowerCase();
+        return allowed.has(uid);
+      });
+    }
+
+    return members;
+  }, [activeChannel, isCurrentChannelCallConnected, voiceMembers, activeChannelCall?.members, activeUserProfile, isDm, activeDmUserId]);
 
   return (
     <div className={`flex flex-col h-screen w-full bg-[#101214] voys-glass-app ${isTauriEnvironment() ? 'rounded-2xl border border-white/10' : ''} overflow-hidden select-none`}>

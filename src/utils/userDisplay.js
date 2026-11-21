@@ -265,7 +265,8 @@ export const computeMemberOnlineStatus = ({
   const hasVoicePresence = Boolean(
     p &&
     p.voiceChannelId &&
-    (currentChannelId ? isChannelMatch(p.voiceChannelId, currentChannelId) : true)
+    currentChannelId &&
+    isChannelMatch(p.voiceChannelId, currentChannelId)
   );
 
   const isInVoice = isInVoiceList || hasVoicePresence;
@@ -552,6 +553,11 @@ export const partitionSidebarGroupMembers = ({
       if (nameMatches.length === 1) {
         matchedMember = nameMatches[0];
       }
+    }
+
+    if (!matchedMember) {
+      // Member does not belong to the current channel or DM - do NOT add to voiceMembers
+      return;
     }
 
     const canonicalId = matchedMember

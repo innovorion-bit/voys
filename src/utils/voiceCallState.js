@@ -327,7 +327,19 @@ export function buildJoinCallPayload({
     callReceivedAt: currentCall?.receivedAt || 0,
     knownProfiles,
   });
-  const members = joiningUser ? [...existingOtherMembers, joiningUser] : existingOtherMembers;
+  const rawMembers = joiningUser ? [...existingOtherMembers, joiningUser] : existingOtherMembers;
+  let members = rawMembers;
+
+  // Strict DM boundary isolation: only participants of this specific DM can ever be members
+  if (targetChan.startsWith('dm-')) {
+    const allowed = new Set();
+    if (joiningId) allowed.add(String(joiningId).toLowerCase());
+    if (targetUserId) allowed.add(String(targetUserId).toLowerCase());
+    members = rawMembers.filter((m) => {
+      const mid = resolveEntityId(m);
+      return !mid || allowed.has(String(mid).toLowerCase());
+    });
+  }
 
   return {
     channelId: targetChan,

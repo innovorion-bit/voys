@@ -643,9 +643,12 @@ export class MeshVoiceService {
       if (this.supabaseVoiceChannel && this.myPeerId) {
         this.supabaseVoiceChannel.track({
           peerId: this.myPeerId,
+          room: this.roomName,
           userName: this.userName,
           userId: this.userMeta?.userId || null,
           avatar: this.userMeta?.avatar || null,
+          isMuted: Boolean(this.isLocalMuted),
+          isDeafened: Boolean(this.isLocalDeafened),
           joinedAt: Date.now(),
         }).catch(() => {});
       }
@@ -709,7 +712,7 @@ export class MeshVoiceService {
 
           // Strict Room Boundary Check: Reject calls intended for a different room or channel
           const incomingRoom = call.metadata?.room || call.metadata?.channelId;
-          if (incomingRoom && this.roomName && incomingRoom !== this.roomName) {
+          if (!incomingRoom || (this.roomName && incomingRoom !== this.roomName)) {
             console.warn(`[peerService] Rejecting call from ${incomingPeerId}: room mismatch ('${incomingRoom}' !== '${this.roomName}')`);
             try { call.close(); } catch {}
             return;
@@ -799,6 +802,11 @@ export class MeshVoiceService {
 
         // Handle incoming data connection (for cross-network mesh list sync)
         this.peer.on('connection', (conn) => {
+          const incomingRoom = conn.metadata?.room;
+          if (incomingRoom && this.roomName && incomingRoom !== this.roomName) {
+            try { conn.close(); } catch {}
+            return;
+          }
           this.handleDataConnection(conn);
         });
 
@@ -830,7 +838,7 @@ export class MeshVoiceService {
       this.broadcastChannel.onmessage = (event) => {
         const data = event.data;
         if (!data || data.peerId === this.myPeerId) return;
-        if (data.room && this.roomName && data.room !== this.roomName) return;
+        if (!data.room || (this.roomName && data.room !== this.roomName)) return;
 
         switch (data.type) {
           case 'JOIN_ROOM':
@@ -955,7 +963,7 @@ export class MeshVoiceService {
             Object.keys(state).forEach((peerKey) => {
               if (peerKey === this.myPeerId) return;
               const remoteInfo = state[peerKey]?.[0];
-              if (remoteInfo?.room && this.roomName && remoteInfo.room !== this.roomName) return;
+              if (!remoteInfo?.room || (this.roomName && remoteInfo.room !== this.roomName)) return;
               const remotePeerId = remoteInfo?.peerId || peerKey;
               if (remotePeerId && remotePeerId !== this.myPeerId) {
                 if (remoteInfo) {
@@ -980,7 +988,7 @@ export class MeshVoiceService {
           .on('presence', { event: 'join' }, ({ key, newPresences }) => {
             if (key === this.myPeerId) return;
             const remoteInfo = newPresences?.[0];
-            if (remoteInfo?.room && this.roomName && remoteInfo.room !== this.roomName) return;
+            if (!remoteInfo?.room || (this.roomName && remoteInfo.room !== this.roomName)) return;
             const remotePeerId = remoteInfo?.peerId || key;
             if (remotePeerId && remotePeerId !== this.myPeerId) {
               if (remoteInfo) {
@@ -1080,7 +1088,7 @@ export class MeshVoiceService {
 
     conn.on('data', (data) => {
       // Reject cross-room sync from peers who are in another room
-      if (data?.room && this.roomName && data.room !== this.roomName) {
+      if (!data?.room || (this.roomName && data.room !== this.roomName)) {
         return;
       }
 
@@ -1261,7 +1269,11 @@ export class MeshVoiceService {
 
       // Also establish data channel for mesh discovery
       try {
-        const conn = this.peer.connect(targetPeerId);
+        const conn = this.peer.connect(targetPeerId, {
+          metadata: {
+            room: this.roomName,
+          },
+        });
         this.handleDataConnection(conn);
       } catch {}
 
@@ -1784,6 +1796,7 @@ export class MeshVoiceService {
       Object.keys(state).forEach((peerKey) => {
         if (peerKey === this.myPeerId) return;
         const remoteInfo = state[peerKey]?.[0];
+        if (!remoteInfo?.room || (this.roomName && remoteInfo.room !== this.roomName)) return;
         const remotePeerId = remoteInfo?.peerId || peerKey;
         if (!remotePeerId || remotePeerId === this.myPeerId) return;
 
