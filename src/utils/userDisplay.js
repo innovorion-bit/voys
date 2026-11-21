@@ -219,6 +219,7 @@ export const computeMemberOnlineStatus = ({
   isSelf = false,
   currentUser = null,
   activeVoiceMembers = [],
+  currentChannelId = null,
 }) => {
   if (isSelf) {
     const status = currentUser?.status || 'online';
@@ -263,7 +264,8 @@ export const computeMemberOnlineStatus = ({
 
   const hasVoicePresence = Boolean(
     p &&
-    p.voiceChannelId
+    p.voiceChannelId &&
+    (currentChannelId ? isChannelMatch(p.voiceChannelId, currentChannelId) : true)
   );
 
   const isInVoice = isInVoiceList || hasVoicePresence;

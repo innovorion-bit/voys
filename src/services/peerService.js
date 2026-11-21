@@ -707,6 +707,14 @@ export class MeshVoiceService {
         this.peer.on('call', async (call) => {
           const incomingPeerId = call.peer;
 
+          // Strict Room Boundary Check: Reject calls intended for a different room or channel
+          const incomingRoom = call.metadata?.room || call.metadata?.channelId;
+          if (incomingRoom && this.roomName && incomingRoom !== this.roomName) {
+            console.warn(`[peerService] Rejecting call from ${incomingPeerId}: room mismatch ('${incomingRoom}' !== '${this.roomName}')`);
+            try { call.close(); } catch {}
+            return;
+          }
+
           if (call.metadata && (call.metadata.userName || call.metadata.name || call.metadata.userId)) {
             this.setPeerMetadata(incomingPeerId, call.metadata);
           }
@@ -822,6 +830,7 @@ export class MeshVoiceService {
       this.broadcastChannel.onmessage = (event) => {
         const data = event.data;
         if (!data || data.peerId === this.myPeerId) return;
+        if (data.room && this.roomName && data.room !== this.roomName) return;
 
         switch (data.type) {
           case 'JOIN_ROOM':
@@ -847,6 +856,7 @@ export class MeshVoiceService {
             // Announce ourselves and our known mesh peers to the new peer
             this.broadcastChannel.postMessage({
               type: 'ROOM_ANNOUNCE',
+              room: this.roomName,
               peerId: this.myPeerId,
               name: this.userName,
               userId: this.userMeta?.userId || null,
@@ -908,6 +918,7 @@ export class MeshVoiceService {
     if (this.broadcastChannel) {
       this.broadcastChannel.postMessage({
         type: 'JOIN_ROOM',
+        room: this.roomName,
         peerId: this.myPeerId,
         name: this.userName,
         userId: this.userMeta?.userId || null,
@@ -944,6 +955,7 @@ export class MeshVoiceService {
             Object.keys(state).forEach((peerKey) => {
               if (peerKey === this.myPeerId) return;
               const remoteInfo = state[peerKey]?.[0];
+              if (remoteInfo?.room && this.roomName && remoteInfo.room !== this.roomName) return;
               const remotePeerId = remoteInfo?.peerId || peerKey;
               if (remotePeerId && remotePeerId !== this.myPeerId) {
                 if (remoteInfo) {
@@ -968,6 +980,7 @@ export class MeshVoiceService {
           .on('presence', { event: 'join' }, ({ key, newPresences }) => {
             if (key === this.myPeerId) return;
             const remoteInfo = newPresences?.[0];
+            if (remoteInfo?.room && this.roomName && remoteInfo.room !== this.roomName) return;
             const remotePeerId = remoteInfo?.peerId || key;
             if (remotePeerId && remotePeerId !== this.myPeerId) {
               if (remoteInfo) {
@@ -1016,6 +1029,7 @@ export class MeshVoiceService {
             if (status === 'SUBSCRIBED' && this.supabaseVoiceChannel) {
               await this.supabaseVoiceChannel.track({
                 peerId: this.myPeerId,
+                room: this.roomName,
                 userName: this.userName,
                 userId: this.userMeta?.userId || null,
                 avatar: this.userMeta?.avatar || null,
@@ -1042,6 +1056,7 @@ export class MeshVoiceService {
       try {
         conn.send({
           type: 'PEER_INFO',
+          room: this.roomName,
           peerId: this.myPeerId,
           userName: this.userName,
           userId: this.userMeta?.userId || null,
@@ -1051,6 +1066,7 @@ export class MeshVoiceService {
         });
         conn.send({
           type: 'MESH_SYNC',
+          room: this.roomName,
           knownPeers: Array.from(this.remoteStreams.keys()),
         });
       } catch {}
@@ -1063,6 +1079,11 @@ export class MeshVoiceService {
     }
 
     conn.on('data', (data) => {
+      // Reject cross-room sync from peers who are in another room
+      if (data?.room && this.roomName && data.room !== this.roomName) {
+        return;
+      }
+
       if (data?.type === 'PEER_INFO') {
         this.setPeerMetadata(peerId, data);
       } else if (data?.type === 'PEER_MUTE_UPDATE') {
@@ -1225,6 +1246,8 @@ export class MeshVoiceService {
         sdpTransform: optimizeOpusSdp,
         metadata: {
           type: 'voice',
+          room: this.roomName,
+          channelId: this.roomName,
           userName: this.userName,
           userId: this.userMeta?.userId || null,
           avatar: this.userMeta?.avatar || null,

@@ -1035,13 +1035,17 @@ function StanduppApp() {
         activeUserProfile
       );
 
+      const isTargetCallDm = String(targetChan).startsWith('dm-');
+      const callTargetUserId = isTargetCallDm ? (activeCall?.targetUserId || (isDm ? activeDmUserId : null)) : null;
+      const callTargetUser = isTargetCallDm ? (activeCall?.targetUser || (isDm ? activeDmFriend : null)) : null;
+
       chatService.sendCallUpdate({
         channelId: targetChan,
         active: true,
         stage: 'active',
         initiator: activeCall?.initiator || activeUserProfile,
-        targetUserId: isDm ? activeDmUserId : null,
-        targetUser: isDm ? activeDmFriend : null,
+        targetUserId: callTargetUserId,
+        targetUser: callTargetUser,
         count: Math.max(resolvedMembers.length, 1),
         members: resolvedMembers,
         timestamp: Date.now(),
@@ -1074,13 +1078,17 @@ function StanduppApp() {
         activeUserProfile
       );
 
+      const isTargetCallDm = String(targetChan).startsWith('dm-');
+      const callTargetUserId = isTargetCallDm ? (activeCall?.targetUserId || (isDm ? activeDmUserId : null)) : null;
+      const callTargetUser = isTargetCallDm ? (activeCall?.targetUser || (isDm ? activeDmFriend : null)) : null;
+
       chatService.sendCallUpdate({
         channelId: targetChan,
         active: true,
         stage: 'active',
         initiator: activeCall?.initiator || activeUserProfile,
-        targetUserId: isDm ? activeDmUserId : null,
-        targetUser: isDm ? activeDmFriend : null,
+        targetUserId: callTargetUserId,
+        targetUser: callTargetUser,
         count: Math.max(resolvedMembers.length, 1),
         members: resolvedMembers,
         timestamp: Date.now(),
@@ -1508,6 +1516,14 @@ function StanduppApp() {
         // Avoid showing own stale peer entry
         if (meta.userId && activeUserProfile?.id && meta.userId === activeUserProfile.id) {
           return null;
+        }
+
+        // Validate that remote peer belongs to the current voice call room
+        if (activeCallChannelId && meta.room) {
+          const expectedRoom = `standupp-call-${canonicalChannelId(activeCallChannelId) || activeCallChannelId}`;
+          if (meta.room !== expectedRoom && meta.room !== activeCallChannelId) {
+            return null;
+          }
         }
 
         let matchedProfile = null;

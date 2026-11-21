@@ -916,6 +916,7 @@ export const ChatArea = ({
       isSelf,
       currentUser,
       activeVoiceMembers: callMembers,
+      currentChannelId: activeChannel,
     });
     const p = resolveMemberPresence(presences, m);
     const profile = m.profile || m.profiles || {};
