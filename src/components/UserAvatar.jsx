@@ -21,7 +21,6 @@ export const UserAvatar = ({
 
   // Determine current user presence status
   const currentStatus = status || user?.status || (user?.isAway ? 'idle' : (user?.isOnline ? 'online' : 'offline'));
-  const isPlayingGame = !!(user?.game);
 
   // Status dot style
   const getStatusDotColor = () => {
@@ -31,7 +30,7 @@ export const UserAvatar = ({
       case 'dnd':
         return 'bg-rose-500'; // Red for Do Not Disturb
       case 'online':
-        return isPlayingGame ? 'bg-emerald-400 ring-2 ring-emerald-400/40' : 'bg-emerald-500';
+        return 'bg-emerald-500';
       case 'offline':
       case 'invisible':
       default:

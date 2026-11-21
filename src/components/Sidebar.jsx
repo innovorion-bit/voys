@@ -5,7 +5,6 @@ import {
   X,
   Settings2,
   UserPlus,
-  Gamepad2,
   Phone,
   CheckCheck,
   Check,
@@ -1297,13 +1296,12 @@ export const Sidebar = ({
       list = list.filter((f) =>
         f.name?.toLowerCase().includes(q) ||
         f.username?.toLowerCase().includes(q) ||
-        f.game?.toLowerCase().includes(q) ||
         f.substatus?.toLowerCase().includes(q)
       );
     }
     return list.sort((a, b) => {
-      const aScore = a.game ? 3 : (a.isOnline || a.status === 'online' ? 2 : 1);
-      const bScore = b.game ? 3 : (b.isOnline || b.status === 'online' ? 2 : 1);
+      const aScore = a.isOnline || a.status === 'online' ? 2 : 1;
+      const bScore = b.isOnline || b.status === 'online' ? 2 : 1;
       if (aScore !== bScore) return bScore - aScore;
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -1378,7 +1376,6 @@ export const Sidebar = ({
           const match =
             friend.name?.toLowerCase().includes(q) ||
             friend.username?.toLowerCase().includes(q) ||
-            friend.game?.toLowerCase().includes(q) ||
             friend.substatus?.toLowerCase().includes(q);
           if (!match) return;
         }
@@ -1504,13 +1501,12 @@ export const Sidebar = ({
       list = list.filter((f) =>
         f.name?.toLowerCase().includes(q) ||
         f.username?.toLowerCase().includes(q) ||
-        f.game?.toLowerCase().includes(q) ||
         f.substatus?.toLowerCase().includes(q)
       );
     }
     return list.sort((a, b) => {
-      const aScore = a.game ? 3 : (a.isOnline || a.status === 'online' ? 2 : 1);
-      const bScore = b.game ? 3 : (b.isOnline || b.status === 'online' ? 2 : 1);
+      const aScore = a.isOnline || a.status === 'online' ? 2 : 1;
+      const bScore = b.isOnline || b.status === 'online' ? 2 : 1;
       if (aScore !== bScore) return bScore - aScore;
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -1619,12 +1615,7 @@ export const Sidebar = ({
                         )}
                       </div>
                       <div className="text-[11px] truncate mt-0.5">
-                        {friend.game ? (
-                          <span className="text-emerald-400 font-medium flex items-center space-x-1">
-                            <Gamepad2 size={11} className="flex-shrink-0 mr-1 inline" />
-                            <span>{friend.game}</span>
-                          </span>
-                        ) : !friend.isOnline || friend.status === 'offline' || friend.status === 'invisible' ? (
+                        {!friend.isOnline || friend.status === 'offline' || friend.status === 'invisible' ? (
                           <span className="text-gray-500">Çevrimdışı</span>
                         ) : friend.status === 'dnd' ? (
                           <span className="text-rose-400/90">Rahatsız Etmeyin</span>
@@ -2144,12 +2135,7 @@ export const Sidebar = ({
                                 </span>
                               </div>
                               <div className="text-[11px] truncate mt-0.5">
-                                {friend.game ? (
-                                  <span className="text-emerald-400 font-medium flex items-center space-x-1">
-                                    <Gamepad2 size={11} className="flex-shrink-0 mr-1 inline" />
-                                    <span>{friend.game}</span>
-                                  </span>
-                                ) : !friend.isOnline || friend.status === 'offline' || friend.status === 'invisible' ? (
+                                {!friend.isOnline || friend.status === 'offline' || friend.status === 'invisible' ? (
                                   <span className="text-gray-500">Çevrimdışı</span>
                                 ) : friend.status === 'dnd' ? (
                                   <span className="text-rose-400/90">Rahatsız Etmeyin</span>
@@ -2393,7 +2379,6 @@ export const Sidebar = ({
                 if (item.type === 'dm') {
                   const { friend, dmRoomId, lastMsg, rawTime, unreadCount } = item;
                   const isSelected = activeDmUserId === friend.id;
-                  const isPlayingGame = !!friend.game;
 
                   const lastMessageTime = lastMsg ? formatChatTimestamp(rawTime, lastMsg.timestamp) : '';
                   const lastMessageText = formatMessagePreview(lastMsg);
@@ -2471,13 +2456,7 @@ export const Sidebar = ({
                         </div>
 
                         <div className="flex items-center justify-between mt-0.5">
-                          {isPlayingGame ? (
-                            <div className="flex items-center space-x-1 text-[11px] text-emerald-400 truncate font-medium">
-                              <Gamepad2 size={12} className="flex-shrink-0" />
-                              <span className="truncate">{friend.game}</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-1 text-[11px] text-gray-400 truncate min-w-0 flex-1">
+                          <div className="flex items-center space-x-1 text-[11px] text-gray-400 truncate min-w-0 flex-1">
                               {isSentByMe && (
                                 isMessageRead ? (
                                   <CheckCheck
@@ -2511,7 +2490,6 @@ export const Sidebar = ({
                                 )}
                               </span>
                             </div>
-                          )}
 
                           {/* Right Badges / Purple Notification Badge */}
                           <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
@@ -2690,16 +2668,9 @@ export const Sidebar = ({
                     {currentUserProfile?.name || 'Sen'}
                   </span>
                 </div>
-                {currentUserProfile?.game ? (
-                  <div className="flex items-center space-x-1 text-[11px] text-emerald-400 font-semibold truncate mt-0.5">
-                    <Gamepad2 size={12} className="flex-shrink-0 text-emerald-400" />
-                    <span className="truncate">{currentUserProfile.game} Oynuyor</span>
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-gray-400 truncate">
-                    @{currentUserProfile?.username || 'user'}
-                  </p>
-                )}
+                <p className="text-[10px] text-gray-400 truncate">
+                  @{currentUserProfile?.username || 'user'}
+                </p>
               </div>
             </div>
 

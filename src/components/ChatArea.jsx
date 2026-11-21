@@ -31,7 +31,6 @@ import {
   UserMinus,
   UserX,
   Clock,
-  Gamepad2,
   Volume2,
   Volume1,
   VolumeX,
@@ -950,7 +949,7 @@ export const ChatArea = ({
         name: pickDisplayName([currentUser?.name, currentUser?.display_name, currentUser?.username], 'Sen (You)'),
         username: currentUser?.username || '',
         avatar: currentUser?.avatar || currentUser?.avatar_url || '',
-        game: selfOnline ? currentUser?.game : null,
+        game: null,
         substatus: selfOnline ? currentUser?.substatus : '',
         status: selfStatus,
         isOnline: selfOnline,
@@ -965,7 +964,7 @@ export const ChatArea = ({
         name: pickDisplayName([activeDmFriend.name, activeDmFriend.display_name, activeDmFriend.username], 'Arkadaş'),
         username: activeDmFriend.username || '',
         avatar: activeDmFriend.avatar || activeDmFriend.avatar_url || '',
-        game: friendOnline ? activeDmFriend.game : null,
+        game: null,
         substatus: friendOnline ? activeDmFriend.substatus : '',
         status: friendStatus,
         isOnline: friendOnline,
@@ -999,7 +998,7 @@ export const ChatArea = ({
         name: pickDisplayName([currentUser.name, currentUser.display_name, currentUser.username], 'Sen (You)'),
         username: currentUser.username || '',
         avatar: currentUser.avatar || currentUser.avatar_url,
-        game: selfOnline ? currentUser.game : null,
+        game: null,
         substatus: selfOnline ? currentUser.substatus : '',
         status: selfStatus,
         isOnline: selfOnline,
@@ -1780,8 +1779,7 @@ export const ChatArea = ({
                 title="Kişi bilgisini görüntüle"
               >
                 <div className="flex items-center space-x-1.5">
-                  <span className={`text-[13px] font-bold truncate group-hover:text-indigo-300 transition ${activeDmFriend.game ? 'text-emerald-400' : (activeDmFriend.isOnline ? 'text-white' : 'text-gray-400')
-                    }`}>
+                  <span className={`text-[13px] font-bold truncate group-hover:text-indigo-300 transition ${activeDmFriend.isOnline ? 'text-white' : 'text-gray-400'}`}>
                     {activeDmFriend.name}
                   </span>
                   {activeDmFriend.hasCrown && (
@@ -1791,14 +1789,7 @@ export const ChatArea = ({
 
                 {/* Substatus / Realtime Status */}
                 <div className="text-[11px] truncate flex items-center space-x-1.5">
-                  {activeDmFriend.game ? (
-                    <>
-                      <span className="text-emerald-400 font-semibold truncate">{activeDmFriend.game}</span>
-                      {activeDmFriend.substatus && !['Çevrimiçi', 'Boşta', 'Rahatsız Etmeyin', 'Çevrimdışı'].includes(activeDmFriend.substatus) && (
-                        <span className="text-emerald-300/80 hidden sm:inline truncate">- {activeDmFriend.substatus}</span>
-                      )}
-                    </>
-                  ) : activeDmFriend.status === 'dnd' ? (
+                  {activeDmFriend.status === 'dnd' ? (
                     <span className="text-rose-400 font-medium truncate">
                       Rahatsız Etmeyin{activeDmFriend.substatus && !['Çevrimiçi', 'Rahatsız Etmeyin', 'Boşta', 'Çevrimdışı', 'P2P Bağlantısı'].includes(activeDmFriend.substatus) ? ` - ${activeDmFriend.substatus}` : ''}
                     </span>
@@ -2137,12 +2128,6 @@ export const ChatArea = ({
                             </span>
                           </span>
 
-                          {targetProfileUser.game && (
-                            <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                              <Gamepad2 size={12} className="text-emerald-400" />
-                              <span className="truncate">{targetProfileUser.game}</span>
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -2381,9 +2366,7 @@ export const ChatArea = ({
                                         )}
                                       </div>
                                       <div className="text-[10px] text-gray-400 truncate">
-                                        {friend.isOnline && friend.game
-                                          ? `Oynuyor: ${friend.game}`
-                                          : getMemberStatusDisplay(friend)}
+                                        {getMemberStatusDisplay(friend)}
                                       </div>
                                     </div>
                                   </div>
@@ -2463,7 +2446,7 @@ export const ChatArea = ({
                                   )}
                                 </div>
                                 <div className="text-[10px] text-gray-400 truncate">
-                                  {member.isOnline && member.game ? `Oynuyor: ${member.game}` : getMemberStatusDisplay(member)}
+                                  {getMemberStatusDisplay(member)}
                                 </div>
                               </div>
                             </div>
@@ -3499,21 +3482,14 @@ export const ChatArea = ({
                               <span className="text-[10px] text-gray-400 font-semibold">(Sen)</span>
                             )}
                           </div>
-                          {m.game ? (
-                            <div className="flex items-center space-x-1 text-[10px] text-emerald-400 font-semibold truncate mt-0.5">
-                              <Gamepad2 size={10} className="flex-shrink-0 text-emerald-400" />
-                              <span className="truncate">{m.game} • {voiceStatusLabel}</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-1 truncate mt-0.5">
-                              {isSharingScreen && (
-                                <Monitor size={11} className="text-[#c084fc] flex-shrink-0" />
-                              )}
-                              <span className={`text-[10px] block truncate ${voiceStatusColorClass}`}>
-                                {voiceStatusLabel}
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex items-center space-x-1 truncate mt-0.5">
+                            {isSharingScreen && (
+                              <Monitor size={11} className="text-[#c084fc] flex-shrink-0" />
+                            )}
+                            <span className={`text-[10px] block truncate ${voiceStatusColorClass}`}>
+                              {voiceStatusLabel}
+                            </span>
+                          </div>
                         </div>
 
                         {voiceBadgeIcon && (
@@ -3719,7 +3695,7 @@ export const ChatArea = ({
                                 )}
                               </div>
                               <p className="text-[10px] text-gray-400 truncate">
-                                {friend.isOnline && friend.game ? `${friend.game} Oynuyor` : getMemberStatusDisplay(friend)}
+                                {getMemberStatusDisplay(friend)}
                               </p>
                             </div>
                           </div>
@@ -3788,9 +3764,7 @@ export const ChatArea = ({
                 {/* Sesli Sohbette Olmayan Grup / Sohbet Üyeleri */}
                 <div className={isRightPanelCompact ? 'space-y-1.5 flex flex-col items-center w-full' : 'space-y-1'}>
                   {[...sidebarOnlineMembers, ...sidebarOfflineMembers].map((member) => {
-                    const memberStatusLabel = member.isOnline && member.game
-                      ? `${member.game} Oynuyor`
-                      : getMemberStatusDisplay(member);
+                    const memberStatusLabel = getMemberStatusDisplay(member);
                     const offlineOpacityClass = !member.isOnline ? 'opacity-60 hover:opacity-100' : '';
 
                     if (isRightPanelCompact) {
@@ -3843,24 +3817,17 @@ export const ChatArea = ({
                             )}
                           </div>
 
-                          {member.isOnline && member.game ? (
-                            <div className="flex items-center space-x-1 text-[10px] text-emerald-400 truncate mt-0.5 font-semibold">
-                              <Gamepad2 size={11} className="flex-shrink-0 text-emerald-400" />
-                              <span className="truncate">{member.game} Oynuyor</span>
-                            </div>
-                          ) : (
-                            <p className={`text-[10px] truncate mt-0.5 ${
-                              !member.isOnline || member.status === 'offline' || member.status === 'invisible'
-                                ? 'text-gray-500'
-                                : member.status === 'dnd'
-                                  ? 'text-rose-400/90'
-                                  : member.status === 'idle'
-                                    ? 'text-amber-400/90'
-                                    : 'text-gray-400'
-                            }`}>
-                              {memberStatusLabel}
-                            </p>
-                          )}
+                          <p className={`text-[10px] truncate mt-0.5 ${
+                            !member.isOnline || member.status === 'offline' || member.status === 'invisible'
+                              ? 'text-gray-500'
+                              : member.status === 'dnd'
+                                ? 'text-rose-400/90'
+                                : member.status === 'idle'
+                                  ? 'text-amber-400/90'
+                                  : 'text-gray-400'
+                          }`}>
+                            {memberStatusLabel}
+                          </p>
                         </div>
                       </div>
                     );
@@ -4076,24 +4043,17 @@ export const ChatArea = ({
                   <p className="text-[10px] text-gray-400 truncate">
                     {liveTarget.username ? `@${liveTarget.username}` : ''}
                   </p>
-                  {liveTarget.isOnline && liveTarget.game ? (
-                    <span className="text-[10px] flex-shrink-0 ml-auto text-emerald-400 font-medium flex items-center space-x-1">
-                      <Gamepad2 size={11} className="flex-shrink-0 text-emerald-400" />
-                      <span className="truncate">{liveTarget.game}</span>
-                    </span>
-                  ) : (
-                    <span className={`text-[10px] flex-shrink-0 ml-auto ${
-                      isTargetInVoice
-                        ? 'text-emerald-400/90'
-                        : liveTarget.isOnline
-                          ? 'text-gray-400'
-                          : 'text-gray-500'
-                    }`}>
-                      {isTargetInVoice
-                        ? 'Sesli Sohbette'
-                        : getMemberStatusDisplay(liveTarget)}
-                    </span>
-                  )}
+                  <span className={`text-[10px] flex-shrink-0 ml-auto ${
+                    isTargetInVoice
+                      ? 'text-emerald-400/90'
+                      : liveTarget.isOnline
+                        ? 'text-gray-400'
+                        : 'text-gray-500'
+                  }`}>
+                    {isTargetInVoice
+                      ? 'Sesli Sohbette'
+                      : getMemberStatusDisplay(liveTarget)}
+                  </span>
                 </div>
               </div>
             </div>

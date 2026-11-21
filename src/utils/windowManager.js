@@ -309,19 +309,7 @@ export async function applyWindowTransparency(opacityPercent = 100) {
  * Returns game title string (e.g. "Counter-Strike 2") or null if none detected.
  */
 export async function detectRunningGame() {
-  if (!isTauriEnvironment()) return null;
-  try {
-    // Prefer window.__TAURI_INTERNALS__.invoke if available directly (instant, zero-overhead)
-    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke) {
-      const result = await window.__TAURI_INTERNALS__.invoke('detect_running_game');
-      return result || null;
-    }
-    const result = await invoke('detect_running_game');
-    return result || null;
-  } catch (err) {
-    console.warn('detectRunningGame error:', err);
-    return null;
-  }
+  return null;
 }
 
 /**

@@ -32,7 +32,6 @@ const LandingPage = lazy(() =>
 import { useVoiceWebRTC } from './hooks/useVoiceWebRTC';
 import { peerService } from './services/peerService';
 import { useRealtimeChat } from './hooks/useRealtimeChat';
-import { useGameDetection } from './hooks/useGameDetection';
 import { SettingsProvider } from './context/SettingsContext';
 import { useSettings } from './context/useSettings';
 import { AuthProvider } from './context/AuthContext';
@@ -83,12 +82,12 @@ function StanduppApp() {
     isPttActive,
   } = useSettings();
 
-  // Automatic Game Detection (Rich Presence via Tauri)
-  useGameDetection({
-    currentGame: profile?.game,
-    updateProfile,
-    enabled: Boolean(user),
-  });
+  // Ensure any cached or legacy game status is wiped clean
+  useEffect(() => {
+    if (profile?.game) {
+      updateProfile({ game: '' });
+    }
+  }, [profile?.game, updateProfile]);
 
   // Ensure desktop Tauri window is properly sized to main chat interface (never stuck in tiny auth size)
   useEffect(() => {
@@ -1574,7 +1573,7 @@ function StanduppApp() {
           isMuted: isRemoteMuted,
           isDeafened: isRemoteDeafened,
           status: matchedProfile?.status || 'online',
-          game: matchedProfile?.game || '',
+          game: null,
           substatus: matchedProfile?.substatus || (isRemoteDeafened ? 'Sağırlaştırıldı' : isRemoteMuted ? 'Mikrofon Kapalı' : 'Seste'),
           statusColor: 'text-[#57cbde]',
           isAway: matchedProfile?.status === 'idle',
@@ -1594,9 +1593,9 @@ function StanduppApp() {
             isMuted: isMuted,
             isDeafened: isDeafened,
             status: activeUserProfile.status || 'online',
-            game: activeUserProfile.game || '',
+            game: null,
             substatus: activeUserProfile.substatus || (isDeafened ? 'Sağırlaştırıldı' : isMuted ? 'Mikrofon Kapalı' : 'Seste'),
-            statusColor: activeUserProfile.game ? 'text-[#8fcd51]' : 'text-[#57cbde]',
+            statusColor: 'text-[#57cbde]',
             isAway: activeUserProfile.status === 'idle',
           },
         ]

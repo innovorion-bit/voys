@@ -226,7 +226,7 @@ export const computeMemberOnlineStatus = ({
     return {
       status,
       isOnline,
-      game: isOnline ? (currentUser?.game || null) : null,
+      game: null,
       substatus: isOnline ? (currentUser?.substatus || 'Çevrimiçi') : '',
     };
   }
@@ -272,7 +272,7 @@ export const computeMemberOnlineStatus = ({
     return {
       status: 'online',
       isOnline: true,
-      game: p?.game !== undefined ? p.game : (profile.game || member.game || null),
+      game: null,
       substatus: p?.substatus || profile.substatus || member.substatus || 'Seste',
     };
   }
@@ -287,7 +287,7 @@ export const computeMemberOnlineStatus = ({
     return {
       status: isOnline ? (p.status || 'online') : 'offline',
       isOnline,
-      game: isOnline ? (p.game !== undefined ? p.game : (profile.game || member.game || null)) : null,
+      game: null,
       substatus: isOnline ? (p.substatus !== undefined ? p.substatus : (profile.substatus || member.substatus || '')) : '',
     };
   }
@@ -617,7 +617,7 @@ export const partitionSidebarGroupMembers = ({
       avatar: resolvedAvatar,
       avatar_url: resolvedAvatar,
       role: matchedMember?.role || cm.role || 'member',
-      game: matchedMember?.game || cm.game || '',
+      game: null,
       isSpeaking: Boolean(cm.isSpeaking),
       isMuted: memberMuted,
       isDeafened: memberDeafened,

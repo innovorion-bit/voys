@@ -141,9 +141,7 @@ export const AddMemberModal = ({
                         {friend.hasCrown && <span className="text-amber-400 text-[10px]">👑</span>}
                       </div>
                       <div className="text-[11px] text-gray-400 truncate">
-                        {friend.game ? (
-                          <span className="text-indigo-300">{friend.game}</span>
-                        ) : friend.isOnline ? (
+                        {friend.isOnline ? (
                           <span className="text-indigo-400">{friend.substatus || 'Çevrimiçi'}</span>
                         ) : (
                           <span>Çevrimdışı</span>

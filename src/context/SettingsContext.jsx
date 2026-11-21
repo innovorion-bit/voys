@@ -56,7 +56,7 @@ function computeUserProfile(user) {
     avatar: userAvatar,
     avatar_url: userAvatar,
     status: user.status || savedData.status || 'online',
-    game: user.game || savedData.game || '',
+    game: '',
     substatus: user.substatus || savedData.substatus || 'Çevrimiçi',
     isAway: user.status === 'idle' || savedData.isAway || false,
   };
@@ -320,19 +320,29 @@ export const SettingsProvider = ({ children }) => {
     peerService.setScreenSharePreset('balanced');
   }, []);
 
-  // Game Performance Mode: locked to Automatic (activates while a game is detected in profile.game)
-  const isPerformanceModeActive = Boolean((profile?.game || '').trim());
-
+  // Clear any legacy game profile or performance mode classes
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    if (isPerformanceModeActive) {
-      document.documentElement.classList.add('voys-performance-mode');
-      document.documentElement.setAttribute('data-performance-mode', 'true');
-    } else {
+    if (typeof document !== 'undefined') {
       document.documentElement.classList.remove('voys-performance-mode');
-      document.documentElement.setAttribute('data-performance-mode', 'false');
+      document.documentElement.removeAttribute('data-performance-mode');
     }
-  }, [isPerformanceModeActive]);
+    if (profile?.game) {
+      setProfile((prev) => ({ ...prev, game: '' }));
+      if (user?.id) {
+        try {
+          const key = `standupp_user_profile_${user.id}`;
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.game) {
+              delete parsed.game;
+              localStorage.setItem(key, JSON.stringify(parsed));
+            }
+          }
+        } catch {}
+      }
+    }
+  }, [profile?.game, user?.id]);
 
   // Background GPU Throttling: freeze visual animations/transitions/shadows while Voys is unfocused or hidden behind a game
   useEffect(() => {
