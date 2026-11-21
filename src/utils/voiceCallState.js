@@ -15,12 +15,13 @@ const isPresenceOffline = (entry) => {
 };
 
 const hasPresenceExplicitlyLeftChannel = (entry, channelId, callReceivedAt = 0) => {
-  if (!entry || entry.voiceChannelId === undefined) return false;
+  if (!entry) return true;
+  if (isPresenceOffline(entry)) return true;
   const presenceChan = entry.voiceChannelId ? String(entry.voiceChannelId) : null;
-  // If voiceChannelId is null or not set, presence might simply lag or be a status heartbeat;
-  // user has explicitly left ONLY if presenceChan is set to a different voice channel.
-  if (!presenceChan || presenceChan === String(channelId)) return false;
-  return (entry.receivedAt || 0) >= (callReceivedAt || 0) + PRESENCE_DEPARTURE_GRACE_MS;
+  if (!presenceChan || (presenceChan !== String(channelId) && !isChannelMatch(presenceChan, channelId))) {
+    return true;
+  }
+  return false;
 };
 
 const buildProfileIndex = (knownProfiles = []) => {
@@ -379,13 +380,13 @@ export function applyIncomingCallStatus(
   // even if the remote signal claims 'ended' or count 0. Prune only the leaving user.
   if (isSelfStillConnectedInChannel) {
     const existing = prevChannelCalls?.[chanId] || {};
-    const existingMembers = Array.isArray(existing.members) && existing.members.length > 0
-      ? existing.members
-      : (data?.members && data.members.length > 0 ? data.members : []);
+    const freshMembers = Array.isArray(data?.members) && data.members.length > 0
+      ? data.members
+      : (Array.isArray(existing.members) && existing.members.length > 0 ? existing.members : []);
 
     const remaining = leftId
-      ? existingMembers.filter((m) => resolveEntityId(m) !== leftId)
-      : existingMembers;
+      ? freshMembers.filter((m) => resolveEntityId(m) !== leftId)
+      : freshMembers;
 
     const hasSelf = remaining.some((m) => resolveEntityId(m) === selfIdStr);
     const finalMembers = hasSelf

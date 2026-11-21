@@ -359,7 +359,13 @@ export const resolveChannelCall = (callsMap = {}, targetChannelId) => {
  * session-level callMembers (discovered via presence / broadcast) so that participants
  * who are still establishing WebRTC mesh never disappear from the voice list.
  */
-export const mergeVoiceAndCallMembers = (voiceMembers = [], callMembers = [], currentUser = null) => {
+export const mergeVoiceAndCallMembers = (
+  voiceMembers = [],
+  callMembers = [],
+  currentUser = null,
+  presences = {},
+  currentChannelId = null
+) => {
   const mergedList = [];
   const seenKeys = new Set();
 
@@ -424,6 +430,20 @@ export const mergeVoiceAndCallMembers = (voiceMembers = [], callMembers = [], cu
     if (isAlreadySeen(cm)) return;
     const cmKey = String(cm.id || cm.user_id || cm.userId || cm.peerId || '');
     if (!cmKey) return;
+
+    // Prune stale call member if presence explicitly confirms user is offline or not in this voice channel
+    if (presences && currentChannelId) {
+      const p = resolveMemberPresence(presences, cm) || presences[cmKey] || presences[cmKey.toLowerCase()];
+      if (p) {
+        const isOffline = p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false);
+        if (isOffline) return;
+        const pChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
+        if (!pChan || !isChannelMatch(pChan, currentChannelId)) {
+          return;
+        }
+      }
+    }
+
     addKeys(cm, cmKey);
     mergedList.push({
       ...cm,
@@ -793,13 +813,12 @@ export const mergeChannelCallsWithPresences = ({
 
       const p = resolveMemberPresence(presences, m) || (mUid ? presences?.[mUid] : null);
       if (p) {
-        // Prune ONLY if presence EXPLICITLY states that the user is in a DIFFERENT voice channel
+        // Prune if presence confirms user is offline or not in this voice channel
+        const isOffline = p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false);
+        if (isOffline) return;
+
         const presenceChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
-        if (
-          presenceChan &&
-          !isChannelMatch(presenceChan, chanId) &&
-          (p.receivedAt || 0) >= (callInfo.receivedAt || 0) + 3000
-        ) {
+        if (!presenceChan || !isChannelMatch(presenceChan, chanId)) {
           return;
         }
       }

@@ -335,12 +335,11 @@ function StanduppApp() {
             return;
           }
 
-          // If this user was updated recently (within 60s), do not mark offline on partial list syncs
+          // If this user was updated recently (within 45s), do not mark offline on partial list syncs
           const lastSeen = oldEntry.receivedAt || oldEntry.timestamp || 0;
-          const isRecentlyActive = lastSeen > 0 && now - lastSeen < 60000;
-          const isUserInCall = Boolean(oldEntry.voiceChannelId);
+          const isRecentlyActive = lastSeen > 0 && now - lastSeen < 45000;
 
-          if (!isRecentlyActive && !isUserInCall) {
+          if (!isRecentlyActive) {
             next[key] = {
               ...oldEntry,
               status: 'offline',
@@ -425,14 +424,6 @@ function StanduppApp() {
           if (!entry || !entry.isOnline) return;
           const entryId = String(entry.userId || entry.id || key).toLowerCase();
           if (selfId && (entryId === selfId || key.toLowerCase() === selfId)) return;
-
-          // Never mark offline if user is currently known to be in any voice call
-          const isUserInCall = Object.values(snap?.channelCalls || {}).some(
-            (c) => c?.active && Array.isArray(c.members) && c.members.some(
-              (m) => String(m.id || m.user_id || m.userId).toLowerCase() === entryId
-            )
-          );
-          if (isUserInCall || entry.voiceChannelId) return;
 
           const lastSeen = entry.receivedAt || entry.timestamp || 0;
           if (lastSeen > 0 && now - lastSeen > STALE_THRESHOLD) {
@@ -1032,7 +1023,9 @@ function StanduppApp() {
       const resolvedMembers = mergeVoiceAndCallMembers(
         snap.voiceMembers,
         activeCall?.members,
-        activeUserProfile
+        activeUserProfile,
+        snap.presences,
+        targetChan
       );
 
       const isTargetCallDm = String(targetChan).startsWith('dm-');
@@ -1087,7 +1080,9 @@ function StanduppApp() {
       const resolvedMembers = mergeVoiceAndCallMembers(
         snap.voiceMembers,
         activeCall?.members,
-        activeUserProfile
+        activeUserProfile,
+        snap.presences,
+        targetChan
       );
 
       const isTargetCallDm = String(targetChan).startsWith('dm-');
@@ -2129,7 +2124,7 @@ function StanduppApp() {
     if (!activeChannel) return [];
     let members = [];
     if (isCurrentChannelCallConnected) {
-      members = mergeVoiceAndCallMembers(voiceMembers, activeChannelCall?.members, activeUserProfile);
+      members = mergeVoiceAndCallMembers(voiceMembers, activeChannelCall?.members, activeUserProfile, presences, activeChannel);
     } else {
       members = activeChannelCall?.members || [];
     }
@@ -2146,7 +2141,7 @@ function StanduppApp() {
     }
 
     return members;
-  }, [activeChannel, isCurrentChannelCallConnected, voiceMembers, activeChannelCall?.members, activeUserProfile, isDm, activeDmUserId]);
+  }, [activeChannel, isCurrentChannelCallConnected, voiceMembers, activeChannelCall?.members, activeUserProfile, isDm, activeDmUserId, presences]);
 
   return (
     <div className={`flex flex-col h-screen w-full bg-[#101214] voys-glass-app ${isTauriEnvironment() ? 'rounded-2xl border border-white/10' : ''} overflow-hidden select-none`}>
