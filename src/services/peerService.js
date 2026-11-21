@@ -134,6 +134,7 @@ export class MeshVoiceService {
     this.activeDataConns = new Map(); // peerId -> DataConnection
     this.remoteStreams = new Map(); // peerId -> MediaStream
     this.peerMetadata = new Map(); // peerId -> { userId, name, userName, avatar }
+    this.failedCallAttempts = new Map(); // peerId -> consecutive failure count
     this.broadcastChannel = null;
     this.supabaseVoiceChannel = null;
     this.roomName = 'sesli-sohbet-mesh-v1';
@@ -1286,6 +1287,7 @@ export class MeshVoiceService {
     const attachStream = (remoteStream) => {
       if (this.activeCalls.get(peerId) !== call) return;
       if (!remoteStream) return;
+      this.failedCallAttempts.delete(peerId);
       const existing = this.remoteStreams.get(peerId);
       if (existing === remoteStream) return;
       this.remoteStreams.set(peerId, remoteStream);
@@ -1350,6 +1352,7 @@ export class MeshVoiceService {
     call.on('error', (err) => {
       if (this.activeCalls.get(peerId) !== call) return;
       console.warn(`Call error with ${peerId}:`, err);
+      this.failedCallAttempts.set(peerId, (this.failedCallAttempts.get(peerId) || 0) + 1);
       this.removePeer(peerId);
     });
   }
@@ -1928,8 +1931,9 @@ export class MeshVoiceService {
         const remotePeerId = remoteInfo?.peerId || peerKey;
         if (!remotePeerId || remotePeerId === this.myPeerId) return;
 
-        if (remoteInfo) {
-          this.setPeerMetadata(remotePeerId, remoteInfo);
+        // Skip peers that have repeatedly failed to connect (e.g. ghost presence entries)
+        if (this.failedCallAttempts.get(remotePeerId) >= 2) {
+          return;
         }
 
         const existingCall = this.activeCalls.get(remotePeerId);
@@ -1949,6 +1953,10 @@ export class MeshVoiceService {
             try { existingCall.close(); } catch {}
             isHealthy = false;
           }
+        }
+
+        if (remoteInfo && isHealthy) {
+          this.setPeerMetadata(remotePeerId, remoteInfo);
         }
 
         if (!isHealthy && !this.activeCalls.has(remotePeerId)) {
@@ -2010,6 +2018,7 @@ export class MeshVoiceService {
     this.remoteStreams.clear();
     this.peerLatencies.clear();
     this.peerMetadata.clear();
+    this.failedCallAttempts.clear();
     this.emit('peersUpdated', []);
     this.emit('peerMetadataUpdated', {});
 
@@ -2027,6 +2036,7 @@ export class MeshVoiceService {
     this.stopMeshWatchdog();
     this.peerLatencies.clear();
     this.peerMetadata.clear();
+    this.failedCallAttempts.clear();
 
     if (this.broadcastChannel) {
       this.broadcastChannel.postMessage({

@@ -1,4 +1,4 @@
-import { pickDisplayName, isUuidLike } from './userDisplay.js';
+import { pickDisplayName, isUuidLike, isChannelMatch } from './userDisplay.js';
 
 const PRESENCE_DEPARTURE_GRACE_MS = 1500;
 
@@ -9,7 +9,7 @@ const resolveEntityId = (entity) => {
 };
 
 const isPresenceOffline = (entry) => {
-  if (!entry) return false;
+  if (!entry) return true;
   if (entry.status === 'offline') return true;
   return entry.status !== 'invisible' && entry.isOnline === false;
 };
@@ -202,7 +202,9 @@ export function collectRemainingVoiceMembers({
 
     if (!connectedUserIds.has(uid)) {
       const p = presences?.[uid];
-      if (isPresenceOffline(p) || hasPresenceExplicitlyLeftChannel(p, targetChan, callReceivedAt)) {
+      const isOnline = p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false;
+      const pChan = p?.voiceChannelId ? String(p.voiceChannelId) : null;
+      if (!isOnline || !pChan || !isChannelMatch(pChan, targetChan)) {
         return;
       }
     }

@@ -1534,6 +1534,16 @@ function StanduppApp() {
     });
     Object.keys(peerMetadata || {}).forEach((peerId) => {
       if (peerId && peerId !== myPeerId && !remotePeerMap.has(peerId)) {
+        const meta = peerMetadata?.[peerId];
+        // Only include non-streamed metadata peer if presence explicitly confirms they are online in this voice channel
+        if (meta?.userId && presences && activeCallChannelId) {
+          const p = presences[meta.userId] || presences[String(meta.userId).toLowerCase()];
+          const isOnline = p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false;
+          const pChan = p?.voiceChannelId ? String(p.voiceChannelId) : null;
+          if (!isOnline || !pChan || !isChannelMatch(pChan, activeCallChannelId)) {
+            return;
+          }
+        }
         remotePeerMap.set(peerId, { peerId, stream: null, isSpeaking: false });
       }
     });

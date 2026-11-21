@@ -461,16 +461,14 @@ export const mergeVoiceAndCallMembers = (
     const cmKey = String(cm.id || cm.user_id || cm.userId || cm.peerId || '');
     if (!cmKey) return;
 
-    // Prune stale call member if presence explicitly confirms user is offline or not in this voice channel
-    if (presences && currentChannelId) {
+    // Prune stale call member if they have no active WebRTC connection and are not actively present in this voice channel
+    if (currentChannelId) {
       const p = resolveMemberPresence(presences, cm) || presences[cmKey] || presences[cmKey.toLowerCase()];
-      if (p) {
-        const isOffline = p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false);
-        if (isOffline) return;
-        const pChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
-        if (!pChan || !isChannelMatch(pChan, currentChannelId)) {
-          return;
-        }
+      const isOnline = p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false;
+      const pChan = p?.voiceChannelId ? String(p.voiceChannelId) : null;
+      const isInVoicePresence = Boolean(isOnline && pChan && isChannelMatch(pChan, currentChannelId));
+      if (!isInVoicePresence) {
+        return;
       }
     }
 
@@ -867,19 +865,25 @@ export const mergeChannelCallsWithPresences = ({
       const mUid = String(m.id || m.user_id || m.userId || '');
       if (!mUid) return;
 
-      const p = resolveMemberPresence(presences, m) || (mUid ? presences?.[mUid] : null);
-      if (p) {
-        // Prune if presence confirms user is offline or not in this voice channel
-        const isOffline = p.status === 'offline' || (p.status !== 'invisible' && p.isOnline === false);
-        if (isOffline) return;
-
-        const presenceChan = p.voiceChannelId ? String(p.voiceChannelId) : null;
-        if (!presenceChan || !isChannelMatch(presenceChan, chanId)) {
-          return;
-        }
+      if (isUnconnectedSelf(mUid, chanId)) {
+        return;
       }
 
-      if (isUnconnectedSelf(mUid, chanId)) {
+      // Check if member is actively present in real-time presences for this voice channel
+      const p = resolveMemberPresence(presences, m) || (mUid ? presences?.[mUid] : null);
+      const isOnline = p && p.status !== 'offline' && p.status !== 'invisible' && p.isOnline !== false;
+      const presenceChan = p?.voiceChannelId ? String(p.voiceChannelId) : null;
+      const hasVoicePresence = Boolean(isOnline && presenceChan && isChannelMatch(presenceChan, chanId));
+
+      // Check if member is actively connected in local WebRTC mesh
+      const isConnectedWebRtc = (voiceMembers || []).some((vm) => {
+        if (!vm) return false;
+        const vid = String(vm.id || vm.user_id || vm.userId || vm.peerId || '').toLowerCase();
+        return vid === mUid.toLowerCase() || (vm.peerId && m.peerId && String(vm.peerId) === String(m.peerId));
+      });
+
+      // If user has neither an active WebRTC stream nor an online voice presence in this channel, prune ghost member!
+      if (!hasVoicePresence && !isConnectedWebRtc) {
         return;
       }
 
