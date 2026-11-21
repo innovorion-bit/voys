@@ -185,7 +185,9 @@ export class MeshVoiceService {
       screenShareStarted: [],
       screenShareStopped: [],
       latenciesUpdated: [],
+      peerSpeakingUpdate: [],
     };
+    this.lastBroadcastSpeaking = null;
   }
 
   // Event listener management
@@ -214,8 +216,10 @@ export class MeshVoiceService {
     const nextName = meta.userName || meta.name || meta.display_name || prev.name || null;
     const nextUserId = meta.userId || meta.id || prev.userId || null;
     const nextAvatar = meta.avatar || meta.avatar_url || prev.avatar || null;
+    const nextRoom = meta.room || meta.channelId || prev.room || this.roomName || null;
     const next = {
       ...prev,
+      ...(nextRoom ? { room: nextRoom } : {}),
       ...(nextUserId ? { userId: nextUserId } : {}),
       ...(nextName ? { name: nextName, userName: nextName } : {}),
       ...(nextAvatar ? { avatar: nextAvatar } : {}),
@@ -224,6 +228,49 @@ export class MeshVoiceService {
     };
     this.peerMetadata.set(peerId, next);
     this.emit('peerMetadataUpdated', Object.fromEntries(this.peerMetadata));
+  }
+
+  // Real-time peer-to-peer Voice Activity Detection (VAD) broadcast across mesh
+  broadcastSpeaking(isSpeaking) {
+    const boolSpeaking = Boolean(isSpeaking);
+    if (this.lastBroadcastSpeaking === boolSpeaking) return;
+    this.lastBroadcastSpeaking = boolSpeaking;
+
+    const payload = {
+      type: 'PEER_SPEAKING_UPDATE',
+      room: this.roomName,
+      peerId: this.myPeerId,
+      userId: this.userMeta?.userId || null,
+      isSpeaking: boolSpeaking,
+      timestamp: Date.now(),
+    };
+
+    // 1. Direct WebRTC Data Connections (ultra-low latency <15ms)
+    this.activeDataConns.forEach((conn) => {
+      try {
+        if (conn.open) {
+          conn.send(payload);
+        }
+      } catch {}
+    });
+
+    // 2. Local window/tab BroadcastChannel
+    try {
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage(payload);
+      }
+    } catch {}
+
+    // 3. Cloud Supabase Realtime broadcast
+    try {
+      if (this.supabaseVoiceChannel) {
+        this.supabaseVoiceChannel.send({
+          type: 'broadcast',
+          event: 'peer_speaking_update',
+          payload,
+        }).catch(() => {});
+      }
+    } catch {}
   }
 
   getAllPeerMetadata() {
@@ -916,6 +963,16 @@ export class MeshVoiceService {
             });
             break;
 
+          case 'PEER_SPEAKING_UPDATE':
+            if (data.peerId && data.peerId !== this.myPeerId) {
+              this.emit('peerSpeakingUpdate', {
+                peerId: data.peerId,
+                userId: data.userId,
+                isSpeaking: Boolean(data.isSpeaking),
+              });
+            }
+            break;
+
           default:
             break;
         }
@@ -1033,6 +1090,17 @@ export class MeshVoiceService {
               });
             }
           })
+          .on('broadcast', { event: 'peer_speaking_update' }, ({ payload }) => {
+            if (payload?.peerId && payload.peerId !== this.myPeerId) {
+              if (!payload.room || (this.roomName && payload.room === this.roomName)) {
+                this.emit('peerSpeakingUpdate', {
+                  peerId: payload.peerId,
+                  userId: payload.userId,
+                  isSpeaking: Boolean(payload.isSpeaking),
+                });
+              }
+            }
+          })
           .subscribe(async (status) => {
             if (status === 'SUBSCRIBED' && this.supabaseVoiceChannel) {
               await this.supabaseVoiceChannel.track({
@@ -1099,6 +1167,12 @@ export class MeshVoiceService {
           userId: data.userId,
           isMuted: data.isMuted,
           isDeafened: data.isDeafened,
+        });
+      } else if (data?.type === 'PEER_SPEAKING_UPDATE') {
+        this.emit('peerSpeakingUpdate', {
+          peerId: data.peerId || peerId,
+          userId: data.userId,
+          isSpeaking: Boolean(data.isSpeaking),
         });
       } else if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
         data.knownPeers.forEach((pId) => {
@@ -1851,6 +1925,7 @@ export class MeshVoiceService {
   setVoiceRoom(newRoomName) {
     if (!newRoomName || this.roomName === newRoomName) return;
 
+    this.lastBroadcastSpeaking = null;
     this.stopScreenShare();
     this.stopPingMonitoring();
     this.stopMeshWatchdog();
@@ -1892,6 +1967,7 @@ export class MeshVoiceService {
 
   // Disconnect from voice and clean up all connections
   disconnect() {
+    this.lastBroadcastSpeaking = null;
     this.stopScreenShare();
     this.stopPingMonitoring();
     this.stopMeshWatchdog();

@@ -3,11 +3,11 @@ import { toast } from 'sonner';
 import { peerService } from '../services/peerService';
 import { isTauriEnvironment } from '../utils/windowManager';
 
-const VAD_RMS_THRESHOLD = 1.2;
-const VAD_PEAK_DEV_THRESHOLD = 4;
+const VAD_RMS_THRESHOLD = 1.0;
+const VAD_PEAK_DEV_THRESHOLD = 3;
 const VAD_HANGOVER_MS = 400;
 
-function measureSpeechLevel(analyser, dataArray) {
+function measureSpeechLevel(analyser, dataArray, isRemote = false) {
   analyser.getByteTimeDomainData(dataArray);
   let sumSq = 0;
   let maxDev = 0;
@@ -18,7 +18,9 @@ function measureSpeechLevel(analyser, dataArray) {
     if (centered > maxDev) maxDev = centered;
   }
   const rms = Math.sqrt(sumSq / len);
-  return { rms, maxDev, isSpeaking: rms > VAD_RMS_THRESHOLD || maxDev >= VAD_PEAK_DEV_THRESHOLD };
+  const rmsThreshold = isRemote ? 0.6 : VAD_RMS_THRESHOLD;
+  const peakThreshold = isRemote ? 2 : VAD_PEAK_DEV_THRESHOLD;
+  return { rms, maxDev, isSpeaking: rms > rmsThreshold || maxDev >= peakThreshold };
 }
 
 export const useVoiceWebRTC = () => {
@@ -53,6 +55,7 @@ export const useVoiceWebRTC = () => {
 
   const remoteAudioContextRef = useRef(null);
   const remoteAnalysersRef = useRef(new Map());
+  const remoteSpeakingSignalsRef = useRef(new Map()); // peerId -> { isSpeaking, lastUpdated }
 
   // Clean up local VAD
   const cleanupLocalVAD = useCallback(() => {
@@ -67,6 +70,7 @@ export const useVoiceWebRTC = () => {
     localAnalyserRef.current = null;
     localSpeakingRef.current = false;
     setIsSpeaking(false);
+    peerService.broadcastSpeaking(false);
   }, []);
 
   // Setup Voice Activity Detection (VAD) for local microphone
@@ -121,7 +125,7 @@ export const useVoiceWebRTC = () => {
 
         let speakingNow = false;
         if (!isMutedRef.current) {
-          const level = measureSpeechLevel(localAnalyserRef.current, dataArray);
+          const level = measureSpeechLevel(localAnalyserRef.current, dataArray, false);
           const now = Date.now();
           if (level.isSpeaking) {
             localLastSpokeRef.current = now;
@@ -134,6 +138,7 @@ export const useVoiceWebRTC = () => {
         if (localSpeakingRef.current !== speakingNow) {
           localSpeakingRef.current = speakingNow;
           setIsSpeaking(speakingNow);
+          peerService.broadcastSpeaking(speakingNow);
         }
       };
 
@@ -229,6 +234,7 @@ export const useVoiceWebRTC = () => {
       } catch {}
     });
     remoteAnalysersRef.current.clear();
+    remoteSpeakingSignalsRef.current.clear();
     if (remoteAudioContextRef.current) {
       remoteAudioContextRef.current.close().catch(() => {});
       remoteAudioContextRef.current = null;
@@ -396,6 +402,17 @@ export const useVoiceWebRTC = () => {
 
   // Listen to incoming remote streams, remote speaking VAD, and peer leaves
   useEffect(() => {
+    // If peerService already has streams established, attach analysers immediately
+    if (peerService.remoteStreams && peerService.remoteStreams.size > 0) {
+      peerService.remoteStreams.forEach((stream, pId) => {
+        attachRemoteAnalyser(pId, stream);
+        setRemotePeers((prev) => {
+          if (prev.some((p) => p.peerId === pId)) return prev;
+          return [...prev, { peerId: pId, stream, isSpeaking: false }];
+        });
+      });
+    }
+
     const handleStream = ({ peerId, stream }) => {
       setPeerMetadata(peerService.getAllPeerMetadata());
       attachRemoteAnalyser(peerId, stream);
@@ -420,6 +437,7 @@ export const useVoiceWebRTC = () => {
         } catch {}
         remoteAnalysersRef.current.delete(peerId);
       }
+      remoteSpeakingSignalsRef.current.delete(peerId);
       setRemotePeers((prev) => prev.filter((p) => p.peerId !== peerId));
       setPeerMetadata(peerService.getAllPeerMetadata());
     };
@@ -434,10 +452,44 @@ export const useVoiceWebRTC = () => {
       }
     };
 
+    // Ultra-fast data channel / broadcast speaking update from remote peer
+    const handlePeerSpeakingUpdate = ({ peerId, userId, isSpeaking }) => {
+      const now = Date.now();
+      const boolSpeaking = Boolean(isSpeaking);
+      if (peerId) {
+        remoteSpeakingSignalsRef.current.set(peerId, {
+          isSpeaking: boolSpeaking,
+          lastUpdated: now,
+        });
+      }
+      const analyserEntry = remoteAnalysersRef.current.get(peerId);
+      if (analyserEntry) {
+        if (boolSpeaking) {
+          analyserEntry.lastSpokeAt = now;
+        }
+        analyserEntry.isSpeaking = boolSpeaking;
+      }
+      setRemotePeers((prev) => {
+        let matched = false;
+        const next = prev.map((p) => {
+          if (p.peerId === peerId || (userId && p.userId === userId)) {
+            matched = true;
+            return p.isSpeaking !== boolSpeaking ? { ...p, isSpeaking: boolSpeaking } : p;
+          }
+          return p;
+        });
+        if (!matched && peerId) {
+          return [...next, { peerId, userId, isSpeaking: boolSpeaking, stream: null }];
+        }
+        return next;
+      });
+    };
+
     peerService.on('stream', handleStream);
     peerService.on('peerLeft', handlePeerLeft);
     peerService.on('peerMetadataUpdated', handlePeerMetadataUpdated);
     peerService.on('localStreamChanged', handleLocalStreamChanged);
+    peerService.on('peerSpeakingUpdate', handlePeerSpeakingUpdate);
 
     // Poll remote peer audio analysers with adaptive intervals:
     // paused completely when document.hidden, 320ms when unfocused behind a game, 140ms when focused.
@@ -450,6 +502,13 @@ export const useVoiceWebRTC = () => {
       remoteAnalysersRef.current.forEach((entry, peerId) => {
         if (entry?.isSpeaking) {
           entry.isSpeaking = false;
+          resetUpdates[peerId] = false;
+          resetAny = true;
+        }
+      });
+      remoteSpeakingSignalsRef.current.forEach((signal, peerId) => {
+        if (signal?.isSpeaking) {
+          signal.isSpeaking = false;
           resetUpdates[peerId] = false;
           resetAny = true;
         }
@@ -477,16 +536,22 @@ export const useVoiceWebRTC = () => {
         return;
       }
 
-      if (remoteAnalysersRef.current.size > 0) {
+      if (remoteAnalysersRef.current.size > 0 || remoteSpeakingSignalsRef.current.size > 0) {
         const now = Date.now();
         let changed = false;
         const speakingUpdates = {};
 
         remoteAnalysersRef.current.forEach((entry, peerId) => {
-          if (!entry?.analyser || !entry.stream?.active) return;
-          const level = measureSpeechLevel(entry.analyser, entry.dataArray);
+          const audioTracks = entry.stream?.getAudioTracks();
+          const hasLiveTrack = audioTracks && audioTracks.some((t) => t.readyState === 'live');
+          if (!entry?.analyser || !hasLiveTrack) return;
+
+          const level = measureSpeechLevel(entry.analyser, entry.dataArray, true /* isRemote */);
+          const signal = remoteSpeakingSignalsRef.current.get(peerId);
+          const isSignaledSpeaking = signal?.isSpeaking && (now - signal.lastUpdated < 1500);
+
           let speakingNow = false;
-          if (level.isSpeaking) {
+          if (level.isSpeaking || isSignaledSpeaking) {
             entry.lastSpokeAt = now;
             speakingNow = true;
           } else if (now - entry.lastSpokeAt < VAD_HANGOVER_MS) {
@@ -497,6 +562,16 @@ export const useVoiceWebRTC = () => {
             changed = true;
           }
           speakingUpdates[peerId] = entry.isSpeaking;
+        });
+
+        // Also evaluate any signaled peers who might not have an analyser track yet
+        remoteSpeakingSignalsRef.current.forEach((signal, peerId) => {
+          if (speakingUpdates[peerId] !== undefined) return;
+          const isSignaledSpeaking = signal.isSpeaking && (now - signal.lastUpdated < 1500);
+          if (isSignaledSpeaking) {
+            speakingUpdates[peerId] = true;
+            changed = true;
+          }
         });
 
         if (changed) {
@@ -568,6 +643,7 @@ export const useVoiceWebRTC = () => {
       peerService.off('peerLeft', handlePeerLeft);
       peerService.off('peerMetadataUpdated', handlePeerMetadataUpdated);
       peerService.off('localStreamChanged', handleLocalStreamChanged);
+      peerService.off('peerSpeakingUpdate', handlePeerSpeakingUpdate);
       peerService.off('screenShareStarted', handleScreenShareStarted);
       peerService.off('screenShareStopped', handleScreenShareStopped);
     };

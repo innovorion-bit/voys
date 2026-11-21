@@ -1548,9 +1548,15 @@ function StanduppApp() {
         }
 
         // Validate that remote peer belongs to the current voice call room
-        if (activeCallChannelId) {
-          const expectedRoom = `standupp-call-${canonicalChannelId(activeCallChannelId) || activeCallChannelId}`;
-          if (!meta.room || (meta.room !== expectedRoom && meta.room !== activeCallChannelId)) {
+        if (activeCallChannelId && meta.room) {
+          const cleanChan = canonicalChannelId(activeCallChannelId) || activeCallChannelId;
+          const expectedRoom = `standupp-call-${cleanChan}`;
+          if (
+            meta.room !== expectedRoom &&
+            meta.room !== activeCallChannelId &&
+            meta.room !== cleanChan &&
+            !meta.room.includes(cleanChan)
+          ) {
             return null;
           }
         }

@@ -420,8 +420,35 @@ export const mergeVoiceAndCallMembers = (
     const vmKey = String(vm.id || vm.user_id || vm.userId || vm.peerId || '');
     if (!vmKey) return;
     if (isAlreadySeen(vm)) return;
-    addKeys(vm, vmKey);
-    mergedList.push(vm);
+
+    // Find any matching callMember to enrich with server details (avatar, display name) while preserving live WebRTC state
+    const matchingCallMember = (callMembers || []).find((c) => {
+      if (!c) return false;
+      const cid = String(c.id || c.user_id || c.userId || c.peerId || '').toLowerCase();
+      const vKeyLower = vmKey.toLowerCase();
+      const cPeer = c.peerId ? String(c.peerId).toLowerCase() : null;
+      const vPeer = vm.peerId ? String(vm.peerId).toLowerCase() : null;
+      return (
+        cid === vKeyLower ||
+        (cPeer && vPeer && cPeer === vPeer) ||
+        (c.username && vm.username && c.username.toLowerCase() === vm.username.toLowerCase()) ||
+        (c.name && vm.name && c.name.toLowerCase() === vm.name.toLowerCase())
+      );
+    });
+
+    const enrichedVm = matchingCallMember
+      ? {
+          ...matchingCallMember,
+          ...vm,
+          avatar: vm.avatar || matchingCallMember.avatar || matchingCallMember.avatar_url,
+          avatar_url: vm.avatar_url || matchingCallMember.avatar_url || matchingCallMember.avatar,
+          name: vm.name && !vm.name.startsWith('Katılımcı-') ? vm.name : (matchingCallMember.name || vm.name),
+          isSpeaking: Boolean(vm.isSpeaking),
+        }
+      : vm;
+
+    addKeys(enrichedVm, vmKey);
+    mergedList.push(enrichedVm);
   });
 
   // 2. Then merge members from callMembers who may still be establishing WebRTC or discovered via presence
@@ -444,10 +471,27 @@ export const mergeVoiceAndCallMembers = (
       }
     }
 
+    // Synchronize isSpeaking if there is any live voiceMember matching this callMember
+    const matchingVoiceMember = (voiceMembers || []).find((v) => {
+      if (!v) return false;
+      const vid = String(v.id || v.user_id || v.userId || v.peerId || '').toLowerCase();
+      const cKeyLower = cmKey.toLowerCase();
+      const vPeer = v.peerId ? String(v.peerId).toLowerCase() : null;
+      const cPeer = cm.peerId ? String(cm.peerId).toLowerCase() : null;
+      return (
+        vid === cKeyLower ||
+        (vPeer && cPeer && vPeer === cPeer) ||
+        (v.username && cm.username && v.username.toLowerCase() === cm.username.toLowerCase()) ||
+        (v.name && cm.name && v.name.toLowerCase() === cm.name.toLowerCase())
+      );
+    });
+
+    const isMemberSpeaking = matchingVoiceMember ? Boolean(matchingVoiceMember.isSpeaking) : Boolean(cm.isSpeaking);
+
     addKeys(cm, cmKey);
     mergedList.push({
       ...cm,
-      isSpeaking: Boolean(cm.isSpeaking),
+      isSpeaking: isMemberSpeaking,
       isMuted: Boolean(cm.isMuted),
       isDeafened: Boolean(cm.isDeafened),
       substatus: cm.substatus || (cm.isDeafened ? 'Sağırlaştırıldı' : cm.isMuted ? 'Mikrofon Kapalı' : 'Seste'),
