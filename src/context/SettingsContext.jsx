@@ -12,6 +12,7 @@ import {
   unregisterAllShortcuts
 } from '../services/shortcutService';
 import { applyWindowTransparency } from '../utils/windowManager';
+import { subscribeAppFocus, isAppFocused } from '../utils/windowFocus';
 import {
   STORAGE_KEYS,
   DEFAULT_AI_NOISE_SUPPRESSION,
@@ -335,20 +336,12 @@ export const SettingsProvider = ({ children }) => {
 
   // Background GPU Throttling: freeze visual animations/transitions/shadows while Voys is unfocused or hidden behind a game
   useEffect(() => {
-    if (typeof document === 'undefined' || typeof window === 'undefined') return;
-    const syncWindowActivity = () => {
-      const inactive = document.hidden || !document.hasFocus();
-      document.documentElement.classList.toggle('voys-window-inactive', inactive);
+    if (typeof document === 'undefined') return;
+    const syncWindowActivity = (active) => {
+      document.documentElement.classList.toggle('voys-window-inactive', !active);
     };
-    syncWindowActivity();
-    document.addEventListener('visibilitychange', syncWindowActivity);
-    window.addEventListener('blur', syncWindowActivity);
-    window.addEventListener('focus', syncWindowActivity);
-    return () => {
-      document.removeEventListener('visibilitychange', syncWindowActivity);
-      window.removeEventListener('blur', syncWindowActivity);
-      window.removeEventListener('focus', syncWindowActivity);
-    };
+    syncWindowActivity(isAppFocused());
+    return subscribeAppFocus(syncWindowActivity);
   }, []);
 
   // Settings Modal Open/Tab State

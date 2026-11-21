@@ -60,6 +60,7 @@ import {
   Paperclip
 } from 'lucide-react';
 import GifPicker, { GifIcon } from './GifPicker';
+import { FreezeGifImage } from './FreezeGifImage';
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 import { useSettings } from '../context/useSettings';
 import { formatShortcutLabel } from '../services/shortcutService';
@@ -1856,7 +1857,7 @@ export const ChatArea = ({
                 title="Grup fotoğrafını büyüt"
               >
                 {currentGroupAvatar ? (
-                  <img
+                  <FreezeGifImage
                     src={currentGroupAvatar}
                     alt={channelData?.name || 'Grup'}
                     className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 shadow-sm flex-shrink-0"
@@ -2223,7 +2224,7 @@ export const ChatArea = ({
                     >
                       {currentGroupAvatar ? (
                         <>
-                          <img
+                          <FreezeGifImage
                             src={currentGroupAvatar}
                             alt={channelData?.name || 'Grup'}
                             className="w-full h-full object-cover rounded-full group-hover:opacity-30 transition"
@@ -2950,9 +2951,10 @@ export const ChatArea = ({
                                     onClick={() => setActiveMediaModal(att)}
                                     className="group/img relative inline-block rounded-2xl overflow-hidden shadow-lg border border-white/10 hover:border-indigo-500/50 transition-all max-w-[280px] sm:max-w-[320px] cursor-pointer bg-transparent"
                                   >
-                                    <img
+                                    <FreezeGifImage
                                       src={att.url}
                                       alt={att.name || 'Görsel'}
+                                      isGif={isGif}
                                       onError={() => markMediaExpired(mediaKey)}
                                       className="w-auto h-auto max-w-full max-h-[250px] sm:max-h-[280px] object-contain rounded-2xl block group-hover/img:scale-[1.01] transition-transform duration-200"
                                       loading="lazy"
@@ -3145,7 +3147,7 @@ export const ChatArea = ({
                         className="flex items-center space-x-2 px-3 py-1.5 bg-[#141418] border border-white/10 rounded-xl text-xs text-gray-200 flex-shrink-0 shadow-sm"
                       >
                         {item.previewUrl ? (
-                          <img
+                          <FreezeGifImage
                             src={item.previewUrl}
                             alt={item.name}
                             className="w-7 h-7 object-cover rounded-lg border border-white/10"
@@ -4451,9 +4453,10 @@ export const ChatArea = ({
                     className="max-h-[80vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain border border-white/10"
                   />
                 ) : (
-                  <img
+                  <FreezeGifImage
                     src={activeMediaModal.url}
                     alt={activeMediaModal.name}
+                    isGif={activeMediaModal.isGif}
                     className={
                       isProfileView
                         ? "w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square object-cover rounded-none border border-white/15 shadow-2xl"

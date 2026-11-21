@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserAvatar } from './UserAvatar';
+import { FreezeGifImage } from './FreezeGifImage';
 import { getDmRoomId, localDb, dbService } from '../lib/supabase';
 import { chatService } from '../services/chatService';
 import { resolveDirectMessagePartner, parseDmRoomPair, isDirectMessageForPair } from '../utils/dmIsolation';
@@ -2561,7 +2562,7 @@ export const Sidebar = ({
                   >
                     {/* Channel Group Avatar */}
                     {chan.avatar_url || chan.avatar ? (
-                      <img
+                      <FreezeGifImage
                         src={chan.avatar_url || chan.avatar}
                         alt={chan.name}
                         className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 flex-shrink-0"

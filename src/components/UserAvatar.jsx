@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FreezeGifImage } from './FreezeGifImage';
 
 export const UserAvatar = ({ 
   user, 
@@ -83,7 +84,7 @@ export const UserAvatar = ({
         } transition-all duration-150 ${className}`}
       >
         {hasImage ? (
-          <img 
+          <FreezeGifImage 
             src={avatarUrl} 
             alt={displayName || 'User'} 
             className="w-full h-full object-cover rounded-full" 

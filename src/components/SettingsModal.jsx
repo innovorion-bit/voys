@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { FreezeGifImage } from './FreezeGifImage';
 import { 
   X, 
   Mic, 
@@ -807,7 +808,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
                   >
                     {avatarInput ? (
                       <>
-                        <img 
+                        <FreezeGifImage 
                           src={avatarInput} 
                           alt="Avatar Önizleme" 
                           className="w-full h-full object-cover group-hover:opacity-30 transition" 
@@ -1893,7 +1894,7 @@ export const SettingsModal = ({ onLogout = null, onUserDeleted = null, onAvatarP
             <X size={18} />
           </button>
           <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-center">
-            <img
+            <FreezeGifImage
               src={avatarInput}
               alt="Profil Fotoğrafı"
               className="w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 max-w-[85vw] max-h-[85vh] aspect-square object-cover shadow-2xl border border-white/15"

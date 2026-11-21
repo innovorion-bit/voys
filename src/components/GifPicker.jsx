@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, Loader2, Sparkles } from 'lucide-react';
+import { FreezeGifImage } from './FreezeGifImage';
 
 // Sleek GIF SVG icon matching Lucide aesthetic
 export const GifIcon = ({ size = 16, className = '' }) => (
@@ -281,9 +282,10 @@ export default function GifPicker({ onSelectGif, onClose }) {
                   className="group relative rounded-lg overflow-hidden bg-black/40 border border-white/5 hover:border-indigo-500/70 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left focus:outline-none"
                   title={gif.title}
                 >
-                  <img
+                  <FreezeGifImage
                     src={gif.preview}
                     alt={gif.title}
+                    isGif={true}
                     loading="lazy"
                     className="w-full h-auto object-cover rounded-lg block"
                   />
@@ -306,9 +308,10 @@ export default function GifPicker({ onSelectGif, onClose }) {
                   className="group relative rounded-lg overflow-hidden bg-black/40 border border-white/5 hover:border-indigo-500/70 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left focus:outline-none"
                   title={gif.title}
                 >
-                  <img
+                  <FreezeGifImage
                     src={gif.preview}
                     alt={gif.title}
+                    isGif={true}
                     loading="lazy"
                     className="w-full h-auto object-cover rounded-lg block"
                   />
