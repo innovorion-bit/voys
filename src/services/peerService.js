@@ -481,6 +481,7 @@ export class MeshVoiceService {
     }
 
     this.localStream = processed;
+    this.applyAudioTrackGating();
     const nextTrack = processed?.getAudioTracks?.()[0];
     if (nextTrack) {
       this.replaceOutgoingAudioTrack(nextTrack);
@@ -587,6 +588,7 @@ export class MeshVoiceService {
       this.rawLocalStream = rawNewStream;
       const newStream = await this.buildProcessedLocalStream(rawNewStream);
       this.localStream = newStream;
+      this.applyAudioTrackGating();
 
       const newTrack = newStream.getAudioTracks()[0];
       this.replaceOutgoingAudioTrack(newTrack);
@@ -1684,11 +1686,18 @@ export class MeshVoiceService {
   setInputMode(mode) {
     this.inputMode = mode === 'ptt' ? 'ptt' : 'voice';
     this.applyAudioTrackGating();
+    if (this.inputMode === 'ptt' && !this.isPttActive) {
+      this.broadcastSpeaking(false);
+    }
   }
 
   setPttActive(active) {
     this.isPttActive = Boolean(active);
     this.applyAudioTrackGating();
+    if (this.inputMode === 'ptt') {
+      const isSpeaking = !this.isLocalMuted && !this.isLocalDeafened && this.isPttActive;
+      this.broadcastSpeaking(isSpeaking);
+    }
   }
 
   // Pure local hardware audio gating: gates the microphone track without triggering
@@ -2031,6 +2040,9 @@ export class MeshVoiceService {
   // Disconnect from voice and clean up all connections
   disconnect() {
     this.lastBroadcastSpeaking = null;
+    this.isLocalMuted = false;
+    this.isLocalDeafened = false;
+    this.isPttActive = false;
     this.stopScreenShare();
     this.stopPingMonitoring();
     this.stopMeshWatchdog();

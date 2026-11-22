@@ -125,13 +125,17 @@ export const useVoiceWebRTC = () => {
 
         let speakingNow = false;
         if (!isMutedRef.current) {
-          const level = measureSpeechLevel(localAnalyserRef.current, dataArray, false);
-          const now = Date.now();
-          if (level.isSpeaking) {
-            localLastSpokeRef.current = now;
-            speakingNow = true;
-          } else if (now - localLastSpokeRef.current < VAD_HANGOVER_MS) {
-            speakingNow = true;
+          if (peerService.inputMode === 'ptt') {
+            speakingNow = Boolean(peerService.isPttActive);
+          } else {
+            const level = measureSpeechLevel(localAnalyserRef.current, dataArray, false);
+            const now = Date.now();
+            if (level.isSpeaking) {
+              localLastSpokeRef.current = now;
+              speakingNow = true;
+            } else if (now - localLastSpokeRef.current < VAD_HANGOVER_MS) {
+              speakingNow = true;
+            }
           }
         }
 

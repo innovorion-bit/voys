@@ -1403,9 +1403,6 @@ function StanduppApp() {
       const callRoom = `standupp-call-${cleanChan}`;
       switchVoiceRoom(callRoom);
       await connectVoice(null, activeUserProfile.name, activeUserProfile);
-      if (inputMode === 'ptt') {
-        setMuted(true, false);
-      }
       setActiveCallChannelId(targetChannelId);
       chatService.setVoiceChannel?.(targetChannelId, activeUserProfile);
 
@@ -1453,7 +1450,6 @@ function StanduppApp() {
     activeDmUserId,
     activeDmFriend,
     inputMode,
-    setMuted,
   ]);
 
   // Handle in-chat voice call leave / disconnect
