@@ -170,12 +170,11 @@ export const ScreenShareStage = ({
               type="button"
               onClick={onCloseStage}
               className={`${
-                pip ? 'h-7 px-2 text-[11px]' : 'h-8 sm:h-9 px-3 text-xs'
-              } rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 hover:text-white flex items-center space-x-1.5 font-medium transition cursor-pointer`}
+                pip ? 'w-7 h-7' : 'w-8 sm:w-9 h-8 sm:h-9'
+              } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
               title="Sohbete Dön"
             >
-              <MessageSquare size={pip ? 12 : 14} />
-              <span>Sohbete Dön</span>
+              <MessageSquare size={pip ? 13 : 16} />
             </button>
           )}
 
