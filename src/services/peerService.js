@@ -1812,7 +1812,12 @@ export class MeshVoiceService {
       this.emit('activeScreenShareChanged', null);
       return;
     }
-    const target = this.availableScreenShares.get(peerId);
+    let target = this.availableScreenShares.get(peerId);
+    if (!target) {
+      target = Array.from(this.availableScreenShares.values()).find(
+        (s) => (peerId === 'local' && s.isLocal) || s.peerId === peerId
+      );
+    }
     if (target) {
       this.activeScreenShare = target;
       this.emit('activeScreenShareChanged', target);

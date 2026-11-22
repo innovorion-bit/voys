@@ -49,7 +49,6 @@ import {
   Mic,
   MicOff,
   Monitor,
-  MonitorX,
   Play,
   ChevronLeft,
   ChevronRight,
@@ -3613,8 +3612,18 @@ export const ChatArea = ({
                       type="button"
                       onClick={() => {
                         if (isScreenSharing) {
-                          onStopScreenShare?.();
+                          // Bu buton yayın başlatabilir ama yayını durduramaz.
+                          // Eğer ekran paylaşımında sohbete dönüldüyse, ekrana geri dönmesini sağla:
+                          if (!activeScreenShare) {
+                            const myShare = availableScreenShares.find((s) => s.isLocal) || availableScreenShares[0];
+                            if (myShare) {
+                              onSelectScreenShare?.(myShare.peerId);
+                            } else {
+                              onSelectScreenShare?.('local');
+                            }
+                          }
                         } else {
+                          // Yayın başlatabilir:
                           setIsScreenShareModalOpen((prev) => !prev);
                         }
                       }}
@@ -3623,21 +3632,31 @@ export const ChatArea = ({
                           ? 'w-9 h-8 flex items-center justify-center'
                           : 'flex-1 h-9 flex items-center justify-center'
                       } rounded-xl transition cursor-pointer border ${
-                        isScreenShareModalOpen
+                        isScreenSharing
+                          ? 'bg-purple-600/20 text-purple-300 border-purple-500/40 hover:bg-purple-600/30'
+                          : isScreenShareModalOpen
                           ? 'bg-white/20 text-white border-white/25 shadow-sm'
                           : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
                       }`}
                       title={
                         isScreenSharing
-                          ? 'Ekran Paylaşımını Durdur'
+                          ? !activeScreenShare
+                            ? 'Ekran Paylaşımına Dön'
+                            : 'Ekran Paylaşımı (Yayındasınız)'
                           : isScreenShareModalOpen
                           ? 'Yayın Panelini Kapat'
                           : 'Ekranını Paylaş'
                       }
-                      aria-label={isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekranını Paylaş'}
+                      aria-label={
+                        isScreenSharing
+                          ? !activeScreenShare
+                            ? 'Ekran Paylaşımına Dön'
+                            : 'Ekran Paylaşımı (Yayındasınız)'
+                          : 'Ekranını Paylaş'
+                      }
                     >
                       {isScreenSharing ? (
-                        <MonitorX size={16} className="text-rose-500" />
+                        <Monitor size={16} className="text-purple-400" />
                       ) : (
                         <Monitor size={16} className="text-white" />
                       )}
