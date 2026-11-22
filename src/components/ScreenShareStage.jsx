@@ -5,7 +5,7 @@ import {
   Volume2, 
   VolumeX,
   MonitorX,
-  X,
+  MessageSquare,
 } from 'lucide-react';
 
 export const ScreenShareStage = ({
@@ -164,7 +164,22 @@ export const ScreenShareStage = ({
             </button>
           )}
 
-          {/* Stop screen share button moved to bottom controls */}
+          {/* Sohbete Dön Button */}
+          {onCloseStage && (
+            <button
+              type="button"
+              onClick={onCloseStage}
+              className={`${
+                pip ? 'h-7 px-2 text-[11px]' : 'h-8 sm:h-9 px-3 text-xs'
+              } rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 hover:text-white flex items-center space-x-1.5 font-medium transition cursor-pointer`}
+              title="Sohbete Dön"
+            >
+              <MessageSquare size={pip ? 12 : 14} />
+              <span>Sohbete Dön</span>
+            </button>
+          )}
+
+          {/* Stop screen share button (Durdur) */}
           {isLocal && onStopScreenShare && (
             <button
               type="button"
@@ -176,21 +191,6 @@ export const ScreenShareStage = ({
             >
               <MonitorX size={pip ? 12 : 14} />
               <span>Durdur</span>
-            </button>
-          )}
-
-          {/* Close stage for remote screen share to return to chat view */}
-          {!isLocal && onCloseStage && (
-            <button
-              type="button"
-              onClick={onCloseStage}
-              className={`${
-                pip ? 'h-7 px-2 text-[11px]' : 'h-8 sm:h-9 px-2.5 text-xs'
-              } rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 hover:text-white flex items-center space-x-1 font-medium transition cursor-pointer`}
-              title="Yayını Gizle (Sohbete Dön)"
-            >
-              <X size={pip ? 12 : 14} />
-              <span className="hidden sm:inline">Kapat</span>
             </button>
           )}
 
