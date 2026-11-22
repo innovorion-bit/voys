@@ -50,6 +50,7 @@ import {
   MicOff,
   Monitor,
   MonitorX,
+  Play,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -391,6 +392,8 @@ export const ChatArea = ({
   onOpenMobileSidebar,
   // Screen Sharing props
   activeScreenShare = null,
+  availableScreenShares = [],
+  onSelectScreenShare,
   onStartScreenShare,
   onStopScreenShare,
   isScreenSharing = false,
@@ -2480,11 +2483,41 @@ export const ChatArea = ({
           )}
 
 
+          {/* Top Banner when Screen Shares are available but stage is hidden / minimized */}
+          {availableScreenShares && availableScreenShares.length > 0 && !activeScreenShare && (
+            <div className="px-3 sm:px-4 py-2 bg-gradient-to-r from-[#171329] to-[#12111d] border-b border-purple-500/20 flex items-center justify-between z-10 shrink-0">
+              <div className="flex items-center space-x-2 text-xs text-purple-200 min-w-0 truncate">
+                <Monitor size={14} className="text-purple-400 shrink-0 animate-pulse" />
+                <span className="truncate">
+                  {availableScreenShares.length === 1
+                    ? `${availableScreenShares[0].userName || 'Bir kullanıcı'} ekranını paylaşıyor`
+                    : `${availableScreenShares.length} kişi ekranını paylaşıyor`}
+                </span>
+              </div>
+              <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                {availableScreenShares.map((s) => (
+                  <button
+                    key={s.peerId}
+                    type="button"
+                    onClick={() => onSelectScreenShare?.(s.peerId)}
+                    className="px-2.5 py-1 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition cursor-pointer flex items-center space-x-1 shadow-sm"
+                  >
+                    <Play size={10} fill="currentColor" />
+                    <span className="truncate max-w-[120px]">{s.userName ? `${s.userName}'i İzle` : 'İzle'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Screen Share Stage (Takes entire chat when active and not PiP, or floats as PiP) */}
           {activeScreenShare && (
             <ScreenShareStage
               activeScreenShare={activeScreenShare}
+              availableScreenShares={availableScreenShares}
+              onSelectScreenShare={onSelectScreenShare}
               onStopScreenShare={onStopScreenShare}
+              onCloseStage={() => onSelectScreenShare?.(null)}
               isPipMode={isScreenSharePip}
               onTogglePip={(pip) => setIsScreenSharePip(pip)}
             />
@@ -3380,20 +3413,19 @@ export const ChatArea = ({
                         ? (!isMuted && !isDeafened && (isSpeaking || (inputMode === 'ptt' && isPttActive)))
                         : (!memberMuted && !memberDeafened && !isDeafened && !isLocallyMuted && m.isSpeaking)
                     );
-                    const isSharingScreen = Boolean(
-                      (isMe && isScreenSharing) ||
-                      (activeScreenShare && (
-                        (isMe && activeScreenShare.isLocal) ||
-                        (!isMe && !activeScreenShare.isLocal && (
-                          activeScreenShare.peerId === m.peerId ||
-                          activeScreenShare.peerId === m.id ||
-                          activeScreenShare.userId === m.id ||
-                          (activeScreenShare.userName && m.name && activeScreenShare.userName.toLowerCase() === m.name.toLowerCase())
-                        ))
+                    const memberScreenShare = (availableScreenShares || []).find((s) =>
+                      (isMe && s.isLocal) ||
+                      (!isMe && !s.isLocal && (
+                        s.peerId === m.peerId ||
+                        s.peerId === m.id ||
+                        s.userId === m.id ||
+                        (s.userName && m.name && s.userName.toLowerCase() === m.name.toLowerCase())
                       ))
                     );
+                    const isSharingScreen = Boolean(memberScreenShare);
+                    const isBeingWatched = Boolean(isSharingScreen && activeScreenShare?.peerId === memberScreenShare?.peerId);
                     const voiceStatusLabel = isSharingScreen
-                      ? 'Ekran paylaşıyor'
+                      ? (isBeingWatched ? 'Ekran Paylaşıyor • İzleniyor' : 'Ekran Paylaşıyor')
                       : memberDeafened
                         ? 'Sağırlaştırıldı'
                         : memberMuted
@@ -3425,10 +3457,16 @@ export const ChatArea = ({
                       return (
                         <div
                           key={memberKey}
-                          onClick={(e) => openVoiceContextMenu(e, m)}
+                          onClick={(e) => {
+                            if (isSharingScreen && !isBeingWatched) {
+                              onSelectScreenShare?.(memberScreenShare.peerId);
+                            } else {
+                              openVoiceContextMenu(e, m);
+                            }
+                          }}
                           onContextMenu={(e) => openVoiceContextMenu(e, m)}
                           className="relative p-1 rounded-xl hover:bg-white/[0.06] transition cursor-pointer flex items-center justify-center"
-                          title={`${m.name || 'Katılımcı'}${isMe ? ' (Sen)' : ''} • ${voiceStatusLabel} (Ses ayarı için tıklayın)`}
+                          title={`${m.name || 'Katılımcı'}${isMe ? ' (Sen)' : ''} • ${voiceStatusLabel}${isSharingScreen && !isBeingWatched ? ' (İzlemek için tıklayın)' : ' (Ses ayarı için tıklayın)'}`}
                         >
                           <UserAvatar
                             user={m}
@@ -3445,8 +3483,10 @@ export const ChatArea = ({
                             </span>
                           ) : isSharingScreen ? (
                             <span
-                              className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#13141a] border border-[#8B51FF]/50 text-[#c084fc] flex items-center justify-center shadow"
-                              title="Ekran paylaşıyor"
+                              className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#13141a] border ${
+                                isBeingWatched ? 'border-purple-500/80 text-purple-300' : 'border-[#8B51FF]/50 text-[#c084fc]'
+                              } flex items-center justify-center shadow`}
+                              title={isBeingWatched ? 'Ekran Paylaşımı (İzleniyor)' : 'Ekran Paylaşımı (İzlemek için tıklayın)'}
                             >
                               <Monitor size={9} />
                             </span>
@@ -3492,6 +3532,30 @@ export const ChatArea = ({
                             </span>
                           </div>
                         </div>
+
+                        {isSharingScreen && (
+                          <div className="flex items-center shrink-0 ml-1">
+                            {isBeingWatched ? (
+                              <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-medium flex items-center space-x-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                                <span>İzleniyor</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectScreenShare?.(memberScreenShare.peerId);
+                                }}
+                                className="px-2 py-0.5 rounded-md bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 text-[10px] text-indigo-200 hover:text-white transition flex items-center space-x-1 cursor-pointer shadow-sm"
+                                title="Yayını İzle"
+                              >
+                                <Monitor size={10} />
+                                <span>İzle</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {voiceBadgeIcon && (
                           <span className="text-rose-400 flex-shrink-0" title={voiceBadgeTitle}>

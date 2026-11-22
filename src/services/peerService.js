@@ -168,6 +168,7 @@ export class MeshVoiceService {
     this.screenSharePreset = readInitialScreenSharePreset();
     this.activeScreenCalls = new Map(); // peerId -> MediaConnection (outgoing)
     this.remoteScreenCalls = new Map(); // peerId -> MediaConnection (incoming)
+    this.availableScreenShares = new Map(); // peerId -> screenShareInfo
     this.activeScreenShare = null; // { isLocal, peerId, userName, stream }
 
     // Latency & Connection Quality Monitoring (RTT in ms)
@@ -794,35 +795,62 @@ export class MeshVoiceService {
             this.remoteScreenCalls.set(incomingPeerId, call);
             call.answer(); // Answer without sending return media
 
-            call.on('stream', (remoteScreenStream) => {
+            const handleIncomingScreenStream = (remoteScreenStream) => {
+              if (!remoteScreenStream) return;
               const screenShareInfo = {
                 isLocal: false,
                 peerId: incomingPeerId,
                 userName: call.metadata?.userName || 'Kullanıcı',
+                userId: call.metadata?.userId || null,
                 qualityLabel: call.metadata?.qualityLabel || 'Canlı Yayın',
                 resolution: call.metadata?.resolution,
                 fps: call.metadata?.fps,
                 stream: remoteScreenStream,
               };
-              this.activeScreenShare = screenShareInfo;
+              this.availableScreenShares.set(incomingPeerId, screenShareInfo);
+              if (!this.activeScreenShare || this.activeScreenShare.peerId === incomingPeerId) {
+                this.activeScreenShare = screenShareInfo;
+              }
+              this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
               this.emit('screenShareStarted', screenShareInfo);
+            };
+
+            call.on('stream', (remoteScreenStream) => {
+              handleIncomingScreenStream(remoteScreenStream);
             });
 
-            call.on('close', () => {
+            const bindPcTrack = () => {
+              if (call.peerConnection && !call.peerConnection._screenTrackBound) {
+                call.peerConnection._screenTrackBound = true;
+                const prevOntrack = call.peerConnection.ontrack;
+                call.peerConnection.ontrack = (event) => {
+                  if (prevOntrack) prevOntrack(event);
+                  const stream = event.streams?.[0] || new MediaStream([event.track]);
+                  handleIncomingScreenStream(stream);
+                };
+              }
+            };
+            bindPcTrack();
+            setTimeout(bindPcTrack, 50);
+            setTimeout(bindPcTrack, 250);
+
+            const handleScreenCallEnded = () => {
               this.remoteScreenCalls.delete(incomingPeerId);
-              if (this.activeScreenShare?.peerId === incomingPeerId) {
-                this.activeScreenShare = null;
+              if (this.availableScreenShares.has(incomingPeerId)) {
+                this.availableScreenShares.delete(incomingPeerId);
+                if (this.activeScreenShare?.peerId === incomingPeerId) {
+                  const remaining = Array.from(this.availableScreenShares.values());
+                  this.activeScreenShare = remaining.length > 0 ? remaining[0] : null;
+                }
+                this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
                 this.emit('screenShareStopped', { peerId: incomingPeerId });
               }
-            });
+            };
 
+            call.on('close', handleScreenCallEnded);
             call.on('error', (err) => {
               console.warn(`Screen call error from ${incomingPeerId}:`, err);
-              this.remoteScreenCalls.delete(incomingPeerId);
-              if (this.activeScreenShare?.peerId === incomingPeerId) {
-                this.activeScreenShare = null;
-                this.emit('screenShareStopped', { peerId: incomingPeerId });
-              }
+              handleScreenCallEnded();
             });
 
             return;
@@ -865,6 +893,11 @@ export class MeshVoiceService {
           });
 
           this.bindAudioCallEvents(call, incomingPeerId);
+
+          // If local screen share is active, broadcast screen to new incoming peer as well
+          if (this.screenStream && this.screenStream.active) {
+            this.sendScreenShareToPeer(incomingPeerId, this.screenStream);
+          }
         });
 
         // Handle incoming data connection (for cross-network mesh list sync)
@@ -969,8 +1002,13 @@ export class MeshVoiceService {
             break;
 
           case 'SCREEN_SHARE_STOPPED':
-            if (this.activeScreenShare?.peerId === data.peerId) {
-              this.activeScreenShare = null;
+            if (this.availableScreenShares.has(data.peerId)) {
+              this.availableScreenShares.delete(data.peerId);
+              if (this.activeScreenShare?.peerId === data.peerId) {
+                const remaining = Array.from(this.availableScreenShares.values());
+                this.activeScreenShare = remaining.length > 0 ? remaining[0] : null;
+              }
+              this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
               this.emit('screenShareStopped', { peerId: data.peerId });
             }
             break;
@@ -1108,8 +1146,13 @@ export class MeshVoiceService {
             }
           })
           .on('broadcast', { event: 'screen_share_stopped' }, ({ payload }) => {
-            if (payload?.peerId && this.activeScreenShare?.peerId === payload.peerId) {
-              this.activeScreenShare = null;
+            if (payload?.peerId && this.availableScreenShares.has(payload.peerId)) {
+              this.availableScreenShares.delete(payload.peerId);
+              if (this.activeScreenShare?.peerId === payload.peerId) {
+                const remaining = Array.from(this.availableScreenShares.values());
+                this.activeScreenShare = remaining.length > 0 ? remaining[0] : null;
+              }
+              this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
               this.emit('screenShareStopped', { peerId: payload.peerId });
             }
           })
@@ -1585,14 +1628,44 @@ export class MeshVoiceService {
         });
       }
 
+      this.activeDataConns.forEach((conn) => {
+        try {
+          if (conn.open) {
+            conn.send({
+              type: 'SCREEN_SHARE_STARTED',
+              peerId: this.myPeerId,
+              userName: this.userName,
+              qualityLabel,
+            });
+          }
+        } catch {}
+      });
+
+      if (this.supabaseVoiceChannel) {
+        try {
+          this.supabaseVoiceChannel.send({
+            type: 'broadcast',
+            event: 'screen_share_started',
+            payload: {
+              peerId: this.myPeerId,
+              userName: this.userName,
+              qualityLabel,
+            },
+          }).catch(() => {});
+        } catch {}
+      }
+
       const screenShareInfo = {
         isLocal: true,
         peerId: this.myPeerId,
         userName: this.userName,
+        userId: this.userMeta?.userId || null,
         qualityLabel,
         stream,
       };
+      this.availableScreenShares.set(this.myPeerId, screenShareInfo);
       this.activeScreenShare = screenShareInfo;
+      this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
       this.emit('screenShareStarted', screenShareInfo);
 
       return stream;
@@ -1609,13 +1682,28 @@ export class MeshVoiceService {
     if (!this.peer || !peerId || peerId === this.myPeerId) return;
     if (!stream || !stream.active) return;
 
+    const existingScreenCall = this.activeScreenCalls.get(peerId);
+    if (existingScreenCall) {
+      const pc = existingScreenCall.peerConnection;
+      const pcState = pc?.connectionState;
+      const iceState = pc?.iceConnectionState;
+      if (pcState === 'connected' || iceState === 'connected' || iceState === 'completed') {
+        return;
+      }
+      try { existingScreenCall.close(); } catch {}
+      this.activeScreenCalls.delete(peerId);
+    }
+
     const cfg = customConfig || this.currentScreenConfig || SCREEN_SHARE_PRESETS.balanced;
 
     try {
       const screenCall = this.peer.call(peerId, stream, {
         metadata: {
           type: 'screen-share',
+          room: this.roomName,
+          channelId: this.roomName,
           userName: this.userName,
+          userId: this.userMeta?.userId || null,
           qualityLabel: cfg.qualityLabel || 'Canlı Yayın',
           maxFrameRate: cfg.maxFrameRate,
           maxWidth: cfg.maxWidth,
@@ -1652,7 +1740,9 @@ export class MeshVoiceService {
       this.screenStream = null;
     }
 
-    this.activeScreenCalls.forEach((call) => call.close());
+    this.activeScreenCalls.forEach((call) => {
+      try { call.close(); } catch {}
+    });
     this.activeScreenCalls.clear();
 
     if (this.broadcastChannel) {
@@ -1672,11 +1762,34 @@ export class MeshVoiceService {
       } catch {}
     }
 
-    if (this.activeScreenShare?.isLocal) {
-      this.activeScreenShare = null;
+    if (this.myPeerId && this.availableScreenShares.has(this.myPeerId)) {
+      this.availableScreenShares.delete(this.myPeerId);
     }
 
+    if (this.activeScreenShare?.isLocal) {
+      const remaining = Array.from(this.availableScreenShares.values());
+      this.activeScreenShare = remaining.length > 0 ? remaining[0] : null;
+    }
+
+    this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
     this.emit('screenShareStopped', { peerId: this.myPeerId });
+  }
+
+  selectScreenShare(peerId) {
+    if (!peerId) {
+      this.activeScreenShare = null;
+      this.emit('activeScreenShareChanged', null);
+      return;
+    }
+    const target = this.availableScreenShares.get(peerId);
+    if (target) {
+      this.activeScreenShare = target;
+      this.emit('activeScreenShareChanged', target);
+    }
+  }
+
+  getAvailableScreenShares() {
+    return Array.from(this.availableScreenShares.values());
   }
 
   getActiveScreenShare() {
@@ -1891,7 +2004,15 @@ export class MeshVoiceService {
       this.activeDataConns.delete(peerId);
     }
 
-    if (this.activeScreenShare?.peerId === peerId) {
+    if (this.availableScreenShares.has(peerId)) {
+      this.availableScreenShares.delete(peerId);
+      if (this.activeScreenShare?.peerId === peerId) {
+        const remaining = Array.from(this.availableScreenShares.values());
+        this.activeScreenShare = remaining.length > 0 ? remaining[0] : null;
+      }
+      this.emit('screenSharesUpdated', Array.from(this.availableScreenShares.values()));
+      this.emit('screenShareStopped', { peerId });
+    } else if (this.activeScreenShare?.peerId === peerId) {
       this.activeScreenShare = null;
       this.emit('screenShareStopped', { peerId });
     }
@@ -2044,6 +2165,9 @@ export class MeshVoiceService {
     this.isLocalDeafened = false;
     this.isPttActive = false;
     this.stopScreenShare();
+    this.availableScreenShares.clear();
+    this.activeScreenShare = null;
+    this.emit('screenSharesUpdated', []);
     this.stopPingMonitoring();
     this.stopMeshWatchdog();
     this.peerLatencies.clear();

@@ -937,6 +937,8 @@ function StanduppApp() {
     isSpeaking,
     isScreenSharing,
     activeScreenShare,
+    availableScreenShares,
+    selectScreenShare,
     myPeerId,
     remotePeers,
     peerMetadata,
@@ -2263,6 +2265,8 @@ function StanduppApp() {
             onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
             // Screen Sharing
             activeScreenShare={activeScreenShare}
+            availableScreenShares={availableScreenShares}
+            onSelectScreenShare={selectScreenShare}
             onStartScreenShare={startScreenShare}
             onStopScreenShare={stopScreenShare}
             isScreenSharing={isScreenSharing}

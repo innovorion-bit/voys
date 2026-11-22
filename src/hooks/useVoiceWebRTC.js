@@ -30,6 +30,7 @@ export const useVoiceWebRTC = () => {
   const [myPeerId, setMyPeerId] = useState(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [activeScreenShare, setActiveScreenShare] = useState(null);
+  const [availableScreenShares, setAvailableScreenShares] = useState([]);
   
   // Array of remote connected peers: [{ peerId, stream, isSpeaking }]
   const [remotePeers, setRemotePeers] = useState([]);
@@ -359,6 +360,8 @@ export const useVoiceWebRTC = () => {
     peerService.setVoiceRoom(roomName);
     setRemotePeers([]);
     setPeerMetadata({});
+    setAvailableScreenShares([]);
+    setActiveScreenShare(null);
   }, [cleanupRemoteVAD]);
 
   // Call another peer directly
@@ -616,6 +619,14 @@ export const useVoiceWebRTC = () => {
     }
     remoteVadTimer = setTimeout(runRemoteVadTick, 140);
 
+    const handleScreenSharesUpdated = (shares) => {
+      setAvailableScreenShares(shares || []);
+    };
+
+    const handleActiveScreenShareChanged = (active) => {
+      setActiveScreenShare(active);
+    };
+
     const handleScreenShareStarted = (info) => {
       setActiveScreenShare(info);
       if (!info.isLocal) {
@@ -628,6 +639,10 @@ export const useVoiceWebRTC = () => {
     const handleScreenShareStopped = ({ peerId }) => {
       setActiveScreenShare((prev) => {
         if (prev?.peerId === peerId) {
+          const remaining = peerService.getAvailableScreenShares();
+          if (remaining.length > 0) {
+            return remaining[0];
+          }
           toast.info('Ekran paylaşımı sona erdi');
           return null;
         }
@@ -638,6 +653,8 @@ export const useVoiceWebRTC = () => {
       }
     };
 
+    peerService.on('screenSharesUpdated', handleScreenSharesUpdated);
+    peerService.on('activeScreenShareChanged', handleActiveScreenShareChanged);
     peerService.on('screenShareStarted', handleScreenShareStarted);
     peerService.on('screenShareStopped', handleScreenShareStopped);
 
@@ -652,6 +669,8 @@ export const useVoiceWebRTC = () => {
       peerService.off('peerMetadataUpdated', handlePeerMetadataUpdated);
       peerService.off('localStreamChanged', handleLocalStreamChanged);
       peerService.off('peerSpeakingUpdate', handlePeerSpeakingUpdate);
+      peerService.off('screenSharesUpdated', handleScreenSharesUpdated);
+      peerService.off('activeScreenShareChanged', handleActiveScreenShareChanged);
       peerService.off('screenShareStarted', handleScreenShareStarted);
       peerService.off('screenShareStopped', handleScreenShareStopped);
     };
@@ -668,13 +687,14 @@ export const useVoiceWebRTC = () => {
           (options?.resolution
             ? `${options.resolution === 'source' ? 'Kaynak' : options.resolution} · ${options.fps || 30} FPS`
             : '1080p · 30 FPS');
-        setActiveScreenShare({
+        const localShare = {
           isLocal: true,
           peerId: myPeerId,
           userName: 'Sen (You)',
           qualityLabel,
           stream,
-        });
+        };
+        setActiveScreenShare(localShare);
         toast.success('Ekran Paylaşımı Başlatıldı', {
           description: `${qualityLabel} kalitesinde canlı yayınlanıyor.`,
         });
@@ -691,10 +711,21 @@ export const useVoiceWebRTC = () => {
     }
   }, [myPeerId]);
 
+  const selectScreenShare = useCallback((peerId) => {
+    peerService.selectScreenShare(peerId);
+    if (!peerId) {
+      setActiveScreenShare(null);
+    } else {
+      const target = peerService.availableScreenShares.get(peerId);
+      if (target) {
+        setActiveScreenShare(target);
+      }
+    }
+  }, []);
+
   const stopScreenShare = useCallback(() => {
     peerService.stopScreenShare();
     setIsScreenSharing(false);
-    setActiveScreenShare((prev) => (prev?.isLocal ? null : prev));
     toast.info('Ekran Paylaşımı Sonlandırıldı');
   }, []);
 
@@ -713,6 +744,8 @@ export const useVoiceWebRTC = () => {
     isSpeaking,
     isScreenSharing,
     activeScreenShare,
+    availableScreenShares,
+    selectScreenShare,
     myPeerId,
     remotePeers, // Array of { peerId, stream, isSpeaking }
     peerMetadata,
