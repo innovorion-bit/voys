@@ -4,7 +4,6 @@ import {
   Minimize2, 
   Volume2, 
   VolumeX,
-  Monitor,
   MonitorX,
   X,
 } from 'lucide-react';
@@ -92,63 +91,6 @@ export const ScreenShareStage = ({
           : 'flex-1 h-full w-full min-h-0 flex flex-col bg-[#070709] relative overflow-hidden'
       }`}
     >
-      {/* Top Floating Switcher Overlay for Multiple Screen Shares */}
-      <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
-        {/* Stream Switcher Tabs */}
-        <div className="flex items-center space-x-1.5 p-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl pointer-events-auto overflow-x-auto max-w-[calc(100%-110px)] scrollbar-none shadow-lg">
-          {sharesList.map((share) => {
-            const isSelected = activeScreenShare?.peerId === share.peerId;
-            return (
-              <button
-                key={share.peerId}
-                type="button"
-                onClick={() => onSelectScreenShare?.(share.peerId)}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs transition cursor-pointer shrink-0 ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium shadow-md shadow-indigo-500/30'
-                    : 'text-gray-300 hover:text-white hover:bg-white/10'
-                }`}
-                title={share.userName || (share.isLocal ? 'Senin Ekranın' : 'Kullanıcı')}
-              >
-                <Monitor size={12} className={isSelected ? 'text-white' : 'text-indigo-400'} />
-                <span className="truncate max-w-[130px]">
-                  {share.userName || (share.isLocal ? 'Senin Ekranın' : 'Kullanıcı')}
-                </span>
-                {share.isLocal && <span className="text-[10px] text-indigo-200 font-normal">(Sen)</span>}
-                <span className={`text-[10px] px-1.5 py-0.2 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
-                  {share.qualityLabel || 'Canlı'}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Top Right Actions: Stop share if local, plus Close/Minimize stage */}
-        <div className="flex items-center space-x-1.5 pointer-events-auto shrink-0 ml-2">
-          {isLocal && onStopScreenShare && (
-            <button
-              type="button"
-              onClick={onStopScreenShare}
-              className="h-8 px-2.5 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-xs flex items-center space-x-1.5 font-medium transition cursor-pointer shadow-lg backdrop-blur-md"
-              title="Ekran Paylaşımını Durdur"
-            >
-              <MonitorX size={14} />
-              <span className="hidden sm:inline">Durdur</span>
-            </button>
-          )}
-          {onCloseStage && (
-            <button
-              type="button"
-              onClick={onCloseStage}
-              className="w-8 h-8 rounded-xl bg-black/60 hover:bg-black/90 text-gray-400 hover:text-white border border-white/10 flex items-center justify-center transition cursor-pointer shadow-lg backdrop-blur-md"
-              title="Yayını Gizle (Sohbete Dön)"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Video Stream Stage */}
       <div
         className={`relative flex items-center justify-center bg-black overflow-hidden ${
@@ -167,18 +109,42 @@ export const ScreenShareStage = ({
       {/* Stage Bottom Controls */}
       <div
         className={`flex items-center justify-between ${
-          pip ? 'px-2.5 py-1.5' : 'px-4 py-3'
-        } z-10 flex-shrink-0 select-none bg-black/40 backdrop-blur-sm border-t border-white/[0.04]`}
+          pip ? 'px-2.5 py-1.5' : 'px-4 py-2.5 sm:py-3'
+        } z-10 flex-shrink-0 select-none bg-black/60 backdrop-blur-md border-t border-white/[0.06]`}
       >
-        {/* Current Stream Info */}
+        {/* Current Stream Info & Multi-stream switcher */}
         <div className="flex items-center space-x-2 text-xs text-gray-300 min-w-0 truncate">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-          <span className="font-medium text-white truncate">{activeScreenShare.userName || (isLocal ? 'Sen' : 'Kullanıcı')}</span>
+          <span className="font-medium text-white truncate">{activeScreenShare.userName || (isLocal ? 'Sen (You)' : 'Kullanıcı')}</span>
           <span className="text-gray-500">•</span>
           <span className="text-gray-400 shrink-0">{activeScreenShare.qualityLabel || 'Canlı Yayın'}</span>
+
+          {/* Quick switcher buttons if multiple users are sharing */}
+          {availableScreenShares && availableScreenShares.length > 1 && (
+            <div className="hidden sm:flex items-center space-x-1 ml-2 pl-2 border-l border-white/10 shrink-0">
+              {availableScreenShares.map((s) => {
+                const isSelected = activeScreenShare?.peerId === s.peerId;
+                return (
+                  <button
+                    key={s.peerId}
+                    type="button"
+                    onClick={() => onSelectScreenShare?.(s.peerId)}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] transition cursor-pointer truncate max-w-[110px] ${
+                      isSelected
+                        ? 'bg-purple-600/40 text-purple-200 border border-purple-500/30 font-medium'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                    title={s.userName || (s.isLocal ? 'Sen' : 'Kullanıcı')}
+                  >
+                    {s.userName || (s.isLocal ? 'Sen' : 'Yayın')}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex items-center space-x-2 shrink-0 ml-2">
           {/* Audio Mute/Unmute for remote stream */}
           {!isLocal && (
             <button
@@ -190,11 +156,41 @@ export const ScreenShareStage = ({
                 }
               }}
               className={`${
-                pip ? 'w-7 h-7' : 'w-9 h-9'
+                pip ? 'w-7 h-7' : 'w-8 sm:w-9 h-8 sm:h-9'
               } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
               title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
             >
               {isMuted ? <VolumeX size={pip ? 13 : 16} /> : <Volume2 size={pip ? 13 : 16} className="text-emerald-400" />}
+            </button>
+          )}
+
+          {/* Stop screen share button moved to bottom controls */}
+          {isLocal && onStopScreenShare && (
+            <button
+              type="button"
+              onClick={onStopScreenShare}
+              className={`${
+                pip ? 'h-7 px-2 text-[11px]' : 'h-8 sm:h-9 px-3 text-xs'
+              } rounded-xl bg-rose-600 hover:bg-rose-500 text-white flex items-center space-x-1.5 font-medium transition cursor-pointer shadow-md`}
+              title="Ekran Paylaşımını Durdur"
+            >
+              <MonitorX size={pip ? 12 : 14} />
+              <span>Durdur</span>
+            </button>
+          )}
+
+          {/* Close stage for remote screen share to return to chat view */}
+          {!isLocal && onCloseStage && (
+            <button
+              type="button"
+              onClick={onCloseStage}
+              className={`${
+                pip ? 'h-7 px-2 text-[11px]' : 'h-8 sm:h-9 px-2.5 text-xs'
+              } rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 hover:text-white flex items-center space-x-1 font-medium transition cursor-pointer`}
+              title="Yayını Gizle (Sohbete Dön)"
+            >
+              <X size={pip ? 12 : 14} />
+              <span className="hidden sm:inline">Kapat</span>
             </button>
           )}
 
@@ -203,7 +199,7 @@ export const ScreenShareStage = ({
             type="button"
             onClick={toggleFullscreen}
             className={`${
-              pip ? 'w-7 h-7' : 'w-9 h-9'
+              pip ? 'w-7 h-7' : 'w-8 sm:w-9 h-8 sm:h-9'
             } rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer`}
             title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran Yap"}
           >
