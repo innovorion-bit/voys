@@ -219,13 +219,26 @@ export class MeshVoiceService {
     const nextUserId = meta.userId || meta.id || prev.userId || null;
     const nextAvatar = meta.avatar || meta.avatar_url || prev.avatar || null;
     const nextRoom = meta.room || meta.channelId || prev.room || this.roomName || null;
+    const nextInputMode = meta.inputMode || prev.inputMode || 'voice';
+    const isPtt = nextInputMode === 'ptt';
+
+    // A PTT user who is silent must NEVER be marked as muted unless explicitly muted
+    let nextMuted = prev.isMuted;
+    if (typeof meta.isMuted === 'boolean') {
+      nextMuted = isPtt ? Boolean(meta.isExplicitMuted) : meta.isMuted;
+    } else if (isPtt && !meta.isExplicitMuted) {
+      nextMuted = false;
+    }
+
     const next = {
       ...prev,
+      inputMode: nextInputMode,
       ...(nextRoom ? { room: nextRoom } : {}),
       ...(nextUserId ? { userId: nextUserId } : {}),
       ...(nextName ? { name: nextName, userName: nextName } : {}),
       ...(nextAvatar ? { avatar: nextAvatar } : {}),
-      ...(typeof meta.isMuted === 'boolean' ? { isMuted: meta.isMuted } : {}),
+      isMuted: Boolean(nextMuted),
+      ...(typeof meta.isExplicitMuted === 'boolean' ? { isExplicitMuted: meta.isExplicitMuted } : {}),
       ...(typeof meta.isDeafened === 'boolean' ? { isDeafened: meta.isDeafened } : {}),
     };
     this.peerMetadata.set(peerId, next);
@@ -261,6 +274,7 @@ export class MeshVoiceService {
       peerId: this.myPeerId,
       userId: this.userMeta?.userId || null,
       isSpeaking: boolSpeaking,
+      inputMode: this.inputMode || 'voice',
       timestamp: Date.now(),
     };
 
@@ -686,6 +700,8 @@ export class MeshVoiceService {
 
   // 2. Initialize PeerJS connection and mesh discovery
   async init(customId = null, userName = 'Sen (You)', userMeta = null) {
+    this.isLocalMuted = Boolean(userMeta?.isMuted);
+    this.isLocalDeafened = Boolean(userMeta?.isDeafened);
     if (userMeta && typeof userMeta === 'object') {
       const resolvedName = userMeta.display_name || userMeta.name || userName || 'Sen (You)';
       this.userName = resolvedName;
@@ -693,8 +709,9 @@ export class MeshVoiceService {
         userId: userMeta.id || userMeta.userId || null,
         name: resolvedName,
         avatar: userMeta.avatar_url || userMeta.avatar || null,
-        isMuted: false,
-        isDeafened: false,
+        isMuted: this.isLocalMuted,
+        isDeafened: this.isLocalDeafened,
+        inputMode: this.inputMode || 'voice',
       };
     } else {
       this.userName = userName || 'Sen (You)';
@@ -702,8 +719,9 @@ export class MeshVoiceService {
         userId: null,
         name: this.userName,
         avatar: null,
-        isMuted: false,
-        isDeafened: false,
+        isMuted: this.isLocalMuted,
+        isDeafened: this.isLocalDeafened,
+        inputMode: this.inputMode || 'voice',
       };
     }
 
@@ -717,6 +735,7 @@ export class MeshVoiceService {
           avatar: this.userMeta?.avatar || null,
           isMuted: Boolean(this.isLocalMuted),
           isDeafened: Boolean(this.isLocalDeafened),
+          inputMode: this.inputMode || 'voice',
           joinedAt: Date.now(),
         }).catch(() => {});
       }
@@ -948,6 +967,7 @@ export class MeshVoiceService {
               avatar: data.avatar,
               isMuted: data.isMuted,
               isDeafened: data.isDeafened,
+              inputMode: data.inputMode || 'voice',
             });
             // A new peer joined the room: deterministic priority avoids dual-call glare
             if (!this.activeCalls.has(data.peerId)) {
@@ -971,6 +991,7 @@ export class MeshVoiceService {
               avatar: this.userMeta?.avatar || null,
               isMuted: Boolean(this.isLocalMuted),
               isDeafened: Boolean(this.isLocalDeafened),
+              inputMode: this.inputMode || 'voice',
               knownPeers: Array.from(this.remoteStreams.keys()),
             });
             break;
@@ -982,6 +1003,7 @@ export class MeshVoiceService {
               avatar: data.avatar,
               isMuted: data.isMuted,
               isDeafened: data.isDeafened,
+              inputMode: data.inputMode || 'voice',
             });
             // Existing peer announced itself
             if (!this.activeCalls.has(data.peerId)) {
@@ -1029,16 +1051,19 @@ export class MeshVoiceService {
           case 'PEER_SPEAKING_UPDATE':
             if (data.peerId && data.peerId !== this.myPeerId) {
               const isSpk = Boolean(data.isSpeaking);
-              if (isSpk) {
-                this.setPeerMetadata(data.peerId, { isMuted: false });
-                if (data.userId) {
-                  this.setMuteByUserId(data.userId, false);
-                }
+              const remoteMode = data.inputMode || (this.peerMetadata.get(data.peerId)?.inputMode || 'voice');
+              this.setPeerMetadata(data.peerId, {
+                inputMode: remoteMode,
+                ...(isSpk ? { isMuted: false } : {}),
+              });
+              if (isSpk && data.userId) {
+                this.setMuteByUserId(data.userId, false);
               }
               this.emit('peerSpeakingUpdate', {
                 peerId: data.peerId,
                 userId: data.userId,
                 isSpeaking: isSpk,
+                inputMode: remoteMode,
               });
             }
             break;
@@ -1197,6 +1222,7 @@ export class MeshVoiceService {
                 avatar: this.userMeta?.avatar || null,
                 isMuted: Boolean(this.isLocalMuted),
                 isDeafened: Boolean(this.isLocalDeafened),
+                inputMode: this.inputMode || 'voice',
                 joinedAt: Date.now(),
               }).catch(() => {});
               this.startPingMonitoring();
@@ -1225,6 +1251,7 @@ export class MeshVoiceService {
           avatar: this.userMeta?.avatar || null,
           isMuted: Boolean(this.isLocalMuted),
           isDeafened: Boolean(this.isLocalDeafened),
+          inputMode: this.inputMode || 'voice',
         });
         conn.send({
           type: 'MESH_SYNC',
@@ -1259,16 +1286,19 @@ export class MeshVoiceService {
         }
       } else if (data?.type === 'PEER_SPEAKING_UPDATE') {
         const isSpk = Boolean(data.isSpeaking);
-        if (isSpk) {
-          this.setPeerMetadata(peerId, { isMuted: false });
-          if (data.userId) {
-            this.setMuteByUserId(data.userId, false);
-          }
+        const remoteMode = data.inputMode || (this.peerMetadata.get(data.peerId || peerId)?.inputMode || 'voice');
+        this.setPeerMetadata(peerId, {
+          inputMode: remoteMode,
+          ...(isSpk ? { isMuted: false } : {}),
+        });
+        if (isSpk && data.userId) {
+          this.setMuteByUserId(data.userId, false);
         }
         this.emit('peerSpeakingUpdate', {
           peerId: data.peerId || peerId,
           userId: data.userId,
           isSpeaking: isSpk,
+          inputMode: remoteMode,
         });
       } else if (data?.type === 'MESH_SYNC' && Array.isArray(data.knownPeers)) {
         data.knownPeers.forEach((pId) => {
@@ -1433,6 +1463,7 @@ export class MeshVoiceService {
           avatar: this.userMeta?.avatar || null,
           isMuted: Boolean(this.isLocalMuted),
           isDeafened: Boolean(this.isLocalDeafened),
+          inputMode: this.inputMode || 'voice',
         },
       });
 
@@ -2086,7 +2117,15 @@ export class MeshVoiceService {
         }
 
         if (remoteInfo && isHealthy) {
-          this.setPeerMetadata(remotePeerId, remoteInfo);
+          const currentMeta = this.peerMetadata.get(remotePeerId);
+          // Never let stale presence isMuted overwrite live peer unmuted or PTT state
+          const safeRemoteInfo = {
+            ...remoteInfo,
+            inputMode: remoteInfo.inputMode || currentMeta?.inputMode || 'voice',
+            ...(currentMeta?.isMuted === false ? { isMuted: false } : {}),
+            ...(currentMeta?.inputMode === 'ptt' || remoteInfo?.inputMode === 'ptt' ? { isMuted: false, inputMode: 'ptt' } : {}),
+          };
+          this.setPeerMetadata(remotePeerId, safeRemoteInfo);
         }
 
         if (!isHealthy && !this.activeCalls.has(remotePeerId)) {

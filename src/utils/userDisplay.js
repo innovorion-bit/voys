@@ -436,6 +436,11 @@ export const mergeVoiceAndCallMembers = (
       );
     });
 
+    const isPtt = vm.inputMode === 'ptt' || matchingCallMember?.inputMode === 'ptt';
+    const isVmSpeaking = Boolean(vm.isSpeaking);
+    const isVmMuted = isPtt ? false : (isVmSpeaking ? false : Boolean(vm.isMuted === true));
+    const isVmDeafened = Boolean(vm.isDeafened === true);
+
     const enrichedVm = matchingCallMember
       ? {
           ...matchingCallMember,
@@ -443,12 +448,20 @@ export const mergeVoiceAndCallMembers = (
           avatar: vm.avatar || matchingCallMember.avatar || matchingCallMember.avatar_url,
           avatar_url: vm.avatar_url || matchingCallMember.avatar_url || matchingCallMember.avatar,
           name: vm.name && !vm.name.startsWith('Katılımcı-') ? vm.name : (matchingCallMember.name || vm.name),
-          isSpeaking: Boolean(vm.isSpeaking),
-          isMuted: vm.isSpeaking ? false : Boolean(vm.isMuted === true),
-          isDeafened: Boolean(vm.isDeafened === true),
-          substatus: vm.isDeafened ? 'Sağırlaştırıldı' : vm.isMuted ? 'Mikrofon Kapalı' : 'Seste',
+          inputMode: isPtt ? 'ptt' : (vm.inputMode || matchingCallMember.inputMode || 'voice'),
+          isSpeaking: isVmSpeaking,
+          isMuted: isVmMuted,
+          isDeafened: isVmDeafened,
+          substatus: isVmDeafened ? 'Sağırlaştırıldı' : isVmMuted ? 'Mikrofon Kapalı' : 'Seste',
         }
-      : vm;
+      : {
+          ...vm,
+          inputMode: isPtt ? 'ptt' : (vm.inputMode || 'voice'),
+          isSpeaking: isVmSpeaking,
+          isMuted: isVmMuted,
+          isDeafened: isVmDeafened,
+          substatus: isVmDeafened ? 'Sağırlaştırıldı' : isVmMuted ? 'Mikrofon Kapalı' : 'Seste',
+        };
 
     addKeys(enrichedVm, vmKey);
     mergedList.push(enrichedVm);
@@ -488,11 +501,14 @@ export const mergeVoiceAndCallMembers = (
     });
 
     const isMemberSpeaking = matchingVoiceMember ? Boolean(matchingVoiceMember.isSpeaking) : Boolean(cm.isSpeaking);
-    const isMemberMuted = isMemberSpeaking
+    const isPttMember = cm.inputMode === 'ptt' || matchingVoiceMember?.inputMode === 'ptt';
+    const isMemberMuted = isPttMember
       ? false
-      : matchingVoiceMember
-        ? Boolean(matchingVoiceMember.isMuted === true)
-        : Boolean(cm.isMuted === true);
+      : isMemberSpeaking
+        ? false
+        : matchingVoiceMember
+          ? Boolean(matchingVoiceMember.isMuted === true)
+          : Boolean(cm.isMuted === true);
     const isMemberDeafened = matchingVoiceMember
       ? Boolean(matchingVoiceMember.isDeafened === true)
       : Boolean(cm.isDeafened === true);
@@ -500,6 +516,7 @@ export const mergeVoiceAndCallMembers = (
     addKeys(cm, cmKey);
     mergedList.push({
       ...cm,
+      inputMode: isPttMember ? 'ptt' : (cm.inputMode || 'voice'),
       isSpeaking: isMemberSpeaking,
       isMuted: isMemberMuted,
       isDeafened: isMemberDeafened,
@@ -685,7 +702,8 @@ export const partitionSidebarGroupMembers = ({
       ) || '';
 
     const isMemberSpeaking = Boolean(cm.isSpeaking);
-    const memberMuted = Boolean(!isMemberSpeaking && cm.isMuted === true);
+    const isPttMember = cm.inputMode === 'ptt' || matchedMember?.inputMode === 'ptt';
+    const memberMuted = !isPttMember && Boolean(!isMemberSpeaking && cm.isMuted === true);
     const memberDeafened = Boolean(cm.isDeafened === true);
 
     voiceMembers.push({
@@ -700,6 +718,7 @@ export const partitionSidebarGroupMembers = ({
       avatar_url: resolvedAvatar,
       role: matchedMember?.role || cm.role || 'member',
       game: null,
+      inputMode: isPttMember ? 'ptt' : (cm.inputMode || matchedMember?.inputMode || 'voice'),
       isSpeaking: isMemberSpeaking,
       isMuted: memberMuted,
       isDeafened: memberDeafened,

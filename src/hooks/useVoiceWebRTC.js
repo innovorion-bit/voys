@@ -460,7 +460,7 @@ export const useVoiceWebRTC = () => {
     };
 
     // Ultra-fast data channel / broadcast speaking update from remote peer
-    const handlePeerSpeakingUpdate = ({ peerId, userId, isSpeaking }) => {
+    const handlePeerSpeakingUpdate = ({ peerId, userId, isSpeaking, inputMode: remoteMode }) => {
       const now = Date.now();
       const boolSpeaking = Boolean(isSpeaking);
       if (peerId) {
@@ -468,9 +468,10 @@ export const useVoiceWebRTC = () => {
           isSpeaking: boolSpeaking,
           lastUpdated: now,
         });
-        if (boolSpeaking) {
-          peerService.setPeerMetadata(peerId, { isMuted: false });
-        }
+        peerService.setPeerMetadata(peerId, {
+          ...(remoteMode ? { inputMode: remoteMode } : {}),
+          ...(boolSpeaking ? { isMuted: false } : {}),
+        });
       }
       const analyserEntry = remoteAnalysersRef.current.get(peerId);
       if (analyserEntry) {
@@ -484,12 +485,16 @@ export const useVoiceWebRTC = () => {
         const next = prev.map((p) => {
           if (p.peerId === peerId || (userId && p.userId === userId)) {
             matched = true;
-            return p.isSpeaking !== boolSpeaking ? { ...p, isSpeaking: boolSpeaking } : p;
+            return {
+              ...p,
+              ...(remoteMode ? { inputMode: remoteMode } : {}),
+              ...(p.isSpeaking !== boolSpeaking ? { isSpeaking: boolSpeaking } : {}),
+            };
           }
           return p;
         });
         if (!matched && peerId) {
-          return [...next, { peerId, userId, isSpeaking: boolSpeaking, stream: null }];
+          return [...next, { peerId, userId, isSpeaking: boolSpeaking, inputMode: remoteMode || 'voice', stream: null }];
         }
         return next;
       });

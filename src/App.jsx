@@ -1143,8 +1143,9 @@ function StanduppApp() {
     const handlePeerMuteUpdate = (payload) => {
       if (!payload || !payload.userId) return;
       const targetUid = String(payload.userId);
+      const isMutedBool = Boolean(payload.isMuted);
 
-      peerService.setMuteByUserId?.(targetUid, payload.isMuted, payload.isDeafened);
+      peerService.setMuteByUserId?.(targetUid, isMutedBool, payload.isDeafened);
 
       setChannelCalls((prev) => {
         let changed = false;
@@ -1157,7 +1158,7 @@ function StanduppApp() {
               ...callObj,
               members: callObj.members.map((m) =>
                 String(m.id || m.user_id) === targetUid
-                  ? { ...m, isMuted: Boolean(payload.isMuted), isDeafened: Boolean(payload.isDeafened) }
+                  ? { ...m, isMuted: isMutedBool, isDeafened: Boolean(payload.isDeafened) }
                   : m
               ),
             };
@@ -1167,9 +1168,35 @@ function StanduppApp() {
       });
     };
 
+    // Auto-heal any stale isMuted state in channelCalls when remote peer speaks
+    const handlePeerSpeakingSync = ({ userId, isSpeaking }) => {
+      if (isSpeaking && userId) {
+        const targetUid = String(userId);
+        setChannelCalls((prev) => {
+          let changed = false;
+          const next = { ...prev };
+          Object.keys(next).forEach((chanKey) => {
+            const callObj = next[chanKey];
+            if (callObj?.members?.some((m) => String(m.id || m.user_id) === targetUid && m.isMuted)) {
+              changed = true;
+              next[chanKey] = {
+                ...callObj,
+                members: callObj.members.map((m) =>
+                  String(m.id || m.user_id) === targetUid ? { ...m, isMuted: false } : m
+                ),
+              };
+            }
+          });
+          return changed ? next : prev;
+        });
+      }
+    };
+
     chatService.on('peer_mute_update', handlePeerMuteUpdate);
+    peerService.on('peerSpeakingUpdate', handlePeerSpeakingSync);
     return () => {
       chatService.off('peer_mute_update', handlePeerMuteUpdate);
+      peerService.off('peerSpeakingUpdate', handlePeerSpeakingSync);
     };
   }, []);
 
@@ -1626,7 +1653,8 @@ function StanduppApp() {
           null;
 
         const resolvedId = matchedProfile?.id || matchedProfile?.userId || meta.userId || peerId;
-        const isRemoteMuted = !peerSpeaking && Boolean(meta.isMuted === true);
+        const isPttPeer = meta.inputMode === 'ptt' || matchedProfile?.inputMode === 'ptt';
+        const isRemoteMuted = !isPttPeer && !peerSpeaking && Boolean(meta.isMuted === true);
         const isRemoteDeafened = Boolean(meta.isDeafened === true);
 
         return {
@@ -1637,6 +1665,7 @@ function StanduppApp() {
           avatar_url: resolvedAvatar,
           avatarBg: '#1e3a5f',
           isSpeaking: Boolean(peerSpeaking),
+          inputMode: isPttPeer ? 'ptt' : (meta.inputMode || 'voice'),
           isMuted: isRemoteMuted,
           isDeafened: isRemoteDeafened,
           status: matchedProfile?.status || 'online',
@@ -1657,11 +1686,12 @@ function StanduppApp() {
             avatar: activeUserProfile.avatar || null,
             avatarBg: '#3d9921',
             isSpeaking: isSpeaking || (inputMode === 'ptt' && isPttActive && !isMuted && !isDeafened),
+            inputMode: inputMode === 'ptt' ? 'ptt' : 'voice',
             isMuted: isMuted,
             isDeafened: isDeafened,
             status: activeUserProfile.status || 'online',
             game: null,
-            substatus: activeUserProfile.substatus || (isDeafened ? 'Sağırlaştırıldı' : isMuted ? 'Mikrofon Kapalı' : 'Seste'),
+            substatus: isDeafened ? 'Sağırlaştırıldı' : isMuted ? 'Mikrofon Kapalı' : 'Seste',
             statusColor: 'text-[#57cbde]',
             isAway: activeUserProfile.status === 'idle',
           },
