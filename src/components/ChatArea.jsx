@@ -1778,7 +1778,7 @@ export const ChatArea = ({
               {/* Friend Name & Realtime Presence Status (Tıklandığında Kişi Bilgisini açar) */}
               <div
                 onClick={() => setChatInnerView('userInfo')}
-                className="min-w-0 flex flex-col cursor-pointer group px-1 -mx-1 py-0.5 rounded-lg hover:bg-white/[0.04] transition"
+                className="min-w-0 flex flex-col cursor-pointer group transition"
                 title="Kişi bilgisini görüntüle"
               >
                 <div className="flex items-center space-x-1.5">
@@ -1866,7 +1866,7 @@ export const ChatArea = ({
               {/* Group Name & Realtime Member Count Subtitle (Tıklandığında Grup Bilgisini açar) */}
               <div
                 onClick={() => setChatInnerView('userInfo')}
-                className="min-w-0 flex flex-col cursor-pointer group px-1 -mx-1 py-0.5 rounded-lg hover:bg-white/[0.04] transition"
+                className="min-w-0 flex flex-col cursor-pointer group transition"
                 title="Grup bilgisini görüntüle"
               >
                 <div className="flex items-center space-x-1.5">

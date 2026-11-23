@@ -2660,7 +2660,7 @@ export const Sidebar = ({
               {/* User Name & Details -> Clicking opens Settings */}
               <div
                 onClick={() => onOpenSettings?.('account')}
-                className="min-w-0 cursor-pointer p-1 rounded-xl hover:bg-white/5 transition group flex-1"
+                className="min-w-0 cursor-pointer transition group flex-1"
                 title="Profil ve Ayarları Aç"
               >
                 <div className="flex items-center gap-1">
