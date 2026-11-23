@@ -1854,10 +1854,10 @@ export const ChatArea = ({
                   <FreezeGifImage
                     src={currentGroupAvatar}
                     alt={channelData?.name || 'Grup'}
-                    className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 shadow-sm flex-shrink-0"
+                    className="w-9 h-9 rounded-full object-cover shadow-sm flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shadow-sm flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 flex items-center justify-center text-indigo-300 shadow-sm flex-shrink-0">
                     <Users size={18} />
                   </div>
                 )}
@@ -2206,7 +2206,7 @@ export const ChatArea = ({
                       className={`relative group w-20 h-20 rounded-full overflow-hidden border-2 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 ${
                         currentGroupAvatar
                           ? 'border-white/10 hover:border-[#8B51FF] bg-black/40'
-                          : 'bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border-indigo-500/40 hover:border-[#8B51FF] text-indigo-300 shadow-sm'
+                          : 'bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border-white/10 hover:border-[#8B51FF] text-indigo-300 shadow-sm'
                       }`}
                       title={currentGroupAvatar ? 'Grup fotoğrafını görüntüle' : 'Fotoğraf yüklemek için tıklayın'}
                     >

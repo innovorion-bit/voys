@@ -2543,10 +2543,10 @@ export const Sidebar = ({
                       <FreezeGifImage
                         src={chan.avatar_url || chan.avatar}
                         alt={chan.name}
-                        className="w-9 h-9 rounded-full object-cover border border-indigo-500/40 flex-shrink-0"
+                        className="w-9 h-9 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/25 to-purple-600/30 flex items-center justify-center text-indigo-300 flex-shrink-0">
                         <Users size={18} />
                       </div>
                     )}
