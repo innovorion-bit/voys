@@ -1731,18 +1731,6 @@ export const ChatArea = ({
                     isDmMode
                   )
                 );
-                const dmPref = dmCallMember
-                  ? (peerAudioPrefs[String(dmCallMember.id)] || (dmCallMember.peerId ? peerAudioPrefs[String(dmCallMember.peerId)] : null))
-                  : null;
-                const dmMuted = Boolean(dmPref?.muted || dmPref?.volume === 0);
-                const dmSpeaking = Boolean(
-                  isInCall &&
-                  !isDeafened &&
-                  !dmMuted &&
-                  !dmCallMember?.isMuted &&
-                  !dmCallMember?.isDeafened &&
-                  dmCallMember?.isSpeaking
-                );
 
                 return (
                   <div
@@ -1768,7 +1756,6 @@ export const ChatArea = ({
                       user={activeDmFriend}
                       size="md"
                       showStatus={false}
-                      isSpeaking={dmSpeaking}
                       status={activeDmFriend.status}
                     />
                   </div>
