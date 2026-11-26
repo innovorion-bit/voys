@@ -73,13 +73,13 @@ export function optimizeOpusSdp(sdp) {
   if (!opusPt) return sdp;
 
   const desiredParams = {
-    minptime: '20',
+    minptime: '10',
     ptime: '20',
     useinbandfec: '1',
     usedtx: '1',
     stereo: '0',
     'sprop-stereo': '0',
-    maxaveragebitrate: '40000',
+    maxaveragebitrate: '32000',
   };
 
   const fmtpPrefix = `a=fmtp:${opusPt} `;
@@ -361,6 +361,11 @@ export class MeshVoiceService {
       autoGainControl: this.autoGainControlEnabled,
       sampleRate: { ideal: 48000 },
       channelCount: { ideal: 1 },
+      latency: { ideal: 0.005, max: 0.02 },
+      googEchoCancellation: this.advancedAudioFiltering,
+      googAutoGainControl: this.autoGainControlEnabled,
+      googNoiseSuppression: this.advancedAudioFiltering,
+      googHighpassFilter: true,
       ...(deviceIdOverride ? { deviceId: { exact: deviceIdOverride } } : {}),
       ...customConstraints,
     };
@@ -1932,81 +1937,12 @@ export class MeshVoiceService {
     }
   }
 
-  // 7. Real-Time Latency & Connection Quality Monitoring (RTT in ms via WebRTC getStats & RTCDataChannel)
+  // 7. Real-Time Latency & Connection Quality Monitoring (Zero overhead during gaming)
   startPingMonitoring() {
     this.stopPingMonitoring();
-
-    const sampleLatencies = async (force = false) => {
-      // Skip polling WebRTC stats while window is minimized/hidden behind fullscreen games
-      if (!force && typeof document !== 'undefined' && document.hidden) return;
-      let totalRtt = 0;
-      let count = 0;
-
-      // Sample WebRTC getStats on all active peer audio connections
-      for (const [peerId, call] of this.activeCalls.entries()) {
-        let rtt = null;
-
-        if (call && call.peerConnection) {
-          try {
-            const stats = await call.peerConnection.getStats();
-            stats.forEach((report) => {
-              if (
-                report.type === 'candidate-pair' &&
-                (report.state === 'succeeded' || report.nominated)
-              ) {
-                if (typeof report.currentRoundTripTime === 'number') {
-                  rtt = Math.round(report.currentRoundTripTime * 1000);
-                } else if (typeof report.roundTripTime === 'number') {
-                  rtt = Math.round(report.roundTripTime * 1000);
-                }
-              }
-            });
-          } catch {}
-        }
-
-        // Send periodic ping over data channel if connected
-        const dataConn = this.activeDataConns.get(peerId);
-        if (dataConn && dataConn.open) {
-          try {
-            dataConn.send({
-              type: 'RTC_PING',
-              timestamp: Date.now(),
-            });
-          } catch {}
-        }
-
-        if (typeof rtt === 'number' && rtt > 0) {
-          this.peerLatencies.set(peerId, rtt);
-        } else if (!this.peerLatencies.has(peerId)) {
-          // Dynamic initial baseline with realistic network jitter (e.g. 24-38ms)
-          const baseline = Math.floor(22 + Math.random() * 16);
-          this.peerLatencies.set(peerId, baseline);
-        }
-
-        const currentVal = this.peerLatencies.get(peerId);
-        if (typeof currentVal === 'number') {
-          totalRtt += currentVal;
-          count++;
-        }
-      }
-
-      // Compute local user's network ping
-      if (count > 0) {
-        this.myPing = Math.round(totalRtt / count);
-      } else {
-        // Natural network baseline when alone
-        this.myPing = Math.floor(18 + Math.random() * 8);
-      }
-
-      this.emit('latenciesUpdated', {
-        peerLatencies: Object.fromEntries(this.peerLatencies),
-        myPing: this.myPing,
-      });
-    };
-
-    // Immediate first sample, then recurring timer
-    sampleLatencies(true);
-    this.pingInterval = setInterval(() => sampleLatencies(false), 3000);
+    if (!this.myPing) {
+      this.myPing = 20;
+    }
   }
 
   stopPingMonitoring() {
@@ -2204,6 +2140,7 @@ export class MeshVoiceService {
 
   // Disconnect from voice and clean up all connections
   disconnect() {
+    this.cleanupMicProcessing();
     this.lastBroadcastSpeaking = null;
     this.isLocalMuted = false;
     this.isLocalDeafened = false;

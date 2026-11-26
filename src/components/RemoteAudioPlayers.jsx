@@ -33,7 +33,7 @@ function applyOutputSink(audioEl, sinkId, peerId) {
  * dynamically controls volume (including >100% Web Audio GainNode boost + soft peak limiter),
  * and routes audio to the user-selected speaker output device (setSinkId).
  */
-const RemoteAudioItem = ({
+const RemoteAudioItem = React.memo(({
   peerId,
   stream,
   isDeafened,
@@ -239,14 +239,14 @@ const RemoteAudioItem = ({
       />
     </>
   );
-};
+});
 
 /**
  * RemoteAudioPlayers:
  * Renders hidden <audio autoPlay> tags directly within the React component
  * for each remote stream received across the P2P mesh network.
  */
-export const RemoteAudioPlayers = ({ 
+export const RemoteAudioPlayers = React.memo(({ 
   remotePeers = [], 
   isDeafened = false, 
   volume = 1, 
@@ -284,4 +284,4 @@ export const RemoteAudioPlayers = ({
       })}
     </div>
   );
-};
+});

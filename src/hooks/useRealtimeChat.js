@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { chatService } from '../services/chatService';
 import { dbService } from '../lib/supabase';
-import { initialChatMessages, initialDmMessages } from '../data/mockData';
+const initialChatMessages = [];
+const initialDmMessages = {};
 import { pickDisplayName, getUserColor, CLASSIC_PURPLE } from '../utils/userDisplay';
 import { isDirectMessageForPair, normalizeParticipantId, parseDmRoomPair } from '../utils/dmIsolation';
 import { purgeUserFromMessagesMap } from '../utils/userPurge';

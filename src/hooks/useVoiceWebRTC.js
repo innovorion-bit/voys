@@ -104,21 +104,13 @@ export const useVoiceWebRTC = () => {
 
       const scheduleNext = () => {
         if (disposed) return;
-        if (typeof document !== 'undefined' && document.hidden && !isTauriEnvironment()) return;
-        const delay = typeof document !== 'undefined' && !document.hasFocus() ? 180 : 90;
+        // Adaptive power-saving interval: 110ms when unfocused/backgrounded behind games, 80ms when focused
+        const delay = typeof document !== 'undefined' && (!document.hasFocus() || document.hidden) ? 110 : 80;
         timerId = setTimeout(tick, delay);
       };
 
       const checkVolume = () => {
         if (!localAnalyserRef.current) return;
-
-        if (typeof document !== 'undefined' && document.hidden && !isTauriEnvironment()) {
-          if (localSpeakingRef.current) {
-            localSpeakingRef.current = false;
-            setIsSpeaking(false);
-          }
-          return;
-        }
 
         if (localAudioContextRef.current && localAudioContextRef.current.state === 'suspended') {
           localAudioContextRef.current.resume().catch(() => {});
@@ -601,7 +593,7 @@ export const useVoiceWebRTC = () => {
         }
       }
 
-      const delay = typeof document !== 'undefined' && !document.hasFocus() ? 180 : 90;
+      const delay = typeof document !== 'undefined' && (!document.hasFocus() || document.hidden) ? 200 : 120;
       remoteVadTimer = setTimeout(runRemoteVadTick, delay);
     };
 

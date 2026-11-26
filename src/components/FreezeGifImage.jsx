@@ -23,17 +23,13 @@ export function isGifMedia(url = '', name = '', type = '', isGifExplicit = false
 }
 
 /**
- * FreezeGifImage
- * Renders an image that plays normally when the Voys window is focused,
- * and freezes onto its exact current frame via HTML5 Canvas when the window loses focus
- * (unfocused, alt-tabbed, minimized, or in background).
+ * Internal component strictly for animated GIFs that need Canvas frame-freezing on window blur.
  */
-export const FreezeGifImage = ({
+const AnimatedGifPlayer = React.memo(({
   src,
   alt = '',
   className = '',
   style = {},
-  isGif: explicitIsGif = false,
   onError,
   onLoad,
   onClick,
@@ -43,8 +39,7 @@ export const FreezeGifImage = ({
   ...props
 }) => {
   const isFocused = useWindowFocus();
-  const isGif = isGifMedia(src, alt, '', explicitIsGif);
-  const [isFrozen, setIsFrozen] = useState(() => !isAppFocused() && isGif);
+  const [isFrozen, setIsFrozen] = useState(() => !isAppFocused());
 
   const imgRef = useRef(null);
   const canvasRef = useRef(null);
@@ -73,43 +68,20 @@ export const FreezeGifImage = ({
 
   // Synchronize freeze state with window focus
   useEffect(() => {
-    if (!isGif) {
-      setIsFrozen(false);
-      return;
-    }
-
     if (!isFocused) {
       captureFrame();
     } else {
       setIsFrozen(false);
     }
-  }, [isFocused, isGif, captureFrame]);
+  }, [isFocused, captureFrame]);
 
   // If the image completes loading while the app is already unfocused, freeze immediately
   const handleLoad = useCallback((e) => {
     onLoad?.(e);
-    if (!isAppFocused() && isGif) {
+    if (!isAppFocused()) {
       captureFrame();
     }
-  }, [onLoad, isGif, captureFrame]);
-
-  // If definitely not a GIF, render standard img directly
-  if (!isGif) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        className={className}
-        style={style}
-        onError={onError}
-        onLoad={onLoad}
-        onClick={onClick}
-        loading={loading}
-        draggable={draggable}
-        {...props}
-      />
-    );
-  }
+  }, [onLoad, captureFrame]);
 
   return (
     <>
@@ -144,6 +116,62 @@ export const FreezeGifImage = ({
       />
     </>
   );
-};
+});
+
+/**
+ * FreezeGifImage
+ * Renders high-performance static <img> directly for 99% of images,
+ * and delegates to AnimatedGifPlayer only when an animated GIF is detected.
+ */
+export const FreezeGifImage = React.memo(({
+  src,
+  alt = '',
+  className = '',
+  style = {},
+  isGif: explicitIsGif = false,
+  onError,
+  onLoad,
+  onClick,
+  loading = 'lazy',
+  crossOrigin = 'anonymous',
+  draggable = false,
+  ...props
+}) => {
+  const isGif = isGifMedia(src, alt, '', explicitIsGif);
+
+  // If definitely not a GIF, render standard img directly (zero hook/windowFocus overhead)
+  if (!isGif) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className={className}
+        style={style}
+        onError={onError}
+        onLoad={onLoad}
+        onClick={onClick}
+        loading={loading}
+        draggable={draggable}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <AnimatedGifPlayer
+      src={src}
+      alt={alt}
+      className={className}
+      style={style}
+      onError={onError}
+      onLoad={onLoad}
+      onClick={onClick}
+      loading={loading}
+      crossOrigin={crossOrigin}
+      draggable={draggable}
+      {...props}
+    />
+  );
+});
 
 export default FreezeGifImage;

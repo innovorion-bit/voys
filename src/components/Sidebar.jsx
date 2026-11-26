@@ -293,7 +293,7 @@ function persistUnreadCounts(userId, counts) {
   } catch { }
 }
 
-export const Sidebar = ({
+export const Sidebar = React.memo(({
   textChannels = [],
   channelCalls = {}, // { [channelId]: { active: boolean, count: number } }
   friends = [],
@@ -2718,4 +2718,4 @@ export const Sidebar = ({
       )}
     </aside>
   );
-};
+});

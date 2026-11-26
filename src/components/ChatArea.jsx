@@ -337,7 +337,7 @@ function getMemberStatusDisplay(member) {
   return statusMap[member?.status] || 'Çevrimiçi';
 }
 
-export const ChatArea = ({
+export const ChatArea = React.memo(({
   activeChannel = 'home',
   channelData = null,
   onUpdateChannel = null,
@@ -4632,4 +4632,4 @@ export const ChatArea = ({
 
     </div>
   );
-};
+});
