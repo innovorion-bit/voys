@@ -151,11 +151,22 @@ export const useRealtimeChat = (
     };
     try {
       if (typeof localStorage !== 'undefined' && channelId) {
+        const clearedAt = dbService.getChannelClearedAt ? dbService.getChannelClearedAt(channelId) : 0;
         const raw = localStorage.getItem(`voys_cached_msgs_${channelId}`);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            base[channelId] = parsed;
+            const filtered = clearedAt
+              ? parsed.filter((m) => {
+                  const t = Number(m?.sentAt ?? m?.sent_at) || (m?.created_at ? new Date(m.created_at).getTime() : 0);
+                  return !t || t > clearedAt;
+                })
+              : parsed;
+            if (filtered.length > 0) {
+              base[channelId] = filtered;
+            } else if (clearedAt) {
+              localStorage.removeItem(`voys_cached_msgs_${channelId}`);
+            }
           }
         }
       }
@@ -167,18 +178,29 @@ export const useRealtimeChat = (
   useEffect(() => {
     if (!channelId) return;
     try {
+      const clearedAt = dbService.getChannelClearedAt ? dbService.getChannelClearedAt(channelId) : 0;
       const raw = localStorage.getItem(`voys_cached_msgs_${channelId}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessagesByChannel((prev) => {
-            if (prev[channelId] && prev[channelId].length > 0) return prev;
-            parsed.forEach((m) => m?.id && receivedMsgIdsRef.current.add(m.id));
-            return {
-              ...prev,
-              [channelId]: parsed,
-            };
-          });
+          const filtered = clearedAt
+            ? parsed.filter((m) => {
+                const t = Number(m?.sentAt ?? m?.sent_at) || (m?.created_at ? new Date(m.created_at).getTime() : 0);
+                return !t || t > clearedAt;
+              })
+            : parsed;
+          if (filtered.length > 0) {
+            setMessagesByChannel((prev) => {
+              if (prev[channelId] && prev[channelId].length > 0) return prev;
+              filtered.forEach((m) => m?.id && receivedMsgIdsRef.current.add(m.id));
+              return {
+                ...prev,
+                [channelId]: filtered,
+              };
+            });
+          } else if (clearedAt) {
+            localStorage.removeItem(`voys_cached_msgs_${channelId}`);
+          }
         }
       }
     } catch {}
@@ -547,12 +569,22 @@ export const useRealtimeChat = (
           setMessagesByChannel((prevMap) => {
             const existing = prevMap[channelId] || [];
             const dbIds = new Set(formattedDbMsgs.map((m) => m.id));
-            const newRealtime = existing.filter((m) => !dbIds.has(m.id));
+            const now = Date.now();
+            const newRealtime = existing.filter((m) => {
+              if (dbIds.has(m.id)) return false;
+              if (m.isOptimistic || m.isSending) return true;
+              const sentTime = Number(m.sentAt || m.sent_at) || 0;
+              return sentTime > 0 && now - sentTime < 20000;
+            });
             const merged = [...formattedDbMsgs, ...newRealtime].sort(
               (a, b) => getSortTime(a) - getSortTime(b)
             );
             try {
-              localStorage.setItem(`voys_cached_msgs_${channelId}`, JSON.stringify(merged.slice(-100)));
+              if (merged.length === 0) {
+                localStorage.removeItem(`voys_cached_msgs_${channelId}`);
+              } else {
+                localStorage.setItem(`voys_cached_msgs_${channelId}`, JSON.stringify(merged.slice(-100)));
+              }
             } catch {}
             return {
               ...prevMap,
@@ -596,12 +628,22 @@ export const useRealtimeChat = (
               }
             }
             const dbIds = new Set(formattedDbMsgs.map((m) => m.id));
-            const newRealtime = existing.filter((m) => !dbIds.has(m.id));
+            const now = Date.now();
+            const newRealtime = existing.filter((m) => {
+              if (dbIds.has(m.id)) return false;
+              if (m.isOptimistic || m.isSending) return true;
+              const sentTime = Number(m.sentAt || m.sent_at) || 0;
+              return sentTime > 0 && now - sentTime < 20000;
+            });
             const merged = [...formattedDbMsgs, ...newRealtime].sort(
               (a, b) => getSortTime(a) - getSortTime(b)
             );
             try {
-              localStorage.setItem(`voys_cached_msgs_${channelId}`, JSON.stringify(merged.slice(-100)));
+              if (merged.length === 0) {
+                localStorage.removeItem(`voys_cached_msgs_${channelId}`);
+              } else {
+                localStorage.setItem(`voys_cached_msgs_${channelId}`, JSON.stringify(merged.slice(-100)));
+              }
             } catch {}
             return {
               ...prevMap,
@@ -638,6 +680,36 @@ export const useRealtimeChat = (
             if (filtered.length === list.length) return prevMap;
             return { ...prevMap, [channelId]: filtered };
           });
+          return;
+        }
+
+        // Channel-level bulk delete event
+        const targetCid = payload.channelId || payload.old?.channel_id;
+        if (targetCid) {
+          const rawTarget = String(targetCid);
+          const cleanTarget = rawTarget.replace(/^text-/, '');
+          const targetIds = [rawTarget, cleanTarget, `text-${cleanTarget}`];
+          const matches = targetIds.some((id) => id === channelId || cleanTarget === String(channelId || '').replace(/^text-/, ''));
+
+          if (matches) {
+            receivedMsgIdsRef.current?.clear?.();
+          }
+
+          setMessagesByChannel((prevMap) => {
+            const next = { ...prevMap };
+            targetIds.forEach((id) => {
+              next[id] = [];
+            });
+            if (matches && channelId) next[channelId] = [];
+            return next;
+          });
+
+          try {
+            targetIds.forEach((id) => {
+              localStorage.removeItem(`voys_cached_msgs_${id}`);
+            });
+            localStorage.removeItem('standupp_cached_messages');
+          } catch {}
         }
         return;
       }
@@ -791,12 +863,40 @@ export const useRealtimeChat = (
     };
     const handleClearChat = (payload) => {
       if (!payload) return;
-      if (!payload.isDm && payload.channelId === channelId) {
-        receivedMsgIdsRef.current?.clear?.();
-        setMessagesByChannel((prev) => ({
-          ...prev,
-          [channelId]: [],
-        }));
+      if (!payload.isDm && payload.channelId) {
+        const rawTarget = String(payload.channelId);
+        const cleanTarget = rawTarget.replace(/^text-/, '');
+        const targetIds = [rawTarget, cleanTarget, `text-${cleanTarget}`];
+
+        dbService.setChannelClearedAt?.(rawTarget, payload.timestamp || Date.now());
+
+        const matchesCurrent = targetIds.some(
+          (id) => id === channelId || cleanTarget === String(channelId || '').replace(/^text-/, '')
+        );
+
+        if (matchesCurrent) {
+          receivedMsgIdsRef.current?.clear?.();
+        }
+
+        setMessagesByChannel((prev) => {
+          const next = { ...prev };
+          targetIds.forEach((id) => {
+            next[id] = [];
+          });
+          if (matchesCurrent && channelId) {
+            next[channelId] = [];
+          }
+          return next;
+        });
+
+        try {
+          targetIds.forEach((id) => {
+            localStorage.removeItem(`voys_cached_msgs_${id}`);
+          });
+          localStorage.removeItem('standupp_cached_messages');
+        } catch {}
+
+        localDb.deleteChannelMessages(rawTarget);
       }
     };
     chatService.on('clear_chat', handleClearChat);
@@ -847,10 +947,37 @@ export const useRealtimeChat = (
   const clearMessages = useCallback((targetChannelId) => {
     const cid = targetChannelId || channelId;
     if (!cid) return;
-    setMessagesByChannel((prev) => ({
-      ...prev,
-      [cid]: [],
-    }));
+    const rawChan = String(cid);
+    const cleanChan = rawChan.replace(/^text-/, '');
+    const targetIds = [rawChan, cleanChan, `text-${cleanChan}`];
+
+    dbService.setChannelClearedAt?.(rawChan, Date.now());
+
+    const matchesCurrent = targetIds.some(
+      (id) => id === channelId || cleanChan === String(channelId || '').replace(/^text-/, '')
+    );
+
+    if (matchesCurrent) {
+      receivedMsgIdsRef.current?.clear?.();
+    }
+
+    setMessagesByChannel((prev) => {
+      const next = { ...prev };
+      targetIds.forEach((id) => {
+        next[id] = [];
+      });
+      if (channelId) next[channelId] = [];
+      return next;
+    });
+
+    try {
+      targetIds.forEach((id) => {
+        localStorage.removeItem(`voys_cached_msgs_${id}`);
+      });
+      localStorage.removeItem('standupp_cached_messages');
+    } catch {}
+
+    localDb.deleteChannelMessages(rawChan);
   }, [channelId]);
 
   const purgeUserMessages = useCallback((targetUserId) => {

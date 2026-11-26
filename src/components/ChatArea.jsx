@@ -357,6 +357,7 @@ export const ChatArea = React.memo(({
   onBackToChannels,
   onOpenSettings = null,
   onClearChat = null,
+  clearMessages = null,
   onAvatarPreviewChange = null,
   onToggleDmCall,
   _isDmCallActive = false,
@@ -674,6 +675,17 @@ export const ChatArea = React.memo(({
       }
 
       clearMessages?.(activeChannel);
+
+      try {
+        if (activeChannel) {
+          const rawChan = String(activeChannel);
+          const cleanChan = rawChan.replace(/^text-/, '');
+          localStorage.removeItem(`voys_cached_msgs_${rawChan}`);
+          localStorage.removeItem(`voys_cached_msgs_${cleanChan}`);
+          localStorage.removeItem(`voys_cached_msgs_text-${cleanChan}`);
+          localStorage.removeItem('standupp_cached_messages');
+        }
+      } catch {}
 
       if (isDmMode) {
         toast.success('Sohbet geçmişiniz yalnızca sizden temizlendi');

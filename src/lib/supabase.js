@@ -420,12 +420,26 @@ class StanduppLocalEngine {
 
   getChannelMessages(channelId) {
     const all = this.getItem('standupp_db_channel_msgs', {});
-    return all[channelId] || [];
+    const rawChan = String(channelId || '');
+    const cleanChan = rawChan.replace(/^text-/, '');
+    const list = all[rawChan] || all[cleanChan] || all[`text-${cleanChan}`] || [];
+    const clearedAt = dbService?.getChannelClearedAt ? dbService.getChannelClearedAt(rawChan) : 0;
+    if (clearedAt && Array.isArray(list)) {
+      return list.filter((m) => {
+        const t = Number(m?.sent_at ?? m?.sentAt) || (m?.created_at ? new Date(m.created_at).getTime() : 0);
+        return !t || t > clearedAt;
+      });
+    }
+    return list;
   }
 
   saveChannelMessages(channelId, messages) {
     const all = this.getItem('standupp_db_channel_msgs', {});
-    all[channelId] = messages;
+    const rawChan = String(channelId || '');
+    const cleanChan = rawChan.replace(/^text-/, '');
+    all[rawChan] = messages;
+    all[cleanChan] = messages;
+    all[`text-${cleanChan}`] = messages;
     this.setItem('standupp_db_channel_msgs', all);
   }
 
@@ -545,9 +559,17 @@ class StanduppLocalEngine {
 
   deleteChannelMessages(channelId) {
     const all = this.getItem('standupp_db_channel_msgs', {});
-    delete all[channelId];
+    const rawChan = String(channelId || '');
+    const cleanChan = rawChan.replace(/^text-/, '');
+    const targetIds = Array.from(new Set([rawChan, cleanChan, `text-${cleanChan}`])).filter(Boolean);
+    targetIds.forEach((id) => {
+      delete all[id];
+      try {
+        localStorage.removeItem(`voys_cached_msgs_${id}`);
+      } catch {}
+    });
     this.setItem('standupp_db_channel_msgs', all);
-    this.notifyTable('channel_messages', { eventType: 'DELETE', channelId });
+    this.notifyTable('channel_messages', { eventType: 'DELETE', channelId: rawChan, targetIds });
   }
 
   deleteSingleDmMessage(roomId, messageId) {
@@ -1683,51 +1705,63 @@ export const dbService = {
   },
 
   async fetchChannelMessages(channelId) {
+    const rawChan = String(channelId || '');
+    const cleanChan = rawChan.replace(/^text-/, '');
+    const targetIds = Array.from(new Set([rawChan, cleanChan, `text-${cleanChan}`])).filter(Boolean);
+    const clearedAt = this.getChannelClearedAt ? this.getChannelClearedAt(rawChan) : 0;
+
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await withTimeout(
           supabase
             .from('channel_messages')
             .select('*')
-            .eq('channel_id', channelId)
+            .in('channel_id', targetIds)
             .order('sent_at', { ascending: true }),
           12000,
           'Kanal mesajları alınırken zaman aşımı oluştu.'
         );
 
         if (!error && Array.isArray(data)) {
-          const mapped = data.map((row) => {
-            const rawSentAt = row.sent_at ?? row.sentAt;
-            const parsedSentAt = rawSentAt
-              ? (typeof rawSentAt === 'number' ? rawSentAt : (!isNaN(Number(rawSentAt)) ? Number(rawSentAt) : new Date(rawSentAt).getTime()))
-              : (row.created_at ? new Date(row.created_at).getTime() : undefined);
+          const mapped = data
+            .map((row) => {
+              const rawSentAt = row.sent_at ?? row.sentAt;
+              const parsedSentAt = rawSentAt
+                ? (typeof rawSentAt === 'number' ? rawSentAt : (!isNaN(Number(rawSentAt)) ? Number(rawSentAt) : new Date(rawSentAt).getTime()))
+                : (row.created_at ? new Date(row.created_at).getTime() : undefined);
 
-            const formatTimeHHMM = (msOrDate) => {
-              if (!msOrDate) return '';
-              const d = new Date(msOrDate);
-              if (isNaN(d.getTime())) return '';
-              return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-            };
+              const formatTimeHHMM = (msOrDate) => {
+                if (!msOrDate) return '';
+                const d = new Date(msOrDate);
+                if (isNaN(d.getTime())) return '';
+                return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+              };
 
-            return {
-              id: row.id,
-              channel_id: row.channel_id,
-              user: row.sender_name,
-              userId: row.sender_id,
-              avatar: row.sender_avatar || null,
-              color: (row.color && row.color !== '#90ba3c' && row.color !== CLASSIC_PURPLE) ? row.color : getUserColor(row.sender_id || row.sender_name, false),
-              hasCrown: row.has_crown || false,
-              lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
-              attachments: Array.isArray(row.attachments) ? row.attachments : [],
-              parent_id: row.parent_id || null,
-              reply_to: row.reply_to ? (typeof row.reply_to === 'string' ? JSON.parse(row.reply_to) : row.reply_to) : null,
-              reactions: row.reactions ? (typeof row.reactions === 'string' ? JSON.parse(row.reactions) : row.reactions) : [],
-              timestamp: row.timestamp_text || formatTimeHHMM(parsedSentAt),
-              sentAt: parsedSentAt,
-              sent_at: parsedSentAt,
-              created_at: row.created_at,
-            };
-          });
+              return {
+                id: row.id,
+                channel_id: row.channel_id,
+                user: row.sender_name,
+                userId: row.sender_id,
+                avatar: row.sender_avatar || null,
+                color: (row.color && row.color !== '#90ba3c' && row.color !== CLASSIC_PURPLE) ? row.color : getUserColor(row.sender_id || row.sender_name, false),
+                hasCrown: row.has_crown || false,
+                lines: Array.isArray(row.lines) ? row.lines : (row.lines ? [row.lines] : []),
+                attachments: Array.isArray(row.attachments) ? row.attachments : [],
+                parent_id: row.parent_id || null,
+                reply_to: row.reply_to ? (typeof row.reply_to === 'string' ? JSON.parse(row.reply_to) : row.reply_to) : null,
+                reactions: row.reactions ? (typeof row.reactions === 'string' ? JSON.parse(row.reactions) : row.reactions) : [],
+                timestamp: row.timestamp_text || formatTimeHHMM(parsedSentAt),
+                sentAt: parsedSentAt,
+                sent_at: parsedSentAt,
+                created_at: row.created_at,
+              };
+            })
+            .filter((m) => {
+              if (clearedAt && (m.sentAt || m.sent_at) && (m.sentAt || m.sent_at) <= clearedAt) {
+                return false;
+              }
+              return true;
+            });
 
           localDb.saveChannelMessages(channelId, mapped);
           return mapped;
@@ -1736,7 +1770,14 @@ export const dbService = {
         console.warn('Supabase fetchChannelMessages error:', err);
       }
     }
-    return localDb.getChannelMessages(channelId);
+    const localMsgs = localDb.getChannelMessages(channelId);
+    if (clearedAt && Array.isArray(localMsgs)) {
+      return localMsgs.filter((m) => {
+        const t = Number(m?.sent_at ?? m?.sentAt) || (m?.created_at ? new Date(m.created_at).getTime() : 0);
+        return !t || t > clearedAt;
+      });
+    }
+    return localMsgs;
   },
 
   async saveChannelMessage(channelId, message) {
@@ -2237,6 +2278,48 @@ export const dbService = {
     return localDb.addDmMessage(canonicalRoomId, localMsg);
   },
 
+  // Get channel cleared timestamp
+  getChannelClearedAt(channelId) {
+    if (!channelId || typeof localStorage === 'undefined') return 0;
+    try {
+      const rawChan = String(channelId || '');
+      const cleanChan = rawChan.replace(/^text-/, '');
+      const keys = [
+        `voys_channel_cleared_${rawChan}`,
+        `voys_channel_cleared_${cleanChan}`,
+        `voys_channel_cleared_text-${cleanChan}`,
+      ];
+      let maxTime = 0;
+      for (const k of keys) {
+        const val = localStorage.getItem(k);
+        if (val) {
+          const num = Number(val);
+          if (!Number.isNaN(num) && num > maxTime) maxTime = num;
+        }
+      }
+      return maxTime;
+    } catch {
+      return 0;
+    }
+  },
+
+  // Set channel cleared timestamp and purge all local cached message keys for this channel
+  setChannelClearedAt(channelId, timestamp = Date.now()) {
+    if (!channelId || typeof localStorage === 'undefined') return;
+    try {
+      const rawChan = String(channelId || '');
+      const cleanChan = rawChan.replace(/^text-/, '');
+      const ts = Number(timestamp) || Date.now();
+      const str = String(ts);
+      const targetIds = Array.from(new Set([rawChan, cleanChan, `text-${cleanChan}`])).filter(Boolean);
+      targetIds.forEach((id) => {
+        localStorage.setItem(`voys_channel_cleared_${id}`, str);
+        localStorage.removeItem(`voys_cached_msgs_${id}`);
+      });
+      localStorage.removeItem('standupp_cached_messages');
+    } catch {}
+  },
+
   // Get DM cleared timestamp for a user and room
   getDmClearedAt(userId, roomId, partnerId) {
     if (!userId) return 0;
@@ -2345,15 +2428,25 @@ export const dbService = {
     }
 
     if (channelId) {
-      if (isSupabaseConfigured) {
+      const rawChan = String(channelId || '');
+      const cleanChan = rawChan.replace(/^text-/, '');
+      const targetIds = Array.from(new Set([rawChan, cleanChan, `text-${cleanChan}`])).filter(Boolean);
+      const clearedAt = Date.now();
+
+      // Immediately set cleared timestamp and purge caches
+      this.setChannelClearedAt(rawChan, clearedAt);
+
+      if (isSupabaseConfigured && supabase) {
         try {
-          await supabase.from('channel_messages').delete().eq('channel_id', channelId);
-          await supabase.from('messages').delete().eq('channel_id', channelId);
+          const { error } = await supabase.from('channel_messages').delete().in('channel_id', targetIds);
+          if (error) {
+            console.warn('Supabase delete channel_messages error:', error);
+          }
         } catch (err) {
           console.warn('Supabase deleteChatMessages error:', err);
         }
       }
-      localDb.deleteChannelMessages(channelId);
+      localDb.deleteChannelMessages(rawChan);
       return true;
     }
 

@@ -1379,6 +1379,11 @@ function StanduppApp() {
       }
       clearMessages?.(activeChannel);
       try {
+        const rawChan = String(activeChannel || '');
+        const cleanChan = rawChan.replace(/^text-/, '');
+        localStorage.removeItem(`voys_cached_msgs_${rawChan}`);
+        localStorage.removeItem(`voys_cached_msgs_${cleanChan}`);
+        localStorage.removeItem(`voys_cached_msgs_text-${cleanChan}`);
         localStorage.removeItem('standupp_cached_messages');
       } catch { }
     } catch (err) {
@@ -2263,6 +2268,7 @@ function StanduppApp() {
             onBackToChannels={handleBackToChannels}
             onOpenSettings={openSettings}
             onClearChat={handleClearActiveChat}
+            clearMessages={clearMessages}
             // Universal In-Chat Voice Call Props (Steam-style joinable session)
             isCallActive={Boolean(activeChannel && (activeChannelCall?.active || isCurrentChannelCallConnected))}
             isInCall={isCurrentChannelCallConnected}

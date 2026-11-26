@@ -904,10 +904,21 @@ export const Sidebar = React.memo(({
     const handleClearChat = (payload) => {
       if (!payload) return;
       if (!payload.isDm && payload.channelId) {
+        const rawTarget = String(payload.channelId);
+        const cleanTarget = rawTarget.replace(/^text-/, '');
         setLastMessagesMap((prev) => {
-          if (!prev[payload.channelId]) return prev;
           const next = { ...prev };
-          delete next[payload.channelId];
+          delete next[rawTarget];
+          delete next[cleanTarget];
+          delete next[`text-${cleanTarget}`];
+          return next;
+        });
+        setUnreadCounts((prev) => {
+          const next = { ...prev };
+          delete next[rawTarget];
+          delete next[cleanTarget];
+          delete next[`text-${cleanTarget}`];
+          persistUnreadCounts(effectiveUserId, next);
           return next;
         });
       }
